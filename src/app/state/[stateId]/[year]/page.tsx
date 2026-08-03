@@ -114,7 +114,12 @@ export default async function StateYearPage({
 
       <section className="border-b border-rule py-7">
         <h2 className="section-label">Government in {year}</h2>
-        {termsInYear.length === 0 ? (
+        {state.formedOn && year < yearOf(state.formedOn) ? (
+          <p className="mt-3 text-[0.85rem] text-ink-muted">
+            {state.name} was not a separate {state.kind === "state" ? "state" : "union territory"} in{" "}
+            {year} — it was established on {formatDate(state.formedOn)}.
+          </p>
+        ) : termsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No government term recorded for this year.
           </p>

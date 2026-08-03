@@ -8,6 +8,11 @@ import type { MapData, MapTerm } from "@/lib/db/queries/map";
 
 const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
+// Diagonal hatch used for states that did not exist as a separate entity in
+// the selected year (formed later, or since merged/reorganised).
+const NA_FILL = "url(#na-hatch)";
+const NA_SWATCH =
+  "repeating-linear-gradient(45deg, var(--color-paper-sunken) 0 2px, var(--color-rule-dark) 2px 3px)";
 const TOOLTIP_WIDTH = 260;
 const TOOLTIP_HEIGHT = 90;
 
@@ -63,46 +68,84 @@ export function MapExplorer({ data }: { data: MapData }) {
     [data.states],
   );
 
+  // Formation / dissolution years, so the map can show a state as "not yet
+  // formed" (e.g. Telangana before 2014) rather than coloring it as though it
+  // existed. Uses the end-of-year semantics: a state formed on 2000-11-09
+  // counts as existing for the year 2000.
+  const stateLifecycle = useMemo(() => {
+    const m = new Map<string, { formedY: number | null; dissolvedY: number | null }>();
+    for (const s of data.states) {
+      m.set(s.id, {
+        formedY: s.formedOn ? Number(s.formedOn.slice(0, 4)) : null,
+        dissolvedY: s.dissolvedOn ? Number(s.dissolvedOn.slice(0, 4)) : null,
+      });
+    }
+    return m;
+  }, [data.states]);
+
   const view = useMemo(() => {
     const fills = new Map<string, string>();
     const lines = new Map<string, string>();
     const legendCounts = new Map<
       string,
-      { label: string; color: string; count: number; order: number }
+      { label: string; color: string; count: number; order: number; hatch: boolean }
     >();
     for (const loc of india.locations) {
-      const term = governingTermAt(termsByState.get(loc.id), year);
-      lines.set(loc.id, describeTerm(term));
+      const life = stateLifecycle.get(loc.id);
       let color: string;
       let key: string;
       let label: string;
       let order: number;
-      if (!term) {
-        color = NO_DATA_COLOR;
-        key = "__nodata";
-        label = "No data";
-        order = 2;
-      } else if (term.kind === "presidents_rule") {
-        color = PR_COLOR;
-        key = "__pr";
-        label = "President's Rule";
-        order = 1;
+      let line: string;
+      let hatch = false;
+
+      if (life?.formedY != null && year < life.formedY) {
+        // The state did not exist as a separate entity yet this year.
+        hatch = true;
+        color = NA_FILL;
+        key = "__na";
+        label = "Not yet formed / n.a.";
+        order = 3;
+        line = `Not yet a separate state — established ${life.formedY}`;
+      } else if (life?.dissolvedY != null && year >= life.dissolvedY) {
+        hatch = true;
+        color = NA_FILL;
+        key = "__na";
+        label = "Not yet formed / n.a.";
+        order = 3;
+        line = `Merged / reorganised in ${life.dissolvedY}`;
       } else {
-        color = term.partyColor ?? PR_COLOR;
-        key = term.partyId ?? "__unknown";
-        label = term.partyName ?? "Unknown party";
-        order = 0;
+        const term = governingTermAt(termsByState.get(loc.id), year);
+        line = describeTerm(term);
+        if (!term) {
+          color = NO_DATA_COLOR;
+          key = "__nodata";
+          label = "No data";
+          order = 2;
+        } else if (term.kind === "presidents_rule") {
+          color = PR_COLOR;
+          key = "__pr";
+          label = "President's Rule";
+          order = 1;
+        } else {
+          color = term.partyColor ?? PR_COLOR;
+          key = term.partyId ?? "__unknown";
+          label = term.partyName ?? "Unknown party";
+          order = 0;
+        }
       }
+
       fills.set(loc.id, color);
+      lines.set(loc.id, line);
       const entry = legendCounts.get(key);
       if (entry) entry.count += 1;
-      else legendCounts.set(key, { label, color, count: 1, order });
+      else legendCounts.set(key, { label, color, count: 1, order, hatch });
     }
     const legend = [...legendCounts.values()].sort(
       (a, b) => a.order - b.order || b.count - a.count || a.label.localeCompare(b.label),
     );
     return { fills, lines, legend };
-  }, [termsByState, year]);
+  }, [termsByState, stateLifecycle, year]);
 
   function showPointerTooltip(e: React.PointerEvent, stateId: string) {
     const rect = containerRef.current?.getBoundingClientRect();
@@ -163,6 +206,18 @@ export function MapExplorer({ data }: { data: MapData }) {
             aria-label={`Map of India showing the party in power in each state at the end of ${year}`}
             className="h-auto w-full"
           >
+            <defs>
+              <pattern
+                id="na-hatch"
+                patternUnits="userSpaceOnUse"
+                width="6"
+                height="6"
+                patternTransform="rotate(45)"
+              >
+                <rect width="6" height="6" fill="var(--color-paper-sunken)" />
+                <line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-rule-dark)" strokeWidth="2" />
+              </pattern>
+            </defs>
             {india.locations.map((loc) => (
               <path
                 key={loc.id}
@@ -224,7 +279,7 @@ export function MapExplorer({ data }: { data: MapData }) {
                 <span
                   aria-hidden
                   className="h-3 w-3 shrink-0 rounded-[2px] border border-black/10"
-                  style={{ backgroundColor: l.color }}
+                  style={l.hatch ? { background: NA_SWATCH } : { backgroundColor: l.color }}
                 />
                 <span className="flex-1 text-ink">{l.label}</span>
                 <span className="tabular-nums text-ink-faint">{l.count}</span>
@@ -233,7 +288,8 @@ export function MapExplorer({ data }: { data: MapData }) {
           </ul>
           <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-faint">
             Colors show the party of the government in office on 31 December of the selected
-            year. Boundaries are pre-2019 and illustrative.
+            year. Hatched states did not exist as a separate entity that year (formed later or
+            since merged). Boundaries are pre-2019 and illustrative.
           </p>
         </aside>
       </div>

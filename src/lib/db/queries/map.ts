@@ -21,6 +21,7 @@ export type MapState = {
   id: string;
   name: string;
   hasGeometry: boolean;
+  formedOn: string | null;
   dissolvedOn: string | null;
 };
 
@@ -48,6 +49,7 @@ const getCachedMapData = unstable_cache(
           id: states.id,
           name: states.name,
           hasGeometry: states.hasGeometry,
+          formedOn: states.formedOn,
           dissolvedOn: states.dissolvedOn,
         })
         .from(states)
