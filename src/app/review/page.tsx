@@ -32,7 +32,11 @@ export default async function ReviewQueuePage({
         <p className="mt-2 text-[0.88rem] text-ink-muted">
           {queue.length} pending submission{queue.length === 1 ? "" : "s"}
           {stateFilter ? " for this state" : ""}. Verify each claim against its cited sources
-          before approving — approval publishes immediately.
+          before approving — approval publishes immediately. Also see{" "}
+          <Link href="/review/reports" className="text-accent underline-offset-2 hover:underline">
+            reports &amp; disputes
+          </Link>
+          .
         </p>
         {done && (
           <p className="mt-3 rounded-sm border border-green-200 bg-green-50 px-3 py-2 text-[0.85rem] text-approved">

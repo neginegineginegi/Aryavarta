@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { and, count, eq } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { events } from "@/lib/db/schema";
+import { events, reports } from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 import type { SourceRef } from "@/lib/db/queries/state";
 
@@ -19,6 +19,7 @@ export type EventDetail = {
   deletedAt: string | null;
   createdAt: string;
   sources: SourceRef[];
+  openDisputes: number;
 };
 
 async function fetchEvent(eventId: string): Promise<EventDetail | null> {
@@ -30,6 +31,17 @@ async function fetchEvent(eventId: string): Promise<EventDetail | null> {
     },
   });
   if (!row) return null;
+  const [{ n: openDisputes }] = await db
+    .select({ n: count() })
+    .from(reports)
+    .where(
+      and(
+        eq(reports.entityType, "event"),
+        eq(reports.entityId, eventId),
+        eq(reports.kind, "dispute"),
+        eq(reports.status, "open"),
+      ),
+    );
   return {
     id: row.id,
     stateId: row.stateId,
@@ -50,6 +62,7 @@ async function fetchEvent(eventId: string): Promise<EventDetail | null> {
       publishedOn: s.source.publishedOn,
       accessedOn: s.source.accessedOn,
     })),
+    openDisputes,
   };
 }
 

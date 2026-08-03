@@ -90,6 +90,20 @@ export default async function EventPage({
         </p>
       </header>
 
+      {(event.status === "disputed" || event.openDisputes > 0) && (
+        <div className="mt-5 rounded-sm border border-amber-300 bg-amber-50 p-4 text-[0.85rem]">
+          <p className="font-semibold text-disputed">
+            ⚠ The accuracy of this entry is {event.status === "disputed" ? "disputed" : "under discussion"}
+          </p>
+          <p className="mt-1 text-ink-muted">
+            {event.openDisputes > 0
+              ? `${event.openDisputes} open dispute${event.openDisputes === 1 ? "" : "s"} ${event.openDisputes === 1 ? "is" : "are"} awaiting moderator review. `
+              : ""}
+            Read it alongside its sources and revision history.
+          </p>
+        </div>
+      )}
+
       <section className="prose-article border-b border-rule py-7 text-[0.95rem] text-ink">
         {event.description.split(/\n\n+/).map((para, i) => (
           <p key={i}>{para}</p>
