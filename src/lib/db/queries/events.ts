@@ -23,6 +23,9 @@ export type EventDetail = {
 };
 
 async function fetchEvent(eventId: string): Promise<EventDetail | null> {
+  // Guard before querying: a non-UUID path param would otherwise throw a
+  // Postgres cast error and 500 a public route.
+  if (!/^[0-9a-f-]{36}$/i.test(eventId)) return null;
   const row = await db.query.events.findFirst({
     where: eq(events.id, eventId),
     with: {

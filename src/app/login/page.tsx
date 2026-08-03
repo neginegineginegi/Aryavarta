@@ -10,8 +10,9 @@ export const metadata: Metadata = { title: "Sign in" };
 const DEV_LOGIN_ENABLED = process.env.AUTH_DEV_LOGIN === "insecure-dev-mode";
 
 function safeNext(raw: string | undefined): string {
-  // Only allow same-site relative paths to prevent open redirects.
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  // Only allow same-site relative paths to prevent open redirects. Browsers
+  // treat both // and /\ as scheme-relative, so reject either second char.
+  if (!raw || !/^\/(?![/\\])/.test(raw)) return "/";
   return raw;
 }
 

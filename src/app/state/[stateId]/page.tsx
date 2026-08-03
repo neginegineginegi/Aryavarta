@@ -17,6 +17,10 @@ import {
   type EventType,
 } from "@/lib/format";
 
+// Daily re-render so "present"/current-year rendering can never go stale
+// across a year boundary; content changes revalidate immediately via tags.
+export const revalidate = 86400;
+
 export async function generateStaticParams() {
   const ids = await getAllStateIds();
   return ids.map((stateId) => ({ stateId }));

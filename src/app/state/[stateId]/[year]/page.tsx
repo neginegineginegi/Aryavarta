@@ -14,6 +14,9 @@ import {
   type EventType,
 } from "@/lib/format";
 
+// Daily re-render keeps the current-year upper bound fresh (see state page).
+export const revalidate = 86400;
+
 const MIN_YEAR = 1947;
 
 function parseYear(raw: string): number | null {

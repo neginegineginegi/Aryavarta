@@ -35,9 +35,13 @@ export type MapData = {
  * Everything the home-page map needs, in one cached payload. The whole
  * dataset (≤ ~40 states x a few dozen terms) is small enough to ship once;
  * the year slider then recolors entirely client-side.
+ *
+ * maxYear is deliberately computed OUTSIDE the cached function: the cache is
+ * tag-invalidated (not time-invalidated), so a baked-in "current year" would
+ * go stale after December 31.
  */
-export const getMapData = unstable_cache(
-  async (): Promise<MapData> => {
+const getCachedMapData = unstable_cache(
+  async (): Promise<Omit<MapData, "maxYear">> => {
     const [stateRows, termRows] = await Promise.all([
       db
         .select({
@@ -65,7 +69,6 @@ export const getMapData = unstable_cache(
         .orderBy(asc(terms.startDate)),
     ]);
 
-    const currentYear = new Date().getFullYear();
     const minYear = termRows.length
       ? Math.min(...termRows.map((t) => yearOf(t.startDate)))
       : 1950;
@@ -74,9 +77,13 @@ export const getMapData = unstable_cache(
       states: stateRows,
       terms: termRows,
       minYear: Math.max(1947, minYear),
-      maxYear: currentYear,
     };
   },
   ["map-data"],
   { tags: [tags.mapData] },
 );
+
+export async function getMapData(): Promise<MapData> {
+  const cached = await getCachedMapData();
+  return { ...cached, maxYear: new Date().getFullYear() };
+}

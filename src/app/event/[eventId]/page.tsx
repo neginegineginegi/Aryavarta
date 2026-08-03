@@ -14,7 +14,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { eventId } = await params;
   const event = await getEvent(eventId);
-  if (!event || event.status !== "published" || event.deletedAt) return {};
+  if (!event || event.deletedAt || !["published", "disputed"].includes(event.status)) return {};
   return {
     title: `${event.title} (${event.stateName}, ${event.year})`,
     description: event.description.slice(0, 200),

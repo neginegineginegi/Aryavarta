@@ -1,8 +1,8 @@
-import { and, count, eq, isNull } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { events, sources, states, terms } from "@/lib/db/schema";
+import { events, states, terms } from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 
 export type ArchiveStats = {
@@ -14,17 +14,31 @@ export type ArchiveStats = {
 
 export const getArchiveStats = unstable_cache(
   async (): Promise<ArchiveStats> => {
-    const [[s], [t], [e], [src]] = await Promise.all([
+    const [[s], [t], [e], cited] = await Promise.all([
       db.select({ n: count() }).from(states),
       db.select({ n: count() }).from(terms).where(isNull(terms.deletedAt)),
       db
         .select({ n: count() })
         .from(events)
-        .where(and(eq(events.status, "published"), isNull(events.deletedAt))),
-      db.select({ n: count() }).from(sources),
+        .where(and(inArray(events.status, ["published", "disputed"]), isNull(events.deletedAt))),
+      // Only sources actually cited by live content count toward the tally.
+      db.execute(sql`
+        SELECT count(DISTINCT source_id)::int AS n FROM (
+          SELECT source_id FROM term_sources
+          UNION ALL SELECT source_id FROM election_sources
+          UNION ALL SELECT source_id FROM event_sources
+        ) cited
+      `),
     ]);
-    return { states: s.n, terms: t.n, events: e.n, sources: src.n };
+    return {
+      states: s.n,
+      terms: t.n,
+      events: e.n,
+      sources: Number((cited.rows[0] as { n: number }).n),
+    };
   },
   ["archive-stats"],
-  { tags: [tags.mapData], revalidate: 3600 },
+  // Short time-based revalidation: event publications don't touch the
+  // map-data tag, so freshness here comes from time, not tags.
+  { tags: [tags.mapData], revalidate: 300 },
 );

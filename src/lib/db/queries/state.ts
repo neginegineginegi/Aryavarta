@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, isNull } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
@@ -96,10 +96,12 @@ async function fetchStateArticle(stateId: string): Promise<StateArticle | null> 
       },
     }),
     db.query.events.findMany({
+      // Disputed entries remain part of the public record (flagged in the
+      // UI), so they appear here alongside published ones.
       where: and(
         eq(events.stateId, stateId),
         isNull(events.deletedAt),
-        eq(events.status, "published"),
+        inArray(events.status, ["published", "disputed"]),
       ),
       orderBy: [desc(events.year), asc(events.title)],
       with: {

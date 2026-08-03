@@ -8,12 +8,15 @@ import type { MapData, MapTerm } from "@/lib/db/queries/map";
 
 const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
+const TOOLTIP_WIDTH = 260;
+const TOOLTIP_HEIGHT = 90;
 
 type Tooltip = {
+  stateId: string;
   x: number;
   y: number;
-  stateName: string;
-  line: string;
+  /** 'pointer' follows the cursor; 'focus' pins to a fixed corner for keyboard users. */
+  anchor: "pointer" | "focus";
 };
 
 /** The term governing a state at the end of the given year, if any. */
@@ -31,6 +34,12 @@ function governingTermAt(
     }
   }
   return found;
+}
+
+function describeTerm(term: MapTerm | null): string {
+  if (!term) return "No recorded government for this year";
+  if (term.kind === "presidents_rule") return "President's Rule";
+  return `${term.cmName} · ${term.partyName}`;
 }
 
 export function MapExplorer({ data }: { data: MapData }) {
@@ -56,12 +65,14 @@ export function MapExplorer({ data }: { data: MapData }) {
 
   const view = useMemo(() => {
     const fills = new Map<string, string>();
+    const lines = new Map<string, string>();
     const legendCounts = new Map<
       string,
       { label: string; color: string; count: number; order: number }
     >();
     for (const loc of india.locations) {
       const term = governingTermAt(termsByState.get(loc.id), year);
+      lines.set(loc.id, describeTerm(term));
       let color: string;
       let key: string;
       let label: string;
@@ -90,29 +101,30 @@ export function MapExplorer({ data }: { data: MapData }) {
     const legend = [...legendCounts.values()].sort(
       (a, b) => a.order - b.order || b.count - a.count || a.label.localeCompare(b.label),
     );
-    return { fills, legend };
+    return { fills, lines, legend };
   }, [termsByState, year]);
 
-  function showTooltip(e: React.PointerEvent, stateId: string) {
+  function showPointerTooltip(e: React.PointerEvent, stateId: string) {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    const term = governingTermAt(termsByState.get(stateId), year);
-    const line = !term
-      ? "No recorded government for this year"
-      : term.kind === "presidents_rule"
-        ? "President's Rule"
-        : `${term.cmName} · ${term.partyName}`;
-    setTooltip({
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
-      stateName: stateNames.get(stateId) ?? stateId,
-      line,
-    });
+    setTooltip({ stateId, x: e.clientX - rect.left, y: e.clientY - rect.top, anchor: "pointer" });
   }
 
   function open(stateId: string) {
     router.push(`/state/${stateId}/${year}`);
   }
+
+  // Tooltip text derives from current state at render time, so a year change
+  // while the tooltip is open can never show stale content.
+  const tooltipContent = tooltip
+    ? {
+        stateName: stateNames.get(tooltip.stateId) ?? tooltip.stateId,
+        line: view.lines.get(tooltip.stateId) ?? "",
+      }
+    : null;
+
+  const containerW = containerRef.current?.clientWidth ?? 320;
+  const containerH = containerRef.current?.clientHeight ?? 400;
 
   return (
     <div>
@@ -159,7 +171,7 @@ export function MapExplorer({ data }: { data: MapData }) {
                 fill={view.fills.get(loc.id)}
                 tabIndex={0}
                 role="link"
-                aria-label={`${loc.name}, ${year}`}
+                aria-label={`${loc.name}, ${year}: ${view.lines.get(loc.id)}. Open details.`}
                 onClick={() => open(loc.id)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -167,24 +179,38 @@ export function MapExplorer({ data }: { data: MapData }) {
                     open(loc.id);
                   }
                 }}
-                onPointerMove={(e) => showTooltip(e, loc.id)}
-                onPointerLeave={() => setTooltip(null)}
-              >
-                <title>{loc.name}</title>
-              </path>
+                onFocus={() => setTooltip({ stateId: loc.id, x: 8, y: 8, anchor: "focus" })}
+                onBlur={() => setTooltip((t) => (t?.anchor === "focus" ? null : t))}
+                onPointerMove={(e) => showPointerTooltip(e, loc.id)}
+                onPointerLeave={() =>
+                  setTooltip((t) => (t?.anchor === "pointer" ? null : t))
+                }
+              />
             ))}
           </svg>
-          {tooltip && (
+          {tooltip && tooltipContent && (
             <div
-              className="pointer-events-none absolute z-10 max-w-60 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
-              style={{
-                left: Math.min(tooltip.x + 14, (containerRef.current?.clientWidth ?? 300) - 180),
-                top: tooltip.y + 14,
-              }}
+              className="pointer-events-none absolute z-10 w-60 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
+              style={
+                tooltip.anchor === "focus"
+                  ? { left: tooltip.x, top: tooltip.y }
+                  : {
+                      left: Math.max(
+                        0,
+                        Math.min(tooltip.x + 14, containerW - TOOLTIP_WIDTH),
+                      ),
+                      top:
+                        tooltip.y + 14 + TOOLTIP_HEIGHT > containerH
+                          ? Math.max(0, tooltip.y - 14 - TOOLTIP_HEIGHT)
+                          : tooltip.y + 14,
+                    }
+              }
             >
-              <p className="font-semibold text-ink">{tooltip.stateName}</p>
-              <p className="text-ink-muted">{tooltip.line}</p>
-              <p className="mt-0.5 text-[0.72rem] text-ink-faint">Click for details →</p>
+              <p className="font-semibold text-ink">{tooltipContent.stateName}</p>
+              <p className="text-ink-muted">{tooltipContent.line}</p>
+              <p className="mt-0.5 text-[0.72rem] text-ink-faint">
+                {tooltip.anchor === "focus" ? "Press Enter for details" : "Click for details →"}
+              </p>
             </div>
           )}
         </div>

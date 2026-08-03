@@ -9,7 +9,7 @@
   --color-paper-sunken: #f3efe5;
   --color-ink: #211d18;
   --color-ink-muted: #5c564d;
-  --color-ink-faint: #a49c8f;
+  --color-ink-faint: #776e5f; /* 4.73:1 on paper — AA for normal text */
   --color-rule: #e3ddcf;
   --color-rule-dark: #cec6b4;
   --color-accent: #31517b; /* links, active states */

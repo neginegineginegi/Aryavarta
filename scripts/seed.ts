@@ -222,6 +222,18 @@ async function main() {
     return;
   }
 
+  // Safety guard: the demo wipe below deletes ALL content rows. Refuse to run
+  // against anything that doesn't look like a local database unless forced.
+  const dbUrl = process.env.DATABASE_URL ?? "";
+  const looksLocal = /localhost|127\.0\.0\.1/.test(dbUrl);
+  if (!looksLocal && !process.argv.includes("--force")) {
+    console.error(
+      "Refusing to run --demo against a non-local DATABASE_URL: it WIPES all terms, elections, events, sources and revisions. Pass --force only if you are absolutely sure.",
+    );
+    await pool.end();
+    process.exit(1);
+  }
+
   console.log("Seeding CLEARLY FAKE demo content (--demo)...");
 
   for (const p of DEMO_PARTIES) {
@@ -280,15 +292,21 @@ async function main() {
 
   for (const s of geoStates) {
     const rng = makeRng(s.id);
-    // Alternating fake terms from 1978 to the present, ~5y apiece, with an
-    // occasional President's Rule gap so the UI has real variety to render.
-    let year = 1978 + Math.floor(rng() * 4);
+    // Alternating fake terms from 1978 (or statehood, whichever is later) to
+    // the present, ~5y apiece, with an occasional President's Rule interlude.
+    const formedYear = s.formedOn ? Number(s.formedOn.slice(0, 4)) : 1978;
+    let year = Math.max(1978 + Math.floor(rng() * 4), formedYear);
+    let firstTerm = true;
     let cmIdx = Math.floor(rng() * DEMO_CM_NAMES.length);
     while (year < 2026) {
       const span = 4 + Math.floor(rng() * 3); // 4-6 years
       const end = Math.min(year + span, 2026);
-      const isPR = rng() < 0.08;
+      // A President's Rule interlude never ends the timeline: every state
+      // must finish with an ongoing CM term.
+      const isPR = rng() < 0.08 && year + 1 < 2026;
       const termId = uuidv7();
+      const startDate = firstTerm && year === formedYear && s.formedOn ? s.formedOn : `${year}-03-15`;
+      firstTerm = false;
       if (isPR) {
         await db.insert(terms).values({
           id: termId,
@@ -296,11 +314,13 @@ async function main() {
           kind: "presidents_rule",
           cmName: null,
           partyId: null,
-          startDate: `${year}-03-15`,
-          endDate: `${Math.min(year + 1, 2026)}-02-28`,
+          startDate,
+          endDate: `${year + 1}-02-28`,
           notes: "Placeholder President's Rule period (demo data).",
         });
-        year = Math.min(year + 1, 2026);
+        year = year + 1;
+        termCount++;
+        continue;
       } else {
         const party = DEMO_PARTIES[Math.floor(rng() * DEMO_PARTIES.length)];
         const cm = DEMO_CM_NAMES[cmIdx % DEMO_CM_NAMES.length];
@@ -312,7 +332,7 @@ async function main() {
           kind: "cm",
           cmName: cm,
           partyId: party.id,
-          startDate: `${year}-03-15`,
+          startDate,
           endDate: ongoing ? null : `${end}-03-14`,
           notes: null,
         });
@@ -369,10 +389,15 @@ async function main() {
   const eventStates = ["tg", "ap", "up", "kl", "mh", "wb", "br", "tn"];
   for (const stateId of eventStates) {
     const rng = makeRng(`events-${stateId}`);
+    const stateSeed = STATE_SEED.find((x) => x.id === stateId);
+    const minEventYear = Math.max(
+      1990,
+      stateSeed?.formedOn ? Number(stateSeed.formedOn.slice(0, 4)) : 1990,
+    );
     const n = 4 + Math.floor(rng() * 3);
     for (let i = 0; i < n; i++) {
       const tmpl = DEMO_EVENTS[(i + Math.floor(rng() * DEMO_EVENTS.length)) % DEMO_EVENTS.length];
-      const year = 1990 + Math.floor(rng() * 36);
+      const year = minEventYear + Math.floor(rng() * (2026 - minEventYear));
       const eventId = uuidv7();
       await db.insert(events).values({
         id: eventId,
@@ -443,6 +468,7 @@ async function main() {
     .select()
     .from(terms)
     .where(sql`${terms.stateId} = 'kl' AND ${terms.kind} = 'cm'`)
+    .orderBy(terms.startDate) // deterministic pick: reproducible demo data
     .limit(1);
   if (someTerm) {
     const [linkedSource] = await db
