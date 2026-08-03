@@ -1,26 +1,116 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+@theme {
+  /* Ink-and-paper palette: warm off-white ground, near-black warm ink.
+     Party colors are data colors only — they appear on the map, legend,
+     and seat bars, never as interface chrome. */
+  --color-paper: #faf8f2;
+  --color-paper-raised: #ffffff;
+  --color-paper-sunken: #f3efe5;
+  --color-ink: #211d18;
+  --color-ink-muted: #5c564d;
+  --color-ink-faint: #a49c8f;
+  --color-rule: #e3ddcf;
+  --color-rule-dark: #cec6b4;
+  --color-accent: #31517b; /* links, active states */
+  --color-accent-dark: #243c5c;
+  --color-disputed: #b45309;
+  --color-danger: #991b1b;
+  --color-approved: #166534;
+  --color-nodata: #ece7db; /* map fill when no term covers the year */
+  --color-pr: #8a8a8a; /* President's Rule */
+
+  --font-display: var(--font-fraunces), "Georgia", serif;
+  --font-body: var(--font-inter), system-ui, sans-serif;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  background: var(--color-paper);
+  color: var(--color-ink);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-size: 0.9375rem;
+  line-height: 1.65;
+}
+
+::selection {
+  background: #d8e0ec;
+}
+
+/* Small-caps section labels used across article pages. */
+.section-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+
+/* Footnote-style superscript citation markers. */
+.cite-ref {
+  font-size: 0.65em;
+  vertical-align: super;
+  line-height: 0;
+  color: var(--color-accent);
+  font-weight: 600;
+  text-decoration: none;
+}
+.cite-ref:hover {
+  text-decoration: underline;
+}
+
+/* Long-form article prose. */
+.prose-article p {
+  margin-bottom: 0.9em;
+  max-width: 65ch;
+}
+
+/* Map interactivity. */
+.map-state {
+  stroke: var(--color-paper);
+  stroke-width: 0.75;
+  transition: filter 120ms ease, opacity 120ms ease;
+  cursor: pointer;
+}
+.map-state:hover,
+.map-state:focus-visible {
+  filter: brightness(0.88) saturate(1.15);
+  outline: none;
+}
+.map-state:focus-visible {
+  stroke: var(--color-ink);
+  stroke-width: 1.5;
+}
+
+/* Year slider. */
+input[type="range"].year-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-rule-dark);
+}
+input[type="range"].year-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  border: 3px solid var(--color-paper);
+  box-shadow: 0 0 0 1px var(--color-rule-dark);
+  cursor: ew-resize;
+}
+input[type="range"].year-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--color-ink);
+  border: 3px solid var(--color-paper);
+  box-shadow: 0 0 0 1px var(--color-rule-dark);
+  cursor: ew-resize;
 }
