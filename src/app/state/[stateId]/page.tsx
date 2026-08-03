@@ -139,8 +139,15 @@ export default async function StatePage({
                       <PartyTag name={t.partyName} abbreviation={t.partyAbbreviation} color={t.partyColor} />
                     )}
                   </td>
-                  <td className="py-2.5 text-right">
+                  <td className="py-2.5 text-right whitespace-nowrap">
                     <CiteMarks sources={t.sources} numberOf={citations.numberOf} />
+                    <Link
+                      href={`/contribute/term?edit=${t.id}`}
+                      className="ml-2 text-[0.75rem] text-ink-faint hover:text-accent"
+                      title="Suggest a correction to this term"
+                    >
+                      edit
+                    </Link>
                   </td>
                 </tr>
               ))}
@@ -173,6 +180,13 @@ export default async function StatePage({
                       {e.turnoutPercent ? ` · ${e.turnoutPercent}% turnout` : null}
                     </span>
                     <CiteMarks sources={e.sources} numberOf={citations.numberOf} />
+                    <Link
+                      href={`/contribute/election?edit=${e.id}`}
+                      className="text-[0.75rem] text-ink-faint hover:text-accent"
+                      title="Suggest a correction to this election"
+                    >
+                      edit
+                    </Link>
                   </div>
                   {e.resultSummary ? (
                     <p className="mt-1 max-w-2xl text-[0.85rem] text-ink-muted">{e.resultSummary}</p>
