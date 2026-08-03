@@ -28,10 +28,36 @@ export default async function EventPage({
 }) {
   const { eventId } = await params;
   const event = await getEvent(eventId);
-  // Until the moderation stage adds owner/moderator previews, only published
-  // (or published-then-disputed) events are visible; soft-deleted events will
-  // get a tombstone view alongside the history pages.
-  if (!event || event.deletedAt || !["published", "disputed"].includes(event.status)) {
+  if (!event) notFound();
+
+  // Tombstone for removed entries: the record of the removal stays public.
+  if (event.deletedAt) {
+    return (
+      <div className="mx-auto max-w-3xl px-5 py-16">
+        <p className="section-label">Removed entry</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold text-ink-muted line-through decoration-ink-faint">
+          {event.title}
+        </h1>
+        <p className="mt-4 max-w-xl text-[0.9rem] text-ink-muted">
+          This entry was removed from the live record through the moderation process on{" "}
+          {formatDate(event.deletedAt.slice(0, 10))}. Its full revision history — including the
+          removal and who approved it — remains public.
+        </p>
+        <p className="mt-6 flex gap-4 text-[0.88rem]">
+          <Link href={`/event/${event.id}/history`} className="text-accent underline-offset-2 hover:underline">
+            View revision history →
+          </Link>
+          <Link href={`/state/${event.stateId}`} className="text-accent underline-offset-2 hover:underline">
+            {event.stateName} page →
+          </Link>
+        </p>
+      </div>
+    );
+  }
+
+  // Unpublished (pending/draft/rejected) entries stay invisible to the
+  // public; their content is inspectable via the public revision record.
+  if (!["published", "disputed"].includes(event.status)) {
     notFound();
   }
 

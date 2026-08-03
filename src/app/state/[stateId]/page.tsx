@@ -76,12 +76,20 @@ export default async function StatePage({
           <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
             {state.name}
           </h1>
-          <Link
-            href={`/contribute?state=${state.id}`}
-            className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink transition-colors hover:border-ink"
-          >
-            Suggest an edit
-          </Link>
+          <span className="flex gap-2">
+            <Link
+              href={`/state/${state.id}/history`}
+              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink-muted transition-colors hover:border-ink hover:text-ink"
+            >
+              History
+            </Link>
+            <Link
+              href={`/contribute?state=${state.id}`}
+              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink transition-colors hover:border-ink"
+            >
+              Suggest an edit
+            </Link>
+          </span>
         </div>
         <p className="mt-2 text-[0.85rem] text-ink-muted">
           {state.kind === "state" ? "State" : "Union Territory"}
