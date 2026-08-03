@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import { AuthNav } from "@/components/layout/AuthNav";
+
 const NAV_LINKS = [
   { href: "/", label: "Map" },
   { href: "/search", label: "Search" },
@@ -30,12 +32,7 @@ export function Header() {
               {l.label}
             </Link>
           ))}
-          <Link
-            href="/login"
-            className="rounded-sm border border-rule-dark px-3 py-1 text-ink transition-colors hover:border-ink"
-          >
-            Sign in
-          </Link>
+          <AuthNav />
         </nav>
       </div>
     </header>
