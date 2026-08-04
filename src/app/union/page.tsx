@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { UnionMapExplorer } from "@/components/map/UnionMapExplorer";
 import { personSlug } from "@/lib/db/queries/person";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
+import { getUnionMapData } from "@/lib/db/queries/map";
 import { getUnionOverview } from "@/lib/db/queries/union";
 import {
   EVENT_TYPE_LABELS,
@@ -92,7 +94,10 @@ function TermTable({
 }
 
 export default async function UnionPage() {
-  const { pmTerms, presidentTerms, elections, events } = await getUnionOverview();
+  const [{ pmTerms, presidentTerms, elections, events }, unionMap] = await Promise.all([
+    getUnionOverview(),
+    getUnionMapData(),
+  ]);
   const maxYear = new Date().getFullYear();
 
   const citations = buildCitationIndex([
@@ -135,6 +140,13 @@ export default async function UnionPage() {
         </p>
         {pmTerms.length > 0 && <TimelineBand terms={pmTerms} maxYear={maxYear} />}
       </header>
+
+      <section className="border-b border-rule py-8">
+        <h2 className="section-label">The Union, year by year</h2>
+        <div className="mt-4">
+          <UnionMapExplorer data={unionMap} />
+        </div>
+      </section>
 
       <section className="border-b border-rule py-8">
         <h2 className="section-label">Prime Ministers</h2>

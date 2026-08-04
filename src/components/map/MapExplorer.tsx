@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapData, MapTerm } from "@/lib/db/queries/map";
+import { ModeSwitch } from "@/components/layout/HeaderNav";
 
 const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
@@ -192,6 +193,11 @@ export function MapExplorer({ data }: { data: MapData }) {
 
   return (
     <div>
+      {/* The map's own mode control: which government layer is shown. */}
+      <div className="mb-4">
+        <ModeSwitch />
+      </div>
+
       {/* Year scrubber */}
       <div className="mb-5 flex items-center gap-5">
         <div className="w-24 shrink-0 text-right">
@@ -263,6 +269,34 @@ export function MapExplorer({ data }: { data: MapData }) {
                 }
               />
             ))}
+            {/* Lakshadweep's real geometry is a scatter of sub-pixel islands
+                (x 82-115, y 590-664) that no screen can show; this marker over
+                the island group keeps the UT visible, hoverable, and clickable.
+                It shares the state's computed fill, so it colors, hatches, and
+                grays exactly like every other state. */}
+            <circle
+              cx={98}
+              cy={627}
+              r={7}
+              className="map-state"
+              fill={view.fills.get("ld")}
+              tabIndex={0}
+              role="link"
+              aria-label={`Lakshadweep, ${year}: ${view.lines.get("ld")}. Open details.`}
+              onClick={() => open("ld")}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  open("ld");
+                }
+              }}
+              onFocus={() => setTooltip({ stateId: "ld", x: 8, y: 8, anchor: "focus" })}
+              onBlur={() => setTooltip((t) => (t?.anchor === "focus" ? null : t))}
+              onPointerMove={(e) => showPointerTooltip(e, "ld")}
+              onPointerLeave={() =>
+                setTooltip((t) => (t?.anchor === "pointer" ? null : t))
+              }
+            />
           </svg>
           {tooltip && tooltipContent && (
             <div

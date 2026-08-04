@@ -92,3 +92,66 @@ export async function getMapData(): Promise<MapData> {
   const cached = await getCachedMapData();
   return { ...cached, maxYear: new Date().getFullYear() };
 }
+
+export type UnionTerm = {
+  kind: "pm" | "president";
+  cmName: string | null;
+  partyId: string | null;
+  partyName: string | null;
+  partyColor: string | null;
+  startDate: string;
+  endDate: string | null;
+};
+
+export type UnionMapData = {
+  terms: UnionTerm[];
+  minYear: number;
+  maxYear: number;
+};
+
+/**
+ * The /union map payload: PM and President terms only. In Union mode the
+ * whole map takes one color (the PM's party), so no per-state data is needed.
+ * Same maxYear-outside-the-cache rule as getMapData.
+ */
+const getCachedUnionMapData = unstable_cache(
+  async (): Promise<Omit<UnionMapData, "maxYear">> => {
+    const termRows = await db
+      .select({
+        kind: terms.kind,
+        cmName: terms.cmName,
+        partyId: terms.partyId,
+        partyName: parties.name,
+        partyColor: parties.color,
+        startDate: terms.startDate,
+        endDate: terms.endDate,
+      })
+      .from(terms)
+      .leftJoin(parties, eq(terms.partyId, parties.id))
+      .where(
+        and(
+          eq(terms.stateId, "in"),
+          isNull(terms.deletedAt),
+          inArray(terms.kind, ["pm", "president"]),
+        ),
+      )
+      .orderBy(asc(terms.startDate));
+
+    const minYear = termRows.length
+      ? Math.min(...termRows.map((t) => yearOf(t.startDate)))
+      : 1947;
+
+    return {
+      // Safe cast: the inArray filter above restricts kinds to pm/president.
+      terms: termRows as UnionTerm[],
+      minYear: Math.max(1947, minYear),
+    };
+  },
+  ["union-map-data"],
+  { tags: [tags.mapData, tags.state("in")] },
+);
+
+export async function getUnionMapData(): Promise<UnionMapData> {
+  const cached = await getCachedUnionMapData();
+  return { ...cached, maxYear: new Date().getFullYear() };
+}

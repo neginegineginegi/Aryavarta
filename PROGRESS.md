@@ -15,6 +15,12 @@ Just shipped (this session): EB Garamond typography, a full redesign on user gre
 system, sticky masthead header, rebuilt homepage/footer, spacing pass, site-wide copy rewrite
 removing every em dash from user-facing prose), then a second palette pass to the "Making
 Software" scheme: cool near-white paper, electric-blue accent, Space Mono technical labels.
+Also: the /union page now opens with an interactive map (whole country takes the PM's party
+color per selected year, click → /union/[year]); Lakshadweep renders as a clickable circle
+marker in both maps (its real geometry is sub-pixel specks; see the comment in MapExplorer);
+and the header was refined per user sketch: States/Union toggle lives INSIDE the map cards
+(top-left, above the scrubber), account cluster (Review / name / Sign out, subtle icons) sits
+far right behind a hairline divider. The user has begun importing real data on production.
 
 **All content is placeholder demo data** (Demo Party Alpha, H. Template Das, etc.). Real facts
 enter only via /admin/import → moderator verify → approve. Nothing known broken.
