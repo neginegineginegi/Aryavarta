@@ -12,13 +12,13 @@ export function Header() {
             <span className="font-display text-[1.65rem] font-semibold leading-none tracking-tight text-ink">
               Abhilekh
             </span>
-            <span className="hidden text-[0.72rem] uppercase tracking-[0.18em] text-ink-faint lg:inline">
+            <span className="hidden font-mono text-[0.66rem] uppercase tracking-[0.16em] text-ink-faint lg:inline">
               India Politics Archive
             </span>
           </Link>
           <ModeSwitch />
         </span>
-        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 text-[0.88rem]">
+        <nav className="flex flex-wrap items-center gap-x-5 gap-y-1 font-mono text-[0.78rem]">
           <NavLinks />
           <AuthNav />
         </nav>

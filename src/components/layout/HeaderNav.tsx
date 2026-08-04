@@ -51,7 +51,7 @@ export function ModeSwitch() {
   const on = "bg-accent-wash font-medium text-accent-dark";
   const off = "text-ink-muted hover:bg-paper-sunken hover:text-ink";
   return (
-    <span className="inline-flex overflow-hidden rounded-full border border-rule-dark text-[0.78rem]">
+    <span className="inline-flex overflow-hidden rounded-full border border-rule-dark font-mono text-[0.7rem]">
       <Link href="/" className={`${base} ${unionActive ? off : on}`}>
         States
       </Link>

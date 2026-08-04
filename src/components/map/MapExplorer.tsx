@@ -195,7 +195,7 @@ export function MapExplorer({ data }: { data: MapData }) {
       {/* Year scrubber */}
       <div className="mb-5 flex items-center gap-5">
         <div className="w-24 shrink-0 text-right">
-          <span className="font-display text-4xl font-semibold tabular-nums leading-none text-ink">
+          <span className="font-mono text-[2.1rem] font-bold leading-none text-ink">
             {year}
           </span>
         </div>
@@ -211,7 +211,7 @@ export function MapExplorer({ data }: { data: MapData }) {
             aria-label="Select year"
             aria-valuetext={String(year)}
           />
-          <div className="mt-1 flex justify-between text-[0.72rem] tabular-nums text-ink-faint">
+          <div className="mt-1 flex justify-between font-mono text-[0.66rem] text-ink-faint">
             <span>{data.minYear}</span>
             <span>{data.maxYear}</span>
           </div>

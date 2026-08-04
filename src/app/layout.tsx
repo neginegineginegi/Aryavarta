@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { EB_Garamond } from "next/font/google";
+import { EB_Garamond, Space_Mono } from "next/font/google";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
@@ -12,6 +12,14 @@ import "./globals.css";
 // src/fonts/ and swap this for next/font/local — ask Claude to wire it.
 const garamond = EB_Garamond({
   variable: "--font-garamond",
+  subsets: ["latin"],
+});
+
+// Space Mono carries the technical-manual register: section labels, table
+// headers, nav, and numeric readouts. Body prose stays in Garamond.
+const spaceMono = Space_Mono({
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
   subsets: ["latin"],
 });
 
@@ -39,8 +47,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`${garamond.variable} min-h-screen flex flex-col`}>
+    // Font variables must live on <html>: the base font-family rule in
+    // globals.css is declared there and CSS variables don't resolve upward.
+    <html lang="en" className={`${garamond.variable} ${spaceMono.variable}`}>
+      <body className="min-h-screen flex flex-col">
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

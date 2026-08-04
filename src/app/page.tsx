@@ -37,10 +37,10 @@ export default async function HomePage() {
       <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
         {statItems.map((s) => (
           <div key={s.label} className="card px-5 py-4">
-            <p className="font-display text-3xl font-semibold tabular-nums text-ink">
-              {formatNumber(s.value)}
+            <p className="font-mono text-2xl font-bold text-ink">{formatNumber(s.value)}</p>
+            <p className="mt-1 font-mono text-[0.66rem] uppercase tracking-[0.08em] text-ink-muted">
+              {s.label}
             </p>
-            <p className="mt-0.5 text-[0.82rem] text-ink-muted">{s.label}</p>
           </div>
         ))}
       </section>

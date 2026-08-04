@@ -11,9 +11,10 @@ detection, revision history, search + question answering, insights, compare (ele
 parties/states), Wikidata import pipeline, admin (users, party colors, import), reports/disputes.
 36 unit tests green; `pnpm build` clean (57 pages).
 
-Just shipped (this session): EB Garamond typography, then a full redesign on user green-light —
-brighter paper, teal accent, card system, sticky masthead header, rebuilt homepage/footer,
-spacing pass, and a site-wide copy rewrite removing every em dash from user-facing prose.
+Just shipped (this session): EB Garamond typography, a full redesign on user green-light (card
+system, sticky masthead header, rebuilt homepage/footer, spacing pass, site-wide copy rewrite
+removing every em dash from user-facing prose), then a second palette pass to the "Making
+Software" scheme: cool near-white paper, electric-blue accent, Space Mono technical labels.
 
 **All content is placeholder demo data** (Demo Party Alpha, H. Template Das, etc.). Real facts
 enter only via /admin/import → moderator verify → approve. Nothing known broken.
@@ -54,9 +55,13 @@ merge --ff-only <branch> && git push` → push feature branch too. Schema change
   reviewer attach the authoritative (ECI) source before approving.
 - **Em dashes are banned in user-facing prose** (user feels strongly). Empty table cells keep
   the "—" marker deliberately — that's a data convention, not writing.
-- **Teal accent** (`#0c6b74`) chosen because no Indian party owns teal; party colors are data
-  colors only (map/legend/seat bars), never interface chrome. Interface must stay politically
-  neutral.
+- **Electric-blue accent** (`#2743ee`) + cool near-white paper + Space Mono labels: user
+  explicitly asked for the look of Dan Hollick's "Making Software" site (screenshots supplied),
+  replacing the earlier teal. Party colors are still data colors only (map/legend/seat bars),
+  never interface chrome.
+- **Font variables MUST stay on the `<html>` element** in layout.tsx. They once sat on
+  `<body>`, and because `html { font-family: var(--font-body) }` could not resolve them the
+  whole site silently fell back to Times New Roman. Don't move them back.
 - **EB Garamond, not Sabon**: Sabon is commercial (Linotype), can't be bundled; EB Garamond is
   the closest open face. User asked for "a font like Sabon" and accepted this.
 - **User's "DO NOT REDESIGN THE UI" manifesto rule was explicitly superseded** — they later said
