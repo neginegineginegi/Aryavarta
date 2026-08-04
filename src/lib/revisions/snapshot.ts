@@ -74,6 +74,8 @@ export async function snapshotElection(
   if (!row || row.deletedAt) return null;
   return canonicalizeElection({
     stateId: row.stateId,
+    scope: row.scope,
+    assemblyNumber: row.assemblyNumber,
     electionDate: row.electionDate,
     resultSummary: row.resultSummary,
     totalSeats: row.totalSeats,

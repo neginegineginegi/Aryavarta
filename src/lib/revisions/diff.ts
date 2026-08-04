@@ -43,6 +43,8 @@ const FIELD_DEFS: Record<EntityType, Array<{ field: string; label: string; prose
   ],
   election: [
     { field: "stateId", label: "State" },
+    { field: "scope", label: "Scope" },
+    { field: "assemblyNumber", label: "Assembly number" },
     { field: "electionDate", label: "Election date" },
     { field: "totalSeats", label: "Total seats" },
     { field: "turnoutPercent", label: "Turnout %" },

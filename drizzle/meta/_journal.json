@@ -15,6 +15,13 @@
       "when": 1785832225055,
       "tag": "0001_mute_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1785834544832,
+      "tag": "0002_square_master_chief",
+      "breakpoints": true
     }
   ]
 }

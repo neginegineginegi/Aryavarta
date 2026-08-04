@@ -171,10 +171,17 @@ export async function resolveState(stateName: string): Promise<StateResolution[]
   return results.sort((a, b) => rank(a) - rank(b));
 }
 
-/** CM history: P6 (head of government) statements on the state item. */
-export async function fetchCmHistory(stateQid: string): Promise<ImportedTerm[]> {
-  const state = await getEntity(stateQid);
-  const statements = state?.claims?.P6 ?? [];
+/**
+ * Office-holder history from statements on an entity:
+ * P6 (head of government) = CM on a state item, PM on India's item;
+ * P35 (head of state) = President on India's item.
+ */
+export async function fetchHeadTerms(
+  entityQid: string,
+  property: "P6" | "P35",
+): Promise<ImportedTerm[]> {
+  const state = await getEntity(entityQid);
+  const statements = state?.claims?.[property] ?? [];
   const terms: ImportedTerm[] = [];
 
   // Batch-load person entities for labels + party.
@@ -218,14 +225,22 @@ export async function fetchCmHistory(stateQid: string): Promise<ImportedTerm[]> 
 }
 
 /**
- * Assembly elections for a state, discovered by the stable label pattern
- * "<State> Legislative Assembly election".
+ * Elections discovered by their stable label patterns:
+ * assembly — "<State> Legislative Assembly election"
+ * general  — "Indian general election" (Lok Sabha)
  */
-export async function fetchAssemblyElections(stateName: string): Promise<ImportedElection[]> {
-  const candidates = await searchEntities(`${stateName} Legislative Assembly election`, 50);
-  const electionLike = candidates.filter((c) =>
-    /legislative assembly election/i.test(c.label),
-  );
+export async function fetchElections(
+  stateName: string,
+  pattern: "assembly" | "general" = "assembly",
+): Promise<ImportedElection[]> {
+  const query =
+    pattern === "general"
+      ? "Indian general election"
+      : `${stateName} Legislative Assembly election`;
+  const matcher =
+    pattern === "general" ? /indian general election/i : /legislative assembly election/i;
+  const candidates = await searchEntities(query, 50);
+  const electionLike = candidates.filter((c) => matcher.test(c.label));
 
   const elections: ImportedElection[] = [];
   for (const cand of electionLike) {

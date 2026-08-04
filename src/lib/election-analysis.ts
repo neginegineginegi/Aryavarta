@@ -22,7 +22,7 @@ export type AnalysisResult = {
 export type AnalysisElection = {
   id: string;
   stateName: string;
-  stateKind: "state" | "union_territory";
+  stateKind: "state" | "union_territory" | "union";
   scope: "state_assembly" | "lok_sabha";
   electionDate: string;
   assemblyNumber: number | null;
@@ -136,9 +136,10 @@ export function buildOverview(
   }
 
   if (formedTerm?.cmName) {
+    const office = election.scope === "lok_sabha" ? "Prime Minister" : "Chief Minister";
     let s = `${formedTerm.cmName}`;
     if (formedTerm.partyName) s += ` of ${formedTerm.partyName}`;
-    s += ` became Chief Minister on ${formatDate(formedTerm.startDate)}`;
+    s += ` became ${office} on ${formatDate(formedTerm.startDate)}`;
     if (formedTerm.endDate) {
       s += `, serving until ${formatDate(formedTerm.endDate)}`;
     }

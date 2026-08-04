@@ -68,6 +68,8 @@ export function ElectionForm({
         summary,
         payload: {
           stateId,
+          scope: stateId === "in" ? "lok_sabha" : "state_assembly",
+          assemblyNumber: p?.assemblyNumber ?? null,
           electionDate,
           resultSummary: resultSummary || null,
           totalSeats: totalSeats ? Number(totalSeats) : null,

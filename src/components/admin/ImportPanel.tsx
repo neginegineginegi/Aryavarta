@@ -116,8 +116,18 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
             value={kind}
             onChange={(e) => setKind(e.target.value as ImportKind)}
           >
-            <option value="cm_terms">Chief Minister history</option>
-            <option value="elections">Assembly elections</option>
+            {stateId === "in" ? (
+              <>
+                <option value="cm_terms">Prime Minister history</option>
+                <option value="heads_of_state">President history</option>
+                <option value="elections">Lok Sabha elections</option>
+              </>
+            ) : (
+              <>
+                <option value="cm_terms">Chief Minister history</option>
+                <option value="elections">Assembly elections</option>
+              </>
+            )}
           </select>
         </Field>
         <Field label="Wikidata QID override" hint="Only if the automatic match is wrong (e.g. Q1437)">

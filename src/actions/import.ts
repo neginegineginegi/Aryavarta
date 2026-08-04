@@ -11,15 +11,17 @@ import {
   type DraftOutcome,
 } from "@/lib/import/drafts";
 import {
-  fetchAssemblyElections,
-  fetchCmHistory,
+  fetchElections,
+  fetchHeadTerms,
   resolveState,
   type ImportedElection,
   type ImportedTerm,
   type StateResolution,
 } from "@/lib/import/wikidata";
 
-export type ImportKind = "cm_terms" | "elections";
+// cm_terms = P6 head of government (CM for states, PM for India);
+// heads_of_state = P35 (President — union only); elections by label pattern.
+export type ImportKind = "cm_terms" | "heads_of_state" | "elections";
 
 export type PreviewResult =
   | {
@@ -59,11 +61,20 @@ export async function previewImport(input: {
       resolution = candidates[0];
     }
 
-    if (input.kind === "cm_terms") {
-      const terms = await fetchCmHistory(resolution.qid);
+    if (input.kind === "heads_of_state" && state.id !== "in") {
+      return { ok: false, error: "President history applies only to India (Union)." };
+    }
+    if (input.kind === "cm_terms" || input.kind === "heads_of_state") {
+      const terms = await fetchHeadTerms(
+        resolution.qid,
+        input.kind === "heads_of_state" ? "P35" : "P6",
+      );
       return { ok: true, resolution, terms };
     }
-    const elections = await fetchAssemblyElections(state.name);
+    const elections = await fetchElections(
+      state.name,
+      state.id === "in" ? "general" : "assembly",
+    );
     return { ok: true, resolution, elections };
   } catch (e) {
     return {
@@ -94,10 +105,18 @@ export async function commitImport(input: {
 
   const MAX_BATCH = 60;
   try {
-    if (input.kind === "cm_terms") {
+    if (input.kind === "cm_terms" || input.kind === "heads_of_state") {
       const items = (input.terms ?? []).slice(0, MAX_BATCH);
       if (items.length === 0) return { ok: false, error: "Nothing selected." };
-      const outcome = await createTermDrafts(input.stateId, state.name, input.stateQid, items);
+      const office =
+        input.kind === "heads_of_state" ? "president" : input.stateId === "in" ? "pm" : "cm";
+      const outcome = await createTermDrafts(
+        input.stateId,
+        state.name,
+        input.stateQid,
+        items,
+        office,
+      );
       return { ok: true, outcome };
     }
     const items = (input.elections ?? []).slice(0, MAX_BATCH);

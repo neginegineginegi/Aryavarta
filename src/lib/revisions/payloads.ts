@@ -104,7 +104,7 @@ export type EventPayload = z.infer<typeof eventPayloadSchema>;
 export const termPayloadSchema = z
   .object({
     stateId: z.string().trim().min(2).max(8),
-    kind: z.enum(["cm", "presidents_rule"]),
+    kind: z.enum(["cm", "presidents_rule", "pm", "president"]),
     cmName: z.string().trim().min(2).max(150).nullish().transform((v) => (v ? v : null)),
     partyId: z.string().trim().min(2).max(64).nullish().transform((v) => (v ? v : null)),
     startDate: isoDate,
@@ -113,11 +113,35 @@ export const termPayloadSchema = z
     sources: sourcesField,
   })
   .superRefine((v, ctx) => {
-    if (v.kind === "cm") {
+    const isUnionKind = v.kind === "pm" || v.kind === "president";
+    // Union offices live only on the 'in' pseudo-entity; state offices never do.
+    if (isUnionKind && v.stateId !== "in") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kind"],
+        message: "Prime Minister / President terms belong to India (Union), not a state",
+      });
+    }
+    if (!isUnionKind && v.stateId === "in") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["kind"],
+        message: "India (Union) holds PM/President terms, not CM terms",
+      });
+    }
+    if (v.kind === "cm" || v.kind === "pm") {
       if (!v.cmName)
-        ctx.addIssue({ code: "custom", path: ["cmName"], message: "Chief Minister name is required" });
+        ctx.addIssue({
+          code: "custom",
+          path: ["cmName"],
+          message: v.kind === "pm" ? "Prime Minister name is required" : "Chief Minister name is required",
+        });
       if (!v.partyId)
         ctx.addIssue({ code: "custom", path: ["partyId"], message: "Party is required" });
+    } else if (v.kind === "president") {
+      if (!v.cmName)
+        ctx.addIssue({ code: "custom", path: ["cmName"], message: "President's name is required" });
+      // Presidents are conventionally shown without a party; allow either.
     } else {
       if (v.cmName || v.partyId) {
         ctx.addIssue({
@@ -143,6 +167,8 @@ export const electionResultSchema = z.object({
 export const electionPayloadSchema = z
   .object({
     stateId: z.string().trim().min(2).max(8),
+    scope: z.enum(["state_assembly", "lok_sabha"]).default("state_assembly"),
+    assemblyNumber: z.number().int().min(1).max(50).nullish().transform((v) => v ?? null),
     electionDate: isoDate,
     resultSummary: z.string().trim().max(2000).nullish().transform((v) => (v ? v : null)),
     totalSeats: z.number().int().min(1).max(1000).nullish().transform((v) => v ?? null),
@@ -151,6 +177,20 @@ export const electionPayloadSchema = z
     sources: sourcesField,
   })
   .superRefine((v, ctx) => {
+    if (v.scope === "lok_sabha" && v.stateId !== "in") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["scope"],
+        message: "Lok Sabha elections belong to India (Union)",
+      });
+    }
+    if (v.scope === "state_assembly" && v.stateId === "in") {
+      ctx.addIssue({
+        code: "custom",
+        path: ["scope"],
+        message: "India (Union) holds Lok Sabha elections, not assembly elections",
+      });
+    }
     const partyIds = v.results.map((r) => r.partyId);
     if (new Set(partyIds).size !== partyIds.length) {
       ctx.addIssue({ code: "custom", path: ["results"], message: "Each party may appear only once" });

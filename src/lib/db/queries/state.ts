@@ -20,7 +20,7 @@ export type SourceRef = {
 
 export type TermWithSources = {
   id: string;
-  kind: "cm" | "presidents_rule";
+  kind: "cm" | "presidents_rule" | "pm" | "president";
   cmName: string | null;
   partyId: string | null;
   partyName: string | null;
@@ -64,7 +64,7 @@ export type StateArticle = {
   state: {
     id: string;
     name: string;
-    kind: "state" | "union_territory";
+    kind: "state" | "union_territory" | "union";
     formedOn: string | null;
     dissolvedOn: string | null;
     hasGeometry: boolean;

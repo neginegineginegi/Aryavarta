@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
 import { Badge } from "@/components/ui/Badge";
@@ -46,6 +46,7 @@ export default async function StatePage({
   params: Promise<{ stateId: string }>;
 }) {
   const { stateId } = await params;
+  if (stateId === "in") redirect("/union"); // the union pseudo-entity has its own home
   const article = await getStateArticle(stateId);
   if (!article) notFound();
 

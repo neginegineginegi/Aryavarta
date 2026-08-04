@@ -102,6 +102,7 @@ export async function createTermDrafts(
   stateName: string,
   stateQid: string,
   items: ImportedTerm[],
+  office: "cm" | "pm" | "president" = "cm",
 ): Promise<DraftOutcome> {
   const botId = await ensureImportBot();
   const accessedOn = new Date().toISOString().slice(0, 10);
@@ -113,7 +114,8 @@ export async function createTermDrafts(
       outcome.skipped.push({ label, reason: "no start date on Wikidata" });
       continue;
     }
-    if (!item.partyLabel) {
+    // CM/PM terms need a party; Presidents are conventionally partyless.
+    if (!item.partyLabel && office !== "president") {
       outcome.skipped.push({ label, reason: "no party on Wikidata — add manually" });
       continue;
     }
@@ -144,7 +146,7 @@ export async function createTermDrafts(
       continue;
     }
 
-    const partyId = await ensureParty(item.partyLabel);
+    const partyId = item.partyLabel ? await ensureParty(item.partyLabel) : null;
     const precisionNotes: string[] = [];
     if (item.startPrecision && item.startPrecision !== "day")
       precisionNotes.push(`start date has ${item.startPrecision} precision on Wikidata`);
@@ -153,7 +155,7 @@ export async function createTermDrafts(
 
     const payload = canonicalizeTerm({
       stateId,
-      kind: "cm",
+      kind: office,
       cmName: item.personLabel,
       partyId,
       startDate: item.startDate,
@@ -239,6 +241,8 @@ export async function createElectionDrafts(
 
     const payload = canonicalizeElection({
       stateId,
+      scope: stateId === "in" ? "lok_sabha" : "state_assembly",
+      assemblyNumber: null,
       electionDate: item.electionDate,
       resultSummary: null,
       totalSeats: item.totalSeats,

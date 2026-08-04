@@ -46,13 +46,16 @@ const {
 type StateSeed = {
   id: string;
   name: string;
-  kind: "state" | "union_territory";
+  kind: "state" | "union_territory" | "union";
   formedOn: string | null;
   dissolvedOn?: string;
   hasGeometry?: boolean;
 };
 
 const STATE_SEED: StateSeed[] = [
+  // The union pseudo-entity: carries PM/President terms, Lok Sabha elections,
+  // and national events through the same tables as states. No map geometry.
+  { id: "in", name: "India (Union)", kind: "union", formedOn: "1950-01-26", hasGeometry: false },
   { id: "an", name: "Andaman and Nicobar Islands", kind: "union_territory", formedOn: "1956-11-01" },
   { id: "ap", name: "Andhra Pradesh", kind: "state", formedOn: "1956-11-01" },
   { id: "ar", name: "Arunachal Pradesh", kind: "state", formedOn: "1987-02-20" },

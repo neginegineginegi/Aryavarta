@@ -1,4 +1,4 @@
-import { asc, eq, isNull } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
@@ -67,7 +67,9 @@ const getCachedMapData = unstable_cache(
         })
         .from(terms)
         .leftJoin(parties, eq(terms.partyId, parties.id))
-        .where(isNull(terms.deletedAt))
+        // The map shows state governments only; union (pm/president) terms
+        // live on /union and would bloat the payload for no pixel.
+        .where(and(isNull(terms.deletedAt), inArray(terms.kind, ["cm", "presidents_rule"])))
         .orderBy(asc(terms.startDate)),
     ]);
 
@@ -77,7 +79,8 @@ const getCachedMapData = unstable_cache(
 
     return {
       states: stateRows,
-      terms: termRows,
+      // Safe cast: the inArray filter above restricts kinds to cm/presidents_rule.
+      terms: termRows as MapTerm[],
       minYear: Math.max(1947, minYear),
     };
   },

@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { fetchAssemblyElections, fetchCmHistory, resolveState, timeOf } from "./wikidata";
+import { fetchElections, fetchHeadTerms, resolveState, timeOf } from "./wikidata";
 
 beforeAll(() => {
   process.env.IMPORT_FIXTURES = "1";
@@ -45,9 +45,9 @@ describe("resolveState (fixtures)", () => {
   });
 });
 
-describe("fetchCmHistory (fixtures)", () => {
+describe("fetchHeadTerms (fixtures)", () => {
   it("returns terms with person, party, and dates, sorted chronologically", async () => {
-    const terms = await fetchCmHistory("Q900001");
+    const terms = await fetchHeadTerms("Q900001", "P6");
     expect(terms).toHaveLength(2);
     expect(terms[0]).toMatchObject({
       personLabel: "Fixture Person Alpha",
@@ -64,9 +64,9 @@ describe("fetchCmHistory (fixtures)", () => {
   });
 });
 
-describe("fetchAssemblyElections (fixtures)", () => {
+describe("fetchElections (fixtures)", () => {
   it("returns elections with dates, seats, and per-party results", async () => {
-    const elections = await fetchAssemblyElections("Fixture State");
+    const elections = await fetchElections("Fixture State");
     expect(elections).toHaveLength(2);
     const [e2018, e2023] = elections;
     expect(e2018.electionDate).toBe("2018-12-07");

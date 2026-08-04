@@ -23,9 +23,14 @@ const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 // Enums
 // ---------------------------------------------------------------------------
 
-export const stateKindEnum = pgEnum("state_kind", ["state", "union_territory"]);
+// 'union' is the single pseudo-entity row ('in' = India) that lets union-level
+// offices and Lok Sabha elections ride the exact same tables, revision flow,
+// and moderation machinery as states.
+export const stateKindEnum = pgEnum("state_kind", ["state", "union_territory", "union"]);
 
-export const termKindEnum = pgEnum("term_kind", ["cm", "presidents_rule"]);
+// 'pm' and 'president' are only valid on the 'in' union row (enforced in
+// payload validation), just as cm/presidents_rule are only valid on states.
+export const termKindEnum = pgEnum("term_kind", ["cm", "presidents_rule", "pm", "president"]);
 
 export const eventTypeEnum = pgEnum("event_type", [
   "paper_leak",

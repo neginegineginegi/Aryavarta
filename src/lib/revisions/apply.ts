@@ -187,6 +187,8 @@ export async function approveRevision(input: {
           await tx.insert(elections).values({
             id: rev.entityId,
             stateId: p.stateId,
+            scope: p.scope,
+            assemblyNumber: p.assemblyNumber,
             electionDate: p.electionDate,
             resultSummary: p.resultSummary,
             totalSeats: p.totalSeats,
@@ -242,6 +244,8 @@ export async function approveRevision(input: {
           await tx
             .update(elections)
             .set({
+              scope: p.scope,
+              assemblyNumber: p.assemblyNumber,
               electionDate: p.electionDate,
               resultSummary: p.resultSummary,
               totalSeats: p.totalSeats,

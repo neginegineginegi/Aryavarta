@@ -81,13 +81,14 @@ async function fetchElectionDetail(electionId: string): Promise<ElectionDetail |
     },
   });
 
-  // Government formed: the first CM term starting within 90 days after polling.
+  // Government formed: the first CM (or PM, for Lok Sabha elections) term
+  // starting within 90 days after polling.
   const plus90 = new Date(`${row.electionDate}T00:00:00Z`);
   plus90.setUTCDate(plus90.getUTCDate() + 90);
   const termRow = await db.query.terms.findFirst({
     where: and(
       eq(terms.stateId, row.stateId),
-      eq(terms.kind, "cm"),
+      eq(terms.kind, row.scope === "lok_sabha" ? "pm" : "cm"),
       isNull(terms.deletedAt),
       gte(terms.startDate, row.electionDate),
       lte(terms.startDate, plus90.toISOString().slice(0, 10)),

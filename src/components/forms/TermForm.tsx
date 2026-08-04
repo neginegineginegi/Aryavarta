@@ -29,7 +29,7 @@ export function TermForm({
 }) {
   const p = edit?.payload;
   const [stateId, setStateId] = useState(p?.stateId ?? defaultStateId ?? "");
-  const [kind, setKind] = useState<"cm" | "presidents_rule">(p?.kind ?? "cm");
+  const [kind, setKind] = useState<"cm" | "presidents_rule" | "pm" | "president">(p?.kind ?? "cm");
   const [cmName, setCmName] = useState(p?.cmName ?? "");
   const [partyId, setPartyId] = useState(p?.partyId ?? "");
   const [startDate, setStartDate] = useState(p?.startDate ?? "");
@@ -50,7 +50,19 @@ export function TermForm({
   const [pending, startTransition] = useTransition();
 
   const errors = result && !result.ok ? (result.fieldErrors ?? {}) : {};
-  const isPR = kind === "presidents_rule";
+  const isUnion = stateId === "in";
+  // Keep the kind consistent with the selected entity (state vs union).
+  const effectiveKind = isUnion
+    ? kind === "pm" || kind === "president"
+      ? kind
+      : "pm"
+    : kind === "cm" || kind === "presidents_rule"
+      ? kind
+      : "cm";
+  const isPR = effectiveKind === "presidents_rule";
+  const isPresident = effectiveKind === "president";
+  const personLabel =
+    effectiveKind === "pm" ? "Prime Minister" : isPresident ? "President" : "Chief Minister";
 
   if (result?.ok) return <SubmittedPanel revisionId={result.revisionId} isEdit={!!edit} />;
 
@@ -64,7 +76,7 @@ export function TermForm({
         summary,
         payload: {
           stateId,
-          kind,
+          kind: effectiveKind,
           cmName: isPR ? null : cmName,
           partyId: isPR ? null : partyId || null,
           startDate,
@@ -102,16 +114,25 @@ export function TermForm({
         <Field label="Kind" required error={errors["kind"]}>
           <select
             className={inputClass}
-            value={kind}
-            onChange={(e) => setKind(e.target.value as "cm" | "presidents_rule")}
+            value={effectiveKind}
+            onChange={(e) => setKind(e.target.value as typeof kind)}
           >
-            <option value="cm">Chief Minister term</option>
-            <option value="presidents_rule">President&rsquo;s Rule</option>
+            {isUnion ? (
+              <>
+                <option value="pm">Prime Minister term</option>
+                <option value="president">President term</option>
+              </>
+            ) : (
+              <>
+                <option value="cm">Chief Minister term</option>
+                <option value="presidents_rule">President&rsquo;s Rule</option>
+              </>
+            )}
           </select>
         </Field>
         {!isPR && (
           <>
-            <Field label="Chief Minister" required error={errors["cmName"]}>
+            <Field label={personLabel} required error={errors["cmName"]}>
               <input
                 className={inputClass}
                 value={cmName}
@@ -121,12 +142,17 @@ export function TermForm({
                 required={!isPR}
               />
             </Field>
-            <Field label="Party" required error={errors["partyId"]}>
+            <Field
+              label="Party"
+              required={!isPresident}
+              error={errors["partyId"]}
+              hint={isPresident ? "Optional — Presidents are conventionally shown without party" : undefined}
+            >
               <select
                 className={inputClass}
                 value={partyId}
                 onChange={(e) => setPartyId(e.target.value)}
-                required={!isPR}
+                required={!isPR && !isPresident}
               >
                 <option value="">Select…</option>
                 {parties.map((pt) => (
