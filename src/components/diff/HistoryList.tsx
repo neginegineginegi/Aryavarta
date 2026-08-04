@@ -15,6 +15,7 @@ type HistoryRow = {
   action: string;
   entityType: string;
   status: keyof typeof REVISION_BADGE;
+  origin?: "community" | "import";
   summary: string;
   createdAt: Date;
   reviewedAt: Date | null;
@@ -34,6 +35,7 @@ export function HistoryList({ rows }: { rows: HistoryRow[] }) {
         <li key={rev.id} className="py-3.5">
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
             <Badge variant={REVISION_BADGE[rev.status]}>{rev.status}</Badge>
+            {rev.origin === "import" && <Badge variant="import">imported</Badge>}
             <Link
               href={`/revision/${rev.id}`}
               className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"

@@ -75,6 +75,11 @@ export default async function ReviewQueuePage({
                 <span className="rounded-sm border border-rule-dark bg-paper-sunken px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-ink-muted">
                   {rev.entityType} · {rev.action}
                 </span>
+                {rev.origin === "import" && (
+                  <span className="rounded-sm border border-blue-200 bg-blue-50 px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-accent">
+                    imported
+                  </span>
+                )}
                 <Link
                   href={`/review/${rev.id}`}
                   className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"

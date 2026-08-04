@@ -2,7 +2,7 @@
 
 import india from "@svg-maps/india";
 import { useRouter } from "next/navigation";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapData, MapTerm } from "@/lib/db/queries/map";
 
@@ -50,8 +50,29 @@ function describeTerm(term: MapTerm | null): string {
 export function MapExplorer({ data }: { data: MapData }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [year, setYear] = useState(data.maxYear);
+  const [year, setYearState] = useState(data.maxYear);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
+
+  // The selected year is global state, mirrored into the URL (?y=) so any
+  // view of the atlas is shareable. Read client-side after mount (keeps the
+  // page statically cacheable); written via history.replaceState (no server
+  // round-trip per slider tick).
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("y");
+    if (raw && /^\d{4}$/.test(raw)) {
+      const y = Math.min(Math.max(Number(raw), data.minYear), data.maxYear);
+      setYearState(y);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function setYear(y: number) {
+    setYearState(y);
+    const url = new URL(window.location.href);
+    if (y === data.maxYear) url.searchParams.delete("y");
+    else url.searchParams.set("y", String(y));
+    window.history.replaceState(null, "", url.toString());
+  }
 
   const termsByState = useMemo(() => {
     const m = new Map<string, MapTerm[]>();

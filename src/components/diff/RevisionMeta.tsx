@@ -19,6 +19,7 @@ export function RevisionMeta({
     action: string;
     entityType: string;
     status: keyof typeof REVISION_BADGE;
+    origin?: "community" | "import";
     summary: string;
     createdAt: Date;
     reviewedAt: Date | null;
@@ -32,6 +33,7 @@ export function RevisionMeta({
     <div className="rounded-sm border border-rule bg-paper-sunken/50 p-4 text-[0.85rem]">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <Badge variant={REVISION_BADGE[rev.status]}>{rev.status}</Badge>
+        {rev.origin === "import" && <Badge variant="import">imported draft</Badge>}
         <span className="text-ink">
           <strong className="capitalize">{rev.action}</strong> · {rev.entityType} ·{" "}
           <Link href={`/state/${rev.state.id}`} className="text-accent hover:underline">

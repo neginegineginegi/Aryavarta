@@ -6,6 +6,8 @@ import { getArchiveStats } from "@/lib/db/queries/stats";
 import { formatNumber } from "@/lib/format";
 
 export default async function HomePage() {
+  // Note: the ?y= year param is read client-side inside MapExplorer so this
+  // page stays fully static/cached.
   const [data, stats] = await Promise.all([getMapData(), getArchiveStats()]);
 
   return (

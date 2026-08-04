@@ -72,7 +72,8 @@ body {
 .map-state {
   stroke: var(--color-paper);
   stroke-width: 0.75;
-  transition: filter 120ms ease, opacity 120ms ease;
+  /* fill transition = governments visibly change as the year scrubs */
+  transition: filter 120ms ease, opacity 120ms ease, fill 350ms ease;
   cursor: pointer;
 }
 .map-state:hover,

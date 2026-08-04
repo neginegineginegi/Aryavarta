@@ -27,6 +27,11 @@ export default async function AdminUsersPage({
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
           User administration
         </h1>
+        <p className="mt-1 text-[0.82rem]">
+          <Link href="/admin/import" className="text-accent underline-offset-2 hover:underline">
+            → Import reference data (Wikidata drafts)
+          </Link>
+        </p>
         <p className="mt-2 text-[0.88rem] text-ink-muted">
           Promote trusted contributors to moderator; moderators review submissions and resolve
           disputes. Role changes take effect immediately.

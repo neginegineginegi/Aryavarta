@@ -62,6 +62,13 @@ export const reportKindEnum = pgEnum("report_kind", ["issue", "dispute"]);
 
 export const reportStatusEnum = pgEnum("report_status", ["open", "resolved", "dismissed"]);
 
+// Where a revision came from: community contribution, or the reference-data
+// import pipeline (Wikidata/ECI pre-filled drafts, always moderator-verified
+// before publication — imported data is never the source of truth).
+export const revisionOriginEnum = pgEnum("revision_origin", ["community", "import"]);
+
+export const electionScopeEnum = pgEnum("election_scope", ["state_assembly", "lok_sabha"]);
+
 // ---------------------------------------------------------------------------
 // Reference data
 // ---------------------------------------------------------------------------
@@ -137,6 +144,10 @@ export const elections = pgTable(
     stateId: text("state_id")
       .notNull()
       .references(() => states.id),
+    scope: electionScopeEnum("scope").notNull().default("state_assembly"),
+    // Ordinal of the assembly this election constituted (e.g. 15 for the
+    // 15th Rajasthan Legislative Assembly). Display metadata; nullable.
+    assemblyNumber: integer("assembly_number"),
     electionDate: date("election_date").notNull(),
     resultSummary: text("result_summary"),
     totalSeats: integer("total_seats"),
@@ -159,7 +170,11 @@ export const electionResults = pgTable(
       .notNull()
       .references(() => parties.id),
     seatsWon: integer("seats_won").notNull(),
+    seatsContested: integer("seats_contested"),
     voteSharePercent: numeric("vote_share_percent", { precision: 5, scale: 2 }),
+    // Pre-poll alliance label, e.g. 'NDA', 'UPA', 'Mahagathbandhan'. Display
+    // metadata for coalition grouping in dashboards; nullable.
+    allianceName: text("alliance_name"),
   },
   (t) => [primaryKey({ columns: [t.electionId, t.partyId] })],
 );
@@ -316,6 +331,7 @@ export const revisions = pgTable(
     afterData: jsonb("after_data"), // proposed full state incl. sources; NULL iff action = 'delete'
     title: text("title").notNull(), // human label for lists (e.g. event title)
     summary: text("summary").notNull(), // contributor's edit summary (required)
+    origin: revisionOriginEnum("origin").notNull().default("community"),
     status: revisionStatusEnum("status").notNull().default("pending"),
     proposedBy: text("proposed_by")
       .notNull()

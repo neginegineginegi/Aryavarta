@@ -7,6 +7,7 @@ const VARIANT_CLASSES = {
   pending: "bg-paper-sunken text-ink-muted border-rule-dark border-dashed",
   approved: "bg-green-50 text-approved border-green-200",
   rejected: "bg-red-50 text-danger border-red-200",
+  import: "bg-blue-50 text-accent border-blue-200",
 } as const;
 
 export function Badge({
