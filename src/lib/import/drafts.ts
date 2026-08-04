@@ -58,7 +58,9 @@ export function slugifyPartyId(label: string): string {
   );
 }
 
-/** Get-or-create a party stub for an imported party label (admin recolors later). */
+/** Get-or-create a party stub for an imported party label. New parties get a
+ *  distinct palette color immediately (map stays legible); admins can set the
+ *  conventional color in /admin/parties. */
 export async function ensureParty(label: string): Promise<string> {
   const clean = label.trim();
   const byName = await db.query.parties.findFirst({ where: eq(parties.name, clean) });
@@ -66,9 +68,10 @@ export async function ensureParty(label: string): Promise<string> {
   const id = slugifyPartyId(clean);
   const byId = await db.query.parties.findFirst({ where: eq(parties.id, id) });
   if (byId) return byId.id; // same slug, different label — reuse rather than duplicate
+  const { pickPartyColor } = await import("@/lib/party-colors");
   await db
     .insert(parties)
-    .values({ id, name: clean, abbreviation: null, color: "#8a8a8a", isPseudo: false })
+    .values({ id, name: clean, abbreviation: null, color: pickPartyColor(id), isPseudo: false })
     .onConflictDoNothing();
   return id;
 }
