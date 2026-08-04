@@ -1,0 +1,112 @@
+"use server";
+
+import { eq } from "drizzle-orm";
+import { updateTag } from "next/cache";
+import { redirect } from "next/navigation";
+import { v7 as uuidv7 } from "uuid";
+
+import { AuthzError, requireRole } from "@/lib/authz";
+import { tags } from "@/lib/cache";
+import { db } from "@/lib/db";
+import { revisions, states } from "@/lib/db/schema";
+import { ApplyError, approveRevision } from "@/lib/revisions/apply";
+import { snapshotEntity } from "@/lib/revisions/snapshot";
+import type {
+  AnyPayload,
+  ElectionPayload,
+  EntityType,
+  EventPayload,
+  TermPayload,
+} from "@/lib/revisions/payloads";
+import { yearOf } from "@/lib/format";
+
+function deriveTitle(entityType: EntityType, payload: AnyPayload, stateName: string): string {
+  switch (entityType) {
+    case "event":
+      return (payload as EventPayload).title;
+    case "term": {
+      const p = payload as TermPayload;
+      const who = p.kind === "presidents_rule" ? "President's Rule" : p.cmName;
+      return `${who}, ${stateName} (${yearOf(p.startDate)} – ${p.endDate ? yearOf(p.endDate) : "present"})`;
+    }
+    case "election": {
+      const p = payload as ElectionPayload;
+      const what = p.scope === "lok_sabha" ? "Lok Sabha election" : `Assembly election, ${stateName}`;
+      return `${what}, ${yearOf(p.electionDate)}`;
+    }
+  }
+}
+
+/**
+ * Admin-only one-click removal of a live entry, from the public site itself.
+ *
+ * This does NOT bypass the revision system: it records a delete revision
+ * (before-snapshot and all) and approves it in the same request, with the
+ * admin as both proposer and reviewer. The entry becomes a tombstone; its
+ * page, history, and this removal all stay on the public record.
+ */
+export async function adminRemoveEntryAction(formData: FormData): Promise<void> {
+  const entityType = String(formData.get("entityType") ?? "") as EntityType;
+  const entityId = String(formData.get("entityId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const rawNext = String(formData.get("next") ?? "/");
+  // Same-site relative paths only; anything else falls back to home.
+  const next = rawNext.startsWith("/") && !rawNext.startsWith("//") ? rawNext : "/";
+  const back = (q: string) => `${next}${next.includes("?") ? "&" : "?"}${q}`;
+
+  let admin;
+  try {
+    admin = await requireRole("admin");
+  } catch (e) {
+    if (e instanceof AuthzError) redirect(`/login?next=${encodeURIComponent(next)}`);
+    throw e;
+  }
+
+  if (!["term", "election", "event"].includes(entityType) || !entityId) {
+    redirect(back("removed=invalid"));
+  }
+
+  const before = (await snapshotEntity(db, entityType, entityId)) as AnyPayload | null;
+  if (!before) redirect(back("removed=gone"));
+
+  const state = await db.query.states.findFirst({ where: eq(states.id, before.stateId) });
+  const revisionId = uuidv7();
+
+  await db.insert(revisions).values({
+    id: revisionId,
+    entityType,
+    entityId,
+    stateId: before.stateId,
+    action: "delete",
+    schemaVersion: 1,
+    beforeData: before,
+    afterData: null,
+    title: deriveTitle(entityType, before, state?.name ?? before.stateId),
+    summary: `[admin removal] ${reason || "Removed from the live record by an administrator."}`,
+    status: "pending",
+    proposedBy: admin.id,
+  });
+
+  try {
+    const rev = await approveRevision({
+      revisionId,
+      reviewerId: admin.id,
+      reviewNote: reason || "Admin removal from the live site.",
+      acknowledgeConflict: false,
+    });
+    updateTag(tags.state(rev.stateId));
+    if (rev.entityType === "term") updateTag(tags.mapData);
+    if (rev.entityType === "event") updateTag(tags.event(rev.entityId));
+    if (rev.entityType === "election") updateTag(tags.election(rev.entityId));
+  } catch (e) {
+    if (e instanceof ApplyError) {
+      // Nothing was published; take the never-approved delete revision back
+      // out so a failed one-click removal leaves no litter in the queue.
+      await db.delete(revisions).where(eq(revisions.id, revisionId));
+      redirect(back(`removed=${e.code.toLowerCase()}`));
+    }
+    throw e;
+  }
+
+  redirect(back("removed=1"));
+}

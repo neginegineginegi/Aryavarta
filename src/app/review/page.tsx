@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { approveRevisionAction } from "@/actions/review";
 import { requireRole } from "@/lib/authz";
 import { getPendingQueue } from "@/lib/db/queries/revisions";
 import { db } from "@/lib/db";
@@ -70,35 +71,62 @@ export default async function ReviewQueuePage({
       ) : (
         <ul className="divide-y divide-rule">
           {queue.map((rev) => (
-            <li key={rev.id} className="py-4">
-              <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="rounded-sm border border-rule-dark bg-paper-sunken px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-ink-muted">
-                  {rev.entityType} · {rev.action}
-                </span>
-                {rev.origin === "import" && (
-                  <span className="rounded-sm border border-blue-200 bg-blue-50 px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-accent">
-                    imported
+            <li key={rev.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 py-4">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <span className="rounded-sm border border-rule-dark bg-paper-sunken px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-ink-muted">
+                    {rev.entityType} · {rev.action}
                   </span>
-                )}
+                  {rev.origin === "import" && (
+                    <span className="rounded-sm border border-blue-200 bg-blue-50 px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-accent">
+                      imported
+                    </span>
+                  )}
+                  <Link
+                    href={`/review/${rev.id}`}
+                    className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+                  >
+                    {rev.title}
+                  </Link>
+                </div>
+                <p className="mt-1 text-[0.8rem] text-ink-faint">
+                  {rev.state.name} · by{" "}
+                  {rev.proposer ? (
+                    <Link href={`/user/${rev.proposer.id}`} className="text-accent hover:underline">
+                      {rev.proposer.name ?? "unnamed"}
+                    </Link>
+                  ) : (
+                    "unknown"
+                  )}{" "}
+                  · {rev.createdAt.toISOString().slice(0, 10)} ·{" "}
+                  <span className="text-ink-muted">“{rev.summary}”</span>
+                </p>
+              </div>
+              {/* Quick actions: same approval transaction as the full review
+                  page. Conflicts or validation failures redirect into the
+                  full review for resolution. */}
+              <div className="flex shrink-0 items-center gap-2 pt-0.5">
                 <Link
                   href={`/review/${rev.id}`}
-                  className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+                  className="rounded-sm border border-rule-dark px-2.5 py-1 font-mono text-[0.68rem] text-ink-muted transition-colors hover:border-ink hover:text-ink"
                 >
-                  {rev.title}
+                  Review
                 </Link>
+                <form action={approveRevisionAction}>
+                  <input type="hidden" name="revisionId" value={rev.id} />
+                  <input
+                    type="hidden"
+                    name="next"
+                    value={stateFilter ? `/review?state=${stateFilter}` : "/review"}
+                  />
+                  <button
+                    type="submit"
+                    className="rounded-sm bg-approved px-2.5 py-1 font-mono text-[0.68rem] font-bold text-white transition-opacity hover:opacity-85"
+                  >
+                    Approve
+                  </button>
+                </form>
               </div>
-              <p className="mt-1 text-[0.8rem] text-ink-faint">
-                {rev.state.name} · by{" "}
-                {rev.proposer ? (
-                  <Link href={`/user/${rev.proposer.id}`} className="text-accent hover:underline">
-                    {rev.proposer.name ?? "unnamed"}
-                  </Link>
-                ) : (
-                  "unknown"
-                )}{" "}
-                · {rev.createdAt.toISOString().slice(0, 10)} ·{" "}
-                <span className="text-ink-muted">“{rev.summary}”</span>
-              </p>
             </li>
           ))}
         </ul>

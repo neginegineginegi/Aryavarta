@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
@@ -175,6 +176,13 @@ export default async function StatePage({
                     >
                       edit
                     </Link>
+                    <span className="ml-2">
+                      <AdminRemoveButton
+                        entityType="term"
+                        entityId={t.id}
+                        label={`${t.kind === "presidents_rule" ? "President's Rule" : t.cmName}, ${state.name}`}
+                      />
+                    </span>
                   </td>
                 </tr>
               ))}
@@ -261,6 +269,11 @@ export default async function StatePage({
                     >
                       edit
                     </Link>
+                    <AdminRemoveButton
+                      entityType="election"
+                      entityId={e.id}
+                      label={`Election of ${e.electionDate.slice(0, 4)}, ${state.name}`}
+                    />
                   </div>
                   {e.resultSummary ? (
                     <p className="mt-1 max-w-2xl text-[0.85rem] text-ink-muted">{e.resultSummary}</p>

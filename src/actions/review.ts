@@ -31,6 +31,10 @@ export async function approveRevisionAction(formData: FormData): Promise<void> {
   const revisionId = String(formData.get("revisionId") ?? "");
   const reviewNote = String(formData.get("reviewNote") ?? "");
   const acknowledgeConflict = formData.get("acknowledgeConflict") === "on";
+  // Quick-approve from the queue passes where to land afterwards (e.g. a
+  // state-filtered queue). Review-area paths only.
+  const rawNext = String(formData.get("next") ?? "");
+  const next = rawNext.startsWith("/review") ? rawNext : "/review";
 
   let reviewer;
   try {
@@ -56,7 +60,7 @@ export async function approveRevisionAction(formData: FormData): Promise<void> {
     }
     throw e;
   }
-  redirect(`/review?done=${outcome}`);
+  redirect(`${next}${next.includes("?") ? "&" : "?"}done=${outcome}`);
 }
 
 /**

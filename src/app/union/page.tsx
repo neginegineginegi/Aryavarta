@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { UnionMapExplorer } from "@/components/map/UnionMapExplorer";
 import { personSlug } from "@/lib/db/queries/person";
 import { Badge } from "@/components/ui/Badge";
@@ -85,6 +86,13 @@ function TermTable({
             )}
             <td className="py-2.5 text-right whitespace-nowrap">
               <CiteMarks sources={t.sources} numberOf={numberOf} />
+              <span className="ml-2">
+                <AdminRemoveButton
+                  entityType="term"
+                  entityId={t.id}
+                  label={`${t.cmName ?? office}, Union of India`}
+                />
+              </span>
             </td>
           </tr>
         ))}

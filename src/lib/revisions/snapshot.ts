@@ -125,9 +125,25 @@ export function snapshotEntity(
  * Deep equality over canonical payloads. Source `id` fields are ignored:
  * a proposal that re-cites the same normalized URL matches the live source
  * row regardless of whether the submitter knew its id.
+ *
+ * Keys are sorted recursively before comparison: stored snapshots round-trip
+ * through Postgres jsonb, which rewrites object key order, so a raw
+ * JSON.stringify comparison would false-flag a conflict on every approval.
  */
 export function snapshotsEqual(a: unknown, b: unknown): boolean {
-  return JSON.stringify(stripSourceIds(a)) === JSON.stringify(stripSourceIds(b));
+  return (
+    JSON.stringify(sortKeysDeep(stripSourceIds(a))) ===
+    JSON.stringify(sortKeysDeep(stripSourceIds(b)))
+  );
+}
+
+function sortKeysDeep(v: unknown): unknown {
+  if (v === null || typeof v !== "object") return v;
+  if (Array.isArray(v)) return v.map(sortKeysDeep);
+  const rec = v as Record<string, unknown>;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(rec).sort()) out[k] = sortKeysDeep(rec[k]);
+  return out;
 }
 
 function stripSourceIds(v: unknown): unknown {

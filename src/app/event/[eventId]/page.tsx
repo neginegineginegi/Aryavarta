@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/Badge";
@@ -134,6 +136,9 @@ export default async function EventPage({
         >
           Report an issue
         </Link>
+        <span className="self-center">
+          <AdminRemoveButton entityType="event" entityId={event.id} label={event.title} />
+        </span>
       </section>
     </article>
   );

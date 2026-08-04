@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { notFound } from "next/navigation";
 
 import { SeatBar } from "@/components/election/SeatBar";
@@ -72,6 +74,13 @@ export default async function ElectionPage({
             >
               Suggest an edit
             </Link>
+            <span className="self-center">
+              <AdminRemoveButton
+                entityType="election"
+                entityId={election.id}
+                label={electionTitle(election)}
+              />
+            </span>
           </span>
         </div>
         <p className="mt-2 text-[0.85rem] text-ink-muted">
