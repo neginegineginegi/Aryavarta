@@ -21,8 +21,8 @@ export default async function AdminPartiesPage({
   const grayCount = rows.filter((p) => p.color === PLACEHOLDER_GRAY && !p.isPseudo).length;
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/admin/users" className="hover:text-ink">Admin</Link>
           <span className="mx-1.5">/</span>
@@ -33,8 +33,8 @@ export default async function AdminPartiesPage({
         </h1>
         <p className="mt-2 max-w-2xl text-[0.88rem] text-ink-muted">
           Party colors drive the map, seat bars, and legends. Imported parties get an
-          auto-assigned distinct color; set conventional colors here — changes propagate to the
-          whole site within moments.
+          auto-assigned distinct color. Set conventional colors here and the change propagates
+          across the whole site within moments.
         </p>
         {done && (
           <p className="mt-3 rounded-sm border border-green-200 bg-green-50 px-3 py-2 text-[0.85rem] text-approved">

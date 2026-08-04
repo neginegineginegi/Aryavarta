@@ -94,8 +94,8 @@ export default async function SearchPage({
     : [null, null];
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Search</h1>
         <form action="/search" method="get" className="mt-4 flex max-w-xl gap-2">
           <input
@@ -193,7 +193,7 @@ export default async function SearchPage({
         <div className="py-8 text-[0.88rem] text-ink-muted">
           <p>
             Search covers state names, chief ministers, parties, and the full text of published
-            governance events — or ask a question directly:
+            governance events. You can also ask a question directly:
           </p>
           <ul className="mt-3 flex flex-wrap gap-2">
             {SUPPORTED_QUESTIONS.map((sq) => (

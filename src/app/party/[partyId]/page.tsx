@@ -40,8 +40,8 @@ export default async function PartyPage({
   const { party, governments, electionHistory } = profile;
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <p className="section-label">Political party</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <span
@@ -59,7 +59,7 @@ export default async function PartyPage({
         </div>
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Governments held</h2>
         {governments.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
@@ -109,7 +109,7 @@ export default async function PartyPage({
         )}
       </section>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Election performance</h2>
         {electionHistory.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">

@@ -18,7 +18,7 @@ const garamond = EB_Garamond({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"),
   title: {
-    default: "Abhilekh — India State Politics Archive",
+    default: "Abhilekh · India Politics Archive",
     template: "%s · Abhilekh",
   },
   description:

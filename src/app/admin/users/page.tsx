@@ -22,8 +22,8 @@ export default async function AdminUsersPage({
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
           User administration
         </h1>

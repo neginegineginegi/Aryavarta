@@ -24,15 +24,15 @@ export default async function ReviewQueuePage({
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
           Review queue
         </h1>
         <p className="mt-2 text-[0.88rem] text-ink-muted">
           {queue.length} pending submission{queue.length === 1 ? "" : "s"}
           {stateFilter ? " for this state" : ""}. Verify each claim against its cited sources
-          before approving — approval publishes immediately. Also see{" "}
+          before approving; approval publishes immediately. Also see{" "}
           <Link href="/review/reports" className="text-accent underline-offset-2 hover:underline">
             reports &amp; disputes
           </Link>

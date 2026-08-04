@@ -2,7 +2,7 @@ import Link from "next/link";
 
 export default function NotFound() {
   return (
-    <div className="mx-auto max-w-3xl px-5 py-24 text-center">
+    <div className="mx-auto max-w-3xl px-6 py-24 text-center">
       <p className="section-label">404</p>
       <h1 className="mt-2 font-display text-3xl font-semibold text-ink">
         No such record in the archive

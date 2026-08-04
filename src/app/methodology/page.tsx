@@ -9,15 +9,15 @@ export const metadata: Metadata = {
 
 export default function MethodologyPage() {
   return (
-    <article className="prose-article mx-auto max-w-3xl px-5 pb-10 text-[0.95rem] text-ink">
-      <header className="border-b border-rule py-7">
+    <article className="prose-article mx-auto max-w-3xl px-6 pb-12 text-[0.97rem] text-ink">
+      <header className="border-b border-rule py-10">
         <h1 className="font-display text-4xl font-semibold tracking-tight">Methodology</h1>
         <p className="mt-3 text-ink-muted">
           The editorial standard every entry in this archive is held to.
         </p>
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">What counts as a sourced claim</h2>
         <p className="mt-3">
           Every entry must cite at least one source with a title, a working link, and dates
@@ -35,7 +35,7 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Writing standard</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5">
           <li>
@@ -44,21 +44,21 @@ export default function MethodologyPage() {
           </li>
           <li>
             <strong>Attribute, don&rsquo;t assert.</strong> Where a matter is alleged, under
-            investigation, or before a court — including any matter that is{" "}
-            <em>sub judice</em> — entries must say &ldquo;alleged&rdquo;,
+            investigation, or before a court (including anything <em>sub judice</em>),
+            entries must say &ldquo;alleged&rdquo;,
             &ldquo;according to&hellip;&rdquo;, or &ldquo;as reported by&hellip;&rdquo;, and
             must not present accusation as conviction. Entries about living people are held to
             the strictest reading of this rule.
           </li>
           <li>
             <strong>Convictions, acquittals, and retractions must be reflected.</strong> If a
-            case an entry describes is later decided, the entry should be updated — this is
+            case an entry describes is later decided, the entry should be updated. That is
             what the correction flow is for.
           </li>
         </ul>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Review standard</h2>
         <p className="mt-3">
           Moderators approve a submission only when: the cited sources actually support each
@@ -70,10 +70,10 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Disputes &amp; corrections</h2>
         <p className="mt-3">
-          Anyone — with or without an account — can report an entry via its{" "}
+          Anyone, with or without an account, can report an entry via its{" "}
           <em>Report an issue</em> button. Factual disputes flag the entry publicly while under
           review. Moderators resolve reports with public resolution notes; entries may be
           corrected, marked disputed, or removed (removal leaves a public tombstone and full
@@ -81,7 +81,7 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Licensing</h2>
         <p className="mt-3">
           Text content:{" "}
@@ -97,7 +97,7 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Known limitations</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5">
           <li>

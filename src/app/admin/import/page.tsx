@@ -15,8 +15,8 @@ export default async function AdminImportPage() {
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/admin/users" className="hover:text-ink">Admin</Link>
           <span className="mx-1.5">/</span>
@@ -29,7 +29,7 @@ export default async function AdminImportPage() {
           Pre-fills structured drafts from Wikidata (CC0). Imported data is{" "}
           <strong>never published directly</strong>: each item becomes a pending revision from
           the Import Bot, carrying its origin, and must be verified by a moderator against an
-          authoritative source — ideally the ECI statistical report — exactly like any
+          authoritative source (ideally the ECI statistical report), exactly like any
           community contribution.
         </p>
       </header>

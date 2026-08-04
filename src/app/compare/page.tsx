@@ -156,9 +156,9 @@ async function ComparisonExtras({
   const NOUN = { leaders: "leader", parties: "party", states: "state" }[mode];
 
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <div className="mx-auto max-w-6xl px-6 pb-12">
+      <header className="border-b border-rule py-10">
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
           Compare
         </h1>
         <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
@@ -211,7 +211,7 @@ async function ComparisonExtras({
         </div>
         {options.length === 0 && (
           <p className="mt-3 text-[0.82rem] text-ink-muted">
-            Nothing to compare yet in this category — entries appear as data is approved.
+            Nothing to compare in this category yet. Entries appear as data is approved.
           </p>
         )}
       </form>
@@ -279,15 +279,15 @@ export default async function ComparePage({
   const sameEntity = left && right && left.election.stateId === right.election.stateId;
 
   return (
-    <div className="mx-auto max-w-6xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <div className="mx-auto max-w-6xl px-6 pb-12">
+      <header className="border-b border-rule py-10">
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
           Compare
         </h1>
-        <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
-          Any two elections, side by side: seats, swings, leadership, and what happened during
-          each government. Karnataka 2013 vs 2018, or the Union in 2004 vs 2014 — the archive
-          becomes an analytical tool.
+        <p className="mt-3 max-w-2xl text-[0.95rem] text-ink-muted">
+          Put any two elections side by side: seats, swings, leadership, and what happened
+          during each government. Try Karnataka 2013 against 2018, or the Union in 2004
+          against 2014.
         </p>
         <ModeTabs active="elections" />
       </header>
@@ -305,11 +305,11 @@ export default async function ComparePage({
 
           <section>
             <h2 className="section-label">
-              Seat changes — {electionTitle(left.election)} → {electionTitle(right.election)}
+              Seat changes: {electionTitle(left.election)} to {electionTitle(right.election)}
             </h2>
             {!sameEntity && (
               <p className="mt-1 text-[0.8rem] text-disputed">
-                ⚠ These elections are from different bodies — seat “changes” across them are
+                ⚠ These elections are from different bodies, so seat “changes” across them are
                 arithmetic, not political swing.
               </p>
             )}
@@ -328,8 +328,8 @@ export default async function ComparePage({
 
       {(!a || !b) && (
         <p className="pb-8 text-[0.85rem] text-ink-faint">
-          Pick two elections above to generate a comparison. The URL is shareable — every
-          comparison is a citable page.
+          Pick two elections above to generate a comparison. Every comparison has a shareable,
+          citable URL.
         </p>
       )}
     </div>

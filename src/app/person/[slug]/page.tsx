@@ -38,8 +38,8 @@ export default async function PersonPage({
   if (!person) notFound();
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <p className="section-label">Office holder</p>
         <h1 className="mt-1 font-display text-4xl font-semibold tracking-tight text-ink">
           {person.name}
@@ -51,7 +51,7 @@ export default async function PersonPage({
         </p>
       </header>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Offices held</h2>
         <ul className="mt-4 space-y-4">
           {person.stints.map((s) => (

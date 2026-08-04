@@ -35,8 +35,8 @@ export default async function ContributePage({
   const stateQS = state ? `?state=${encodeURIComponent(state)}` : "";
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
           Contribute to the archive
         </h1>
@@ -47,7 +47,7 @@ export default async function ContributePage({
         </p>
       </header>
 
-      <section className="grid gap-4 border-b border-rule py-7 sm:grid-cols-3">
+      <section className="grid gap-4 border-b border-rule py-8 sm:grid-cols-3">
         <Link
           href={`/contribute/event${stateQS}`}
           className="rounded-sm border border-rule-dark bg-paper-raised p-4 transition-colors hover:border-ink"
@@ -78,7 +78,7 @@ export default async function ContributePage({
         </Link>
       </section>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Your submissions</h2>
         {mine.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">Nothing submitted yet.</p>

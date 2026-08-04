@@ -90,7 +90,7 @@ export function computeInsights(
         method:
           "Cumulative days in office summed across all approved CM terms for the same recorded name within a state; ongoing terms counted to today.",
         items: top.map((p) => ({
-          headline: `${p.name} — ${formatTenure(p.days)}`,
+          headline: `${p.name} · ${formatTenure(p.days)}`,
           detail: p.stateName,
           links: [
             { label: p.name, href: `/person/${personSlug(p.name)}` },
@@ -114,7 +114,7 @@ export function computeInsights(
         title: "Shortest governments",
         method: "Completed CM terms (with an end date), ranked by days between swearing-in and exit.",
         items: completed.map((t) => ({
-          headline: `${t.cmName} — ${t.days} days`,
+          headline: `${t.cmName} · ${t.days} days`,
           detail: `${t.stateName}, ${yearOf(t.startDate)}`,
           links: [
             { label: t.cmName!, href: `/person/${personSlug(t.cmName!)}` },
@@ -147,7 +147,7 @@ export function computeInsights(
         title: "Largest majorities",
         method: "Winner's seats minus the majority mark (⌊seats/2⌋+1), across elections with recorded totals.",
         items: largest.map(({ e, winner, overMark }) => ({
-          headline: `${winner.partyName} — ${overMark >= 0 ? "+" : ""}${overMark} over the mark`,
+          headline: `${winner.partyName} · ${overMark >= 0 ? "+" : ""}${overMark} over the mark`,
           detail: `${e.stateName}, ${yearOf(e.electionDate)} (${winner.seatsWon}/${e.totalSeats})`,
           links: [{ label: "Election dashboard", href: `/election/${e.id}` }],
         })),
@@ -217,7 +217,7 @@ export function computeInsights(
         title: "Most President's Rule",
         method: "Count and cumulative duration of recorded President's Rule periods per state.",
         items: top.map((s) => ({
-          headline: `${s.stateName} — ${s.count} period${s.count === 1 ? "" : "s"}, ${formatTenure(s.days)}`,
+          headline: `${s.stateName} · ${s.count} period${s.count === 1 ? "" : "s"}, ${formatTenure(s.days)}`,
           detail: "",
           links: [{ label: s.stateName, href: `/state/${s.stateId}` }],
         })),
@@ -301,7 +301,7 @@ export function computeInsights(
         title: "Longest party dominance of a state",
         method: "Cumulative days a party's CMs governed a state, summed over all approved terms.",
         items: top.map((p) => ({
-          headline: `${p.partyName} — ${formatTenure(p.days)} governing ${p.stateName}`,
+          headline: `${p.partyName} · ${formatTenure(p.days)} governing ${p.stateName}`,
           detail: "",
           links: [
             { label: p.partyName, href: `/party/${p.partyId}` },

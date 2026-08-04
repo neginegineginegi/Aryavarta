@@ -130,7 +130,7 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
     if (beforeData.stateId !== payload.stateId)
       return { ok: false, error: "An entry cannot be moved between states." };
     if (snapshotsEqual(beforeData, payload))
-      return { ok: false, error: "No changes detected — the proposal is identical to the live entry." };
+      return { ok: false, error: "No changes detected. The proposal is identical to the live entry." };
   } else {
     entityId = uuidv7();
   }

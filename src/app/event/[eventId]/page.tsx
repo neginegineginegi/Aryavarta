@@ -33,15 +33,15 @@ export default async function EventPage({
   // Tombstone for removed entries: the record of the removal stays public.
   if (event.deletedAt) {
     return (
-      <div className="mx-auto max-w-3xl px-5 py-16">
+      <div className="mx-auto max-w-3xl px-6 py-16">
         <p className="section-label">Removed entry</p>
         <h1 className="mt-2 font-display text-2xl font-semibold text-ink-muted line-through decoration-ink-faint">
           {event.title}
         </h1>
         <p className="mt-4 max-w-xl text-[0.9rem] text-ink-muted">
           This entry was removed from the live record through the moderation process on{" "}
-          {formatDate(event.deletedAt.slice(0, 10))}. Its full revision history — including the
-          removal and who approved it — remains public.
+          {formatDate(event.deletedAt.slice(0, 10))}. Its full revision history, including the
+          removal and who approved it, remains public.
         </p>
         <p className="mt-6 flex gap-4 text-[0.88rem]">
           <Link href={`/event/${event.id}/history`} className="text-accent underline-offset-2 hover:underline">
@@ -62,8 +62,8 @@ export default async function EventPage({
   }
 
   return (
-    <article className="mx-auto max-w-3xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-3xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
@@ -104,13 +104,13 @@ export default async function EventPage({
         </div>
       )}
 
-      <section className="prose-article border-b border-rule py-7 text-[0.95rem] text-ink">
+      <section className="prose-article border-b border-rule py-8 text-[0.95rem] text-ink">
         {event.description.split(/\n\n+/).map((para, i) => (
           <p key={i}>{para}</p>
         ))}
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Sources</h2>
         <ReferenceList sources={event.sources} />
       </section>

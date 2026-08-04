@@ -128,7 +128,7 @@ export async function PartyPanel({ partyId }: { partyId: string }) {
                 href={`/election/${bestResult.electionId}`}
                 className="text-accent underline-offset-2 hover:underline"
               >
-                {bestResult.seatsWon} seats — {bestResult.stateName}, {yearOf(bestResult.electionDate)}
+                {bestResult.seatsWon} seats ({bestResult.stateName}, {yearOf(bestResult.electionDate)})
               </Link>
             ) : (
               "—"

@@ -69,7 +69,7 @@ export function RevisionMeta({
             </>
           ) : null}
           {rev.reviewedAt ? <> on {rev.reviewedAt.toISOString().slice(0, 10)}</> : null}
-          {rev.reviewNote ? <> — “{rev.reviewNote}”</> : null}
+          {rev.reviewNote ? <>, with the note “{rev.reviewNote}”</> : null}
         </p>
       )}
     </div>

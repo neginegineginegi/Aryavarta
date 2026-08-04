@@ -70,10 +70,10 @@ export function ReportForm({
           onChange={(e) => setKind(e.target.value as "issue" | "dispute")}
         >
           <option value="issue">
-            Issue — typo, broken source link, formatting, categorization
+            Issue: typo, broken source link, formatting, categorization
           </option>
           <option value="dispute">
-            Dispute — I believe this entry is factually wrong or unfairly framed
+            Dispute: I believe this entry is factually wrong or unfairly framed
           </option>
         </select>
       </Field>
@@ -81,7 +81,7 @@ export function ReportForm({
       <Field
         label="Describe the problem"
         required
-        hint="Be specific. For disputes, cite counter-sources if you have them — moderators weigh evidence, not votes."
+        hint="Be specific. For disputes, cite counter-sources if you have them; moderators weigh evidence, not votes."
       >
         <textarea
           className={`${inputClass} min-h-36`}

@@ -28,18 +28,18 @@ export default async function BrowsePage() {
   const recentElections = electionIndex.slice(-12).reverse();
 
   return (
-    <div className="mx-auto max-w-5xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+    <div className="mx-auto max-w-6xl px-6 pb-12">
+      <header className="border-b border-rule py-10">
+        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
           Browse the archive
         </h1>
-        <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
-          Every entity interlinks: states to years to elections to parties to people — pick any
-          thread and follow it.
+        <p className="mt-3 max-w-2xl text-[0.95rem] text-ink-muted">
+          Everything here interlinks: states to years, years to elections, elections to
+          parties and people. Pick any thread and follow it.
         </p>
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Union</h2>
         <p className="mt-2">
           <Link href="/union" className="text-accent underline-offset-2 hover:underline">
@@ -51,7 +51,7 @@ export default async function BrowsePage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">States &amp; Union Territories</h2>
         <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9rem] sm:grid-cols-3 md:grid-cols-4">
           {realStates.map((s) => (
@@ -67,7 +67,7 @@ export default async function BrowsePage() {
         </ul>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Parties</h2>
         {parties.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">No parties recorded yet.</p>
@@ -92,10 +92,10 @@ export default async function BrowsePage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">By year</h2>
         <p className="mt-1 text-[0.8rem] text-ink-faint">
-          Opens the map at that year — scrub from there.
+          Opens the map at that year. Scrub onward from there.
         </p>
         <ul className="mt-3 flex flex-wrap gap-2 tabular-nums">
           {decades.map((y) => (
@@ -111,11 +111,11 @@ export default async function BrowsePage() {
         </ul>
       </section>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Recent elections in the archive</h2>
         {recentElections.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
-            No elections recorded yet — they appear here as they are approved.
+            No elections recorded yet. They appear here as they are approved.
           </p>
         ) : (
           <ul className="mt-3 space-y-1.5 text-[0.9rem]">
@@ -125,7 +125,7 @@ export default async function BrowsePage() {
                   href={`/election/${e.id}`}
                   className="text-accent underline-offset-2 hover:underline"
                 >
-                  {e.stateName} — {formatDate(e.electionDate)}
+                  {e.stateName}, {formatDate(e.electionDate)}
                   {e.scope === "lok_sabha" ? " (Lok Sabha)" : ""}
                 </Link>
               </li>

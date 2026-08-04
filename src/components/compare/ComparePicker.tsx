@@ -58,7 +58,7 @@ function Side({
         <option value="">Select election…</option>
         {options.map((e) => (
           <option key={e.id} value={e.id}>
-            {yearOf(e.electionDate)} — {e.scope === "lok_sabha" ? "Lok Sabha" : "Assembly"}
+            {yearOf(e.electionDate)} · {e.scope === "lok_sabha" ? "Lok Sabha" : "Assembly"}
           </option>
         ))}
       </select>
@@ -96,7 +96,7 @@ export function ComparePicker({
       </div>
       {index.length === 0 && (
         <p className="mt-3 text-[0.82rem] text-ink-muted">
-          No elections in the archive yet — comparisons appear once elections are approved.
+          No elections in the archive yet. Comparisons appear once elections are approved.
         </p>
       )}
     </div>

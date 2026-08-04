@@ -22,8 +22,8 @@ export default async function EventReportPage({
   const user = await getSessionUser();
 
   return (
-    <div className="mx-auto max-w-2xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-2xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href={`/event/${event.id}`} className="hover:text-ink">Event</Link>
           <span className="mx-1.5">/</span>
@@ -33,7 +33,7 @@ export default async function EventReportPage({
           Report an issue or dispute
         </h1>
         <p className="mt-2 text-[0.85rem] text-ink-muted">
-          This is the archive&rsquo;s correction mechanism — reports are reviewed by moderators
+          This is the archive&rsquo;s correction mechanism. Reports are reviewed by moderators
           and their resolutions are public. No account required.
         </p>
       </header>

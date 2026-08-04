@@ -74,16 +74,16 @@ export default async function StatePage({
   }
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
       {/* Masthead */}
-      <header className="border-b border-rule py-7">
+      <header className="border-b border-rule py-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
           <span>{state.name}</span>
         </nav>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+          <h1 className="font-display text-[2.75rem] font-semibold leading-tight tracking-tight text-ink">
             {state.name}
           </h1>
           <span className="flex gap-2">
@@ -114,7 +114,7 @@ export default async function StatePage({
       </header>
 
       {/* Chief Ministers */}
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Chief Ministers &amp; Governments</h2>
         {terms.length === 0 ? (
           <EmptyNote entity="chief-minister terms" stateId={state.id} />
@@ -185,7 +185,7 @@ export default async function StatePage({
 
       {/* Governors */}
       {governorTerms.length > 0 && (
-        <section className="border-b border-rule py-7">
+        <section className="border-b border-rule py-8">
           <h2 className="section-label">Governors</h2>
           <table className="mt-4 w-full max-w-2xl text-left text-[0.88rem]">
             <thead>
@@ -220,7 +220,7 @@ export default async function StatePage({
       )}
 
       {/* Elections */}
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Assembly Elections</h2>
         {elections.length === 0 ? (
           <EmptyNote entity="elections" stateId={state.id} />
@@ -294,7 +294,7 @@ export default async function StatePage({
       </section>
 
       {/* Governance record */}
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Governance Record</h2>
         {events.length === 0 ? (
           <EmptyNote entity="events" stateId={state.id} />
@@ -339,11 +339,11 @@ export default async function StatePage({
       </section>
 
       {/* References */}
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">References</h2>
         {citations.ordered.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">
-            No sources yet — this page has no published claims.
+            No sources yet: this page has no published claims.
           </p>
         ) : (
           <ReferenceList sources={citations.ordered} />

@@ -124,7 +124,7 @@ export function EventForm({
         <Field
           label="Exact date"
           error={errors["eventDate"]}
-          hint="Optional — only if reliably known"
+          hint="Optional; only if reliably known"
         >
           <input
             className={inputClass}

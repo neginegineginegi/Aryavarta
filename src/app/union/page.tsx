@@ -21,7 +21,7 @@ import type { TermWithSources } from "@/lib/db/queries/state";
 export const metadata: Metadata = {
   title: "Union Government",
   description:
-    "Prime Ministers, Presidents, Lok Sabha elections, and national governance events of the Republic of India — sourced, reviewed, and versioned.",
+    "Prime Ministers, Presidents, Lok Sabha elections, and national governance events of the Republic of India. Sourced, reviewed, and versioned.",
 };
 
 export const revalidate = 86400;
@@ -111,15 +111,15 @@ export default async function UnionPage() {
   }
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
           <span>Union Government</span>
         </nav>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+          <h1 className="font-display text-[2.75rem] font-semibold leading-tight tracking-tight text-ink">
             Union Government of India
           </h1>
           <Link
@@ -130,13 +130,13 @@ export default async function UnionPage() {
           </Link>
         </div>
         <p className="mt-2 max-w-2xl text-[0.85rem] text-ink-muted">
-          Prime Ministers, Presidents, Lok Sabha elections, and national governance events —
-          the same sourced, reviewed, versioned record as every state, at the Union level.
+          Prime Ministers, Presidents, Lok Sabha elections, and national governance events:
+          the same sourced, reviewed, versioned record as every state, kept at the Union level.
         </p>
         {pmTerms.length > 0 && <TimelineBand terms={pmTerms} maxYear={maxYear} />}
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Prime Ministers</h2>
         {pmTerms.length === 0 ? (
           <EmptyNote what="Prime Minister terms" />
@@ -145,7 +145,7 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Presidents</h2>
         {presidentTerms.length === 0 ? (
           <EmptyNote what="President terms" />
@@ -159,7 +159,7 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Lok Sabha Elections</h2>
         {elections.length === 0 ? (
           <EmptyNote what="Lok Sabha elections" />
@@ -190,7 +190,7 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">National Governance Record</h2>
         {events.length === 0 ? (
           <EmptyNote what="national events" />
@@ -238,7 +238,7 @@ export default async function UnionPage() {
         <h2 className="section-label">References</h2>
         {citations.ordered.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">
-            No sources yet — this page has no published claims.
+            No sources yet: this page has no published claims.
           </p>
         ) : (
           <ReferenceList sources={citations.ordered} />

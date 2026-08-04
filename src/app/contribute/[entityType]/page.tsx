@@ -66,8 +66,8 @@ export default async function ContributeEntityPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-3xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/contribute" className="hover:text-ink">Contribute</Link>
           <span className="mx-1.5">/</span>

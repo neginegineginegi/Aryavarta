@@ -77,8 +77,8 @@ export default async function StateYearPage({
   ]);
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-8">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
@@ -113,12 +113,12 @@ export default async function StateYearPage({
         </p>
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Government in {year}</h2>
         {state.formedOn && year < yearOf(state.formedOn) ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             {state.name} was not a separate {state.kind === "state" ? "state" : "union territory"} in{" "}
-            {year} — it was established on {formatDate(state.formedOn)}.
+            {year}. It was established on {formatDate(state.formedOn)}.
           </p>
         ) : termsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
@@ -147,7 +147,7 @@ export default async function StateYearPage({
       </section>
 
       {electionsInYear.length > 0 && (
-        <section className="border-b border-rule py-7">
+        <section className="border-b border-rule py-8">
           <h2 className="section-label">Elections in {year}</h2>
           <ul className="mt-4 space-y-3">
             {electionsInYear.map((e) => (
@@ -169,7 +169,7 @@ export default async function StateYearPage({
         </section>
       )}
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Recorded events, {year}</h2>
         {eventsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">

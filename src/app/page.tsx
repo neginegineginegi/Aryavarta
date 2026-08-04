@@ -10,67 +10,80 @@ export default async function HomePage() {
   // page stays fully static/cached.
   const [data, stats] = await Promise.all([getMapData(), getArchiveStats()]);
 
+  const statItems = [
+    { value: stats.states, label: "states & union territories" },
+    { value: stats.terms, label: "government terms" },
+    { value: stats.events, label: "recorded events" },
+    { value: stats.sources, label: "sources cited" },
+  ];
+
   return (
-    <div className="mx-auto max-w-6xl px-5">
-      <section className="border-b border-rule py-8">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-          Who governed every Indian state, every year — with sources.
+    <div className="mx-auto max-w-6xl px-6">
+      <section className="py-12">
+        <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-[3.25rem]">
+          Who governed every Indian state, every year, with sources to prove it.
         </h1>
-        <p className="mt-3 max-w-2xl text-ink-muted">
-          Abhilekh is a public, crowdsourced reference of state politics in India: chief
-          ministers, elections, and notable governance events, year by year. Every published
-          fact carries a citation, passes moderator review, and keeps its full edit history.
+        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-muted">
+          Abhilekh is a living atlas of Indian political history. Scrub the timeline and
+          watch governments change across the map. Open any state for its chief ministers,
+          elections, and turning points. Follow any fact back to its citation.
         </p>
       </section>
 
-      <section className="py-8">
+      <section className="card p-5 sm:p-8">
         <MapExplorer data={data} />
       </section>
 
-      <section className="grid gap-6 border-t border-rule py-8 sm:grid-cols-3">
+      <section className="mt-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {statItems.map((s) => (
+          <div key={s.label} className="card px-5 py-4">
+            <p className="font-display text-3xl font-semibold tabular-nums text-ink">
+              {formatNumber(s.value)}
+            </p>
+            <p className="mt-0.5 text-[0.82rem] text-ink-muted">{s.label}</p>
+          </div>
+        ))}
+      </section>
+
+      <section className="grid gap-10 py-14 sm:grid-cols-3">
         <div>
           <h2 className="section-label">Sourced</h2>
-          <p className="mt-2 text-[0.9rem] text-ink-muted">
-            Nothing is published without at least one citation — title, link, and date. Claims
-            without sources are rejected at submission, not after.
+          <p className="mt-2.5 text-[0.95rem] leading-relaxed text-ink-muted">
+            Nothing gets published without a citation: a title, a link, and a date. Claims
+            that arrive without sources are turned away at the door.
           </p>
         </div>
         <div>
           <h2 className="section-label">Reviewed</h2>
-          <p className="mt-2 text-[0.9rem] text-ink-muted">
-            Anyone can propose an addition or correction. Moderators compare the proposed
-            change against the live record, side by side, before it goes public.
+          <p className="mt-2.5 text-[0.95rem] leading-relaxed text-ink-muted">
+            Anyone can propose an addition or a correction. A moderator compares the
+            proposal against the live record, side by side, before it goes public.
           </p>
         </div>
         <div>
           <h2 className="section-label">Versioned</h2>
-          <p className="mt-2 text-[0.9rem] text-ink-muted">
-            Every change is recorded — who proposed it, when, what changed, and who approved
-            it. The full history of every entry is public, like an encyclopedia&rsquo;s.
+          <p className="mt-2.5 text-[0.95rem] leading-relaxed text-ink-muted">
+            Every change stays on the record: who proposed it, what changed, who approved
+            it, and when. The full history of every entry is open to all.
           </p>
         </div>
       </section>
 
-      <section className="flex flex-wrap items-baseline gap-x-10 gap-y-3 border-t border-rule py-6 text-[0.85rem] text-ink-muted">
-        <span>
-          <strong className="font-display text-xl text-ink">{formatNumber(stats.states)}</strong>{" "}
-          states &amp; union territories
+      <section className="mb-4 flex flex-wrap items-center justify-between gap-4 rounded-lg bg-paper-sunken px-6 py-5">
+        <p className="text-[0.95rem] text-ink">
+          Spotted a gap in your state&rsquo;s record? Help close it.
+        </p>
+        <span className="flex items-center gap-5 text-[0.9rem]">
+          <Link
+            href="/contribute"
+            className="rounded-sm bg-accent px-4 py-1.5 font-medium text-white transition-colors hover:bg-accent-dark"
+          >
+            Contribute
+          </Link>
+          <Link href="/methodology" className="text-accent underline-offset-2 hover:underline">
+            How entries are verified →
+          </Link>
         </span>
-        <span>
-          <strong className="font-display text-xl text-ink">{formatNumber(stats.terms)}</strong>{" "}
-          government terms
-        </span>
-        <span>
-          <strong className="font-display text-xl text-ink">{formatNumber(stats.events)}</strong>{" "}
-          recorded events
-        </span>
-        <span>
-          <strong className="font-display text-xl text-ink">{formatNumber(stats.sources)}</strong>{" "}
-          sources cited
-        </span>
-        <Link href="/methodology" className="text-accent underline-offset-2 hover:underline">
-          How entries are verified →
-        </Link>
       </section>
     </div>
   );

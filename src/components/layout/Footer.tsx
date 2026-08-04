@@ -1,27 +1,63 @@
 import Link from "next/link";
 
+const EXPLORE_LINKS = [
+  { href: "/", label: "Map" },
+  { href: "/union", label: "Union" },
+  { href: "/browse", label: "Browse" },
+  { href: "/insights", label: "Insights" },
+  { href: "/compare", label: "Compare" },
+];
+
+const PROJECT_LINKS = [
+  { href: "/about", label: "About" },
+  { href: "/methodology", label: "Methodology" },
+  { href: "/contribute", label: "Contribute" },
+  { href: "/search", label: "Search" },
+];
+
 export function Footer() {
   return (
-    <footer className="mt-16 border-t border-rule bg-paper-sunken">
-      <div className="mx-auto max-w-6xl px-5 py-8 text-[0.8rem] leading-relaxed text-ink-muted">
-        <div className="flex flex-col gap-6 sm:flex-row sm:justify-between">
+    <footer className="mt-20 border-t border-rule-dark bg-paper-sunken">
+      <div className="mx-auto max-w-6xl px-6 py-10 text-[0.82rem] leading-relaxed text-ink-muted">
+        <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
           <div className="max-w-md">
-            <p className="font-display text-base font-semibold text-ink">Abhilekh</p>
-            <p className="mt-1">
-              A crowdsourced, citable record of governance in Indian states. Every published
-              fact requires a source and moderator review; every change is versioned.
+            <p className="font-display text-lg font-semibold text-ink">Abhilekh</p>
+            <p className="mt-2">
+              A public, crowdsourced record of who governed India, state by state and year
+              by year. Every fact cites a source, every edit passes review, and the full
+              history of every entry stays open to anyone.
             </p>
           </div>
-          <nav className="grid grid-cols-2 gap-x-10 gap-y-1">
-            <Link href="/about" className="hover:text-ink">About</Link>
-            <Link href="/methodology" className="hover:text-ink">Methodology</Link>
-            <Link href="/search" className="hover:text-ink">Search</Link>
-            <Link href="/contribute" className="hover:text-ink">Contribute</Link>
-          </nav>
+          <div className="flex gap-14">
+            <nav aria-label="Explore">
+              <p className="section-label">Explore</p>
+              <ul className="mt-2.5 space-y-1.5">
+                {EXPLORE_LINKS.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-ink">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <nav aria-label="Project">
+              <p className="section-label">Project</p>
+              <ul className="mt-2.5 space-y-1.5">
+                {PROJECT_LINKS.map((l) => (
+                  <li key={l.href}>
+                    <Link href={l.href} className="hover:text-ink">
+                      {l.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </div>
         </div>
-        <div className="mt-6 border-t border-rule pt-4">
+        <div className="mt-8 border-t border-rule pt-4">
           <p>
-            Text content is available under{" "}
+            Text is available under{" "}
             <a
               href="https://creativecommons.org/licenses/by-sa/4.0/"
               className="underline hover:text-ink"
@@ -29,15 +65,15 @@ export function Footer() {
             >
               CC BY-SA 4.0
             </a>
-            . Map geometry by{" "}
+            . Map geometry comes from{" "}
             <a
               href="https://www.npmjs.com/package/@svg-maps/india"
               className="underline hover:text-ink"
             >
               @svg-maps/india
             </a>{" "}
-            (CC BY 4.0); boundaries reflect the pre-2019 arrangement and are illustrative,
-            not authoritative.
+            (CC BY 4.0). Boundaries reflect the pre-2019 arrangement and are illustrative
+            rather than authoritative.
           </p>
         </div>
       </div>

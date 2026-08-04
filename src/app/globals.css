@@ -1,19 +1,21 @@
 @import "tailwindcss";
 
 @theme {
-  /* Ink-and-paper palette: warm off-white ground, near-black warm ink.
-     Party colors are data colors only — they appear on the map, legend,
-     and seat bars, never as interface chrome. */
-  --color-paper: #faf8f2;
+  /* Ink-and-paper palette, brightened. Warm near-white ground, deep warm
+     ink, and a teal accent for everything interactive. Party colors are
+     data colors only: they appear on the map, legend, and seat bars,
+     never as interface chrome. */
+  --color-paper: #fcfbf7;
   --color-paper-raised: #ffffff;
-  --color-paper-sunken: #f3efe5;
-  --color-ink: #211d18;
-  --color-ink-muted: #5c564d;
-  --color-ink-faint: #776e5f; /* 4.73:1 on paper — AA for normal text */
-  --color-rule: #e3ddcf;
-  --color-rule-dark: #cec6b4;
-  --color-accent: #31517b; /* links, active states */
-  --color-accent-dark: #243c5c;
+  --color-paper-sunken: #f4f1e8;
+  --color-ink: #221c14;
+  --color-ink-muted: #5b5342;
+  --color-ink-faint: #756b58; /* AA on paper for normal text */
+  --color-rule: #e8e3d5;
+  --color-rule-dark: #d2c9b5;
+  --color-accent: #0c6b74; /* links, active states, interactive chrome */
+  --color-accent-dark: #084f56;
+  --color-accent-wash: #eaf3f2; /* quiet tinted ground behind active chips */
   --color-disputed: #b45309;
   --color-danger: #991b1b;
   --color-approved: #166534;
@@ -22,6 +24,9 @@
 
   --font-display: var(--font-garamond), "Georgia", serif;
   --font-body: var(--font-garamond), "Georgia", serif;
+
+  --shadow-card: 0 1px 2px rgb(34 28 20 / 0.05), 0 6px 20px -12px rgb(34 28 20 / 0.18);
+  --shadow-card-hover: 0 1px 3px rgb(34 28 20 / 0.07), 0 10px 28px -12px rgb(34 28 20 / 0.24);
 }
 
 html {
@@ -32,10 +37,10 @@ html {
 }
 
 body {
-  /* Garamond-family faces have a small x-height — set slightly larger than
-     a sans would be, with book-like leading. */
+  /* Garamond-family faces have a small x-height, so run a touch larger
+     than a sans would, with book-like leading. */
   font-size: 1.0625rem;
-  line-height: 1.55;
+  line-height: 1.6;
 }
 
 /* Old-style faces need real tabular figures in data tables and year readouts. */
@@ -44,16 +49,56 @@ body {
 }
 
 ::selection {
-  background: #d8e0ec;
+  background: #cfe4e2;
+}
+
+a,
+button,
+input,
+select,
+textarea,
+summary,
+[tabindex] {
+  outline-color: var(--color-accent);
 }
 
 /* Small-caps section labels used across article pages. */
 .section-label {
   font-size: 0.6875rem;
   font-weight: 600;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--color-ink-muted);
+  color: var(--color-accent);
+}
+
+/* Raised panel used for dashboards, summaries, and list entries. */
+.card {
+  background: var(--color-paper-raised);
+  border: 1px solid var(--color-rule);
+  border-radius: 0.5rem;
+  box-shadow: var(--shadow-card);
+}
+.card-hover {
+  transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+}
+.card-hover:hover {
+  border-color: var(--color-rule-dark);
+  box-shadow: var(--shadow-card-hover);
+  transform: translateY(-1px);
+}
+
+/* Newspaper-style masthead rule: one heavy line over one hairline. */
+.masthead-rule {
+  border-bottom: 1px solid var(--color-rule-dark);
+  position: relative;
+}
+.masthead-rule::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  border-bottom: 1px solid var(--color-rule);
 }
 
 /* Footnote-style superscript citation markers. */
@@ -105,20 +150,20 @@ input[type="range"].year-slider {
 input[type="range"].year-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
-  background: var(--color-ink);
-  border: 3px solid var(--color-paper);
-  box-shadow: 0 0 0 1px var(--color-rule-dark);
+  background: var(--color-accent);
+  border: 3px solid var(--color-paper-raised);
+  box-shadow: 0 0 0 1px var(--color-rule-dark), 0 1px 4px rgb(34 28 20 / 0.25);
   cursor: ew-resize;
 }
 input[type="range"].year-slider::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
-  background: var(--color-ink);
-  border: 3px solid var(--color-paper);
-  box-shadow: 0 0 0 1px var(--color-rule-dark);
+  background: var(--color-accent);
+  border: 3px solid var(--color-paper-raised);
+  box-shadow: 0 0 0 1px var(--color-rule-dark), 0 1px 4px rgb(34 28 20 / 0.25);
   cursor: ew-resize;
 }

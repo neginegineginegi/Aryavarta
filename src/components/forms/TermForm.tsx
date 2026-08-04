@@ -156,7 +156,7 @@ export function TermForm({
               label="Party"
               required={!isPresident}
               error={errors["partyId"]}
-              hint={isPresident ? "Optional — Presidents are conventionally shown without party" : undefined}
+              hint={isPresident ? "Optional; Presidents are conventionally shown without party" : undefined}
             >
               <select
                 className={inputClass}
@@ -204,7 +204,7 @@ export function TermForm({
         </div>
       </div>
 
-      <Field label="Notes" error={errors["notes"]} hint="Optional — coalition partners, caretaker status, etc.">
+      <Field label="Notes" error={errors["notes"]} hint="Optional: coalition partners, caretaker status, etc.">
         <input
           className={inputClass}
           value={notes}

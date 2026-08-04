@@ -79,7 +79,7 @@ export async function ensureParty(label: string): Promise<string> {
 function importSources(qid: string, wikipediaUrl: string | null, accessedOn: string): SourceSnapshot[] {
   const sources: SourceSnapshot[] = [
     {
-      title: `Wikidata item ${qid} (imported structured data — verify against ECI statistical report)`,
+      title: `Wikidata item ${qid} (imported structured data; verify against the ECI statistical report)`,
       url: wikidataItemUrl(qid),
       publisher: "Wikidata",
       publishedOn: null,
@@ -88,7 +88,7 @@ function importSources(qid: string, wikipediaUrl: string | null, accessedOn: str
   ];
   if (wikipediaUrl) {
     sources.push({
-      title: "Wikipedia article (imported reference — verify against ECI statistical report)",
+      title: "Wikipedia article (imported reference; verify against the ECI statistical report)",
       url: wikipediaUrl,
       publisher: "Wikipedia",
       publishedOn: null,
@@ -119,7 +119,7 @@ export async function createTermDrafts(
     }
     // CM/PM terms need a party; Presidents and Governors are conventionally partyless.
     if (!item.partyLabel && office !== "president" && office !== "governor") {
-      outcome.skipped.push({ label, reason: "no party on Wikidata — add manually" });
+      outcome.skipped.push({ label, reason: "no party on Wikidata; add manually" });
       continue;
     }
 

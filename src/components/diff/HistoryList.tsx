@@ -57,7 +57,7 @@ export function HistoryList({ rows }: { rows: HistoryRow[] }) {
             : “{rev.summary}”
             {rev.status !== "pending" && rev.reviewer ? (
               <span className="text-ink-faint">
-                {" "}— {rev.status} by{" "}
+                {" · "}{rev.status} by{" "}
                 <Link href={`/user/${rev.reviewer.id}`} className="text-accent hover:underline">
                   {rev.reviewer.name ?? "moderator"}
                 </Link>

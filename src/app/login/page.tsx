@@ -62,7 +62,7 @@ export default async function LoginPage({
         >
           <p className="section-label">Development sign-in</p>
           <p className="mt-1 text-[0.78rem] text-danger">
-            Insecure — enabled by AUTH_DEV_LOGIN for local development only.
+            Insecure. Enabled by AUTH_DEV_LOGIN for local development only.
           </p>
           <div className="mt-3 flex gap-2">
             <input

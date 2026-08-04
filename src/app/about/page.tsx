@@ -9,30 +9,31 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <article className="prose-article mx-auto max-w-3xl px-5 pb-10 text-[0.95rem] text-ink">
-      <header className="border-b border-rule py-7">
+    <article className="prose-article mx-auto max-w-3xl px-6 pb-12 text-[0.97rem] text-ink">
+      <header className="border-b border-rule py-10">
         <h1 className="font-display text-4xl font-semibold tracking-tight">About Abhilekh</h1>
         <p className="mt-3 text-ink-muted">
-          <em>Abhilekh</em> (अभिलेख) — an official record or inscription.
+          <em>Abhilekh</em> (अभिलेख): an official record or inscription.
         </p>
       </header>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">What this is</h2>
         <p className="mt-3">
           Abhilekh is a public, crowdsourced reference for the political history of every Indian
           state and union territory: who governed, when, under which party, what elections
-          decided it, and what notable governance events — paper leaks, corruption cases, policy
-          failures, communal incidents, infrastructure failures — occurred along the way.
+          decided it, and what happened along the way. Paper leaks, corruption cases, policy
+          failures, communal incidents, collapsing bridges: the events that shaped how each
+          state was actually run.
         </p>
         <p>
           It exists because this record is scattered across news archives, gazettes, and memory.
           Bringing it into one place, year by year and state by state, makes it possible to ask
-          simple questions with sourced answers.
+          simple questions and get sourced answers.
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">How it stays trustworthy</h2>
         <p className="mt-3">
           Three rules, enforced by the software rather than by promise:
@@ -48,9 +49,9 @@ export default function AboutPage() {
             sources.
           </li>
           <li>
-            <strong>Everything is versioned.</strong> Every proposal — accepted, rejected, or
-            withdrawn — is a permanent public record showing who proposed what, when, with what
-            sources, and how it was decided. See any state&rsquo;s{" "}
+            <strong>Everything is versioned.</strong> Every proposal becomes a permanent public
+            record, whether it was accepted, rejected, or withdrawn. It shows who proposed
+            what, when, with what sources, and how it was decided. See any state&rsquo;s{" "}
             <Link href="/state/tg/history" className="text-accent underline-offset-2 hover:underline">
               history page
             </Link>{" "}
@@ -58,16 +59,16 @@ export default function AboutPage() {
           </li>
         </ul>
         <p>
-          The full editorial standard — what counts as a reliable source, how disputes are
-          resolved, how corrections work — is documented in the{" "}
+          The full editorial standard lives in the{" "}
           <Link href="/methodology" className="text-accent underline-offset-2 hover:underline">
             methodology
           </Link>
-          .
+          : what counts as a reliable source, how disputes are resolved, and how corrections
+          work.
         </p>
       </section>
 
-      <section className="border-b border-rule py-7">
+      <section className="border-b border-rule py-8">
         <h2 className="section-label">Licensing</h2>
         <p className="mt-3">
           All text content on Abhilekh is available under the{" "}
@@ -78,7 +79,7 @@ export default function AboutPage() {
           >
             Creative Commons Attribution-ShareAlike 4.0 International
           </a>{" "}
-          license — the same family Wikipedia uses. You may reuse and adapt it, including
+          license, the same family Wikipedia uses. You may reuse and adapt it, including
           commercially, provided you credit Abhilekh and share derivatives under the same terms.
           By contributing, you agree to publish your contribution under this license.
         </p>
@@ -95,13 +96,13 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Corrections &amp; grievances</h2>
         <p className="mt-3">
           If an entry about you or your organisation is wrong, use the{" "}
-          <em>Report an issue</em> button on that entry — no account is required, and every
-          report is reviewed by a moderator with the resolution recorded publicly. Entries under
-          active dispute are visibly flagged while review is in progress.
+          <em>Report an issue</em> button on that entry. No account is required. A moderator
+          reviews every report, and the resolution is recorded publicly. Entries under active
+          dispute are visibly flagged while review is in progress.
         </p>
       </section>
     </article>

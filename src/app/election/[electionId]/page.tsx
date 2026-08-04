@@ -44,8 +44,8 @@ export default async function ElectionPage({
   const voteShareRows = election.results.filter((r) => r.voteSharePercent != null);
 
   return (
-    <article className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <article className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
@@ -95,7 +95,7 @@ export default async function ElectionPage({
             {overview.join(" ")}
           </p>
           <p className="mt-1.5 text-[0.72rem] text-ink-faint">
-            Generated automatically from the structured, sourced fields below — no editorial
+            Generated automatically from the structured, sourced fields below. No editorial
             judgment is added.
           </p>
         </section>
@@ -193,7 +193,7 @@ export default async function ElectionPage({
             <span className="font-display text-lg font-semibold">{formedTerm.cmName}</span>
             {formedTerm.partyName ? <> ({formedTerm.partyName})</> : null}
             <span className="text-[0.85rem] text-ink-muted">
-              {" "}— sworn in {formatDate(formedTerm.startDate)}
+              {", sworn in "}{formatDate(formedTerm.startDate)}
               {formedTerm.endDate ? <>, served until {formatDate(formedTerm.endDate)}</> : ", currently in office"}
             </span>
             {" · "}
@@ -206,7 +206,7 @@ export default async function ElectionPage({
           </p>
         ) : (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
-            No CM term starting within 90 days of this election is recorded yet — the link
+            No CM term starting within 90 days of this election is recorded yet. The link
             appears automatically once the term is added and approved.
           </p>
         )}

@@ -80,7 +80,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
     ? []
     : kind === "cm_terms"
       ? (preview.terms ?? []).map((t: ImportedTerm) => ({
-          main: `${t.personLabel} — ${t.partyLabel ?? "party unknown"}`,
+          main: `${t.personLabel} · ${t.partyLabel ?? "party unknown"}`,
           detail: `${t.startDate ?? "start unknown"} → ${t.endDate ?? "present"}${
             t.startPrecision && t.startPrecision !== "day" ? ` (${t.startPrecision} precision)` : ""
           }`,
@@ -175,7 +175,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
             >
               {preview.resolution.label} ({preview.resolution.qid})
             </a>
-            {preview.resolution.description ? ` — ${preview.resolution.description}` : ""}. If this
+            {preview.resolution.description ? `: ${preview.resolution.description}` : ""}. If this
             is the wrong item, use the QID override above.
           </p>
 
@@ -212,7 +212,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
                     : `Create ${selected.size} draft${selected.size === 1 ? "" : "s"} for review`}
                 </button>
                 <span className="text-[0.8rem] text-ink-faint">
-                  Drafts go to the review queue — nothing publishes until approved.
+                  Drafts go to the review queue; nothing publishes until approved.
                 </span>
               </div>
             </>

@@ -74,7 +74,7 @@ export async function tryAnswer(query: string): Promise<AskAnswer | null> {
             text:
               t.kind === "presidents_rule"
                 ? `President's Rule (${yearOf(t.startDate)} – ${t.endDate ? yearOf(t.endDate) : "present"})`
-                : `${t.cmName} — ${OFFICE[t.kind as keyof typeof OFFICE]}${t.party ? `, ${t.party.name}` : ""} (${yearOf(t.startDate)} – ${t.endDate ? yearOf(t.endDate) : "present"})`,
+                : `${t.cmName}, ${OFFICE[t.kind as keyof typeof OFFICE]}${t.party ? ` (${t.party.name})` : ""}, ${yearOf(t.startDate)} – ${t.endDate ? yearOf(t.endDate) : "present"}`,
             href: t.cmName ? `/person/${personSlug(t.cmName)}` : undefined,
           }));
         return {
@@ -144,7 +144,7 @@ export async function tryAnswer(query: string): Promise<AskAnswer | null> {
     return {
       restated: "Which Chief Ministers became Prime Minister?",
       lines: group
-        ? group.items.map((i) => ({ text: `${i.headline} — ${i.detail}`, href: i.links[0]?.href }))
+        ? group.items.map((i) => ({ text: `${i.headline}: ${i.detail}`, href: i.links[0]?.href }))
         : [{ text: "No recorded name currently holds both a CM term and a PM term in the archive." }],
       method: "Recorded names holding both an approved CM term and an approved PM term (exact-name match).",
       followUp: { label: "More insights →", href: "/insights" },

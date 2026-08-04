@@ -35,8 +35,8 @@ export default async function UserPage({
   for (const r of revisions) counts[r.status] += 1;
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <p className="section-label">Contributor</p>
         <h1 className="mt-1 font-display text-3xl font-semibold tracking-tight text-ink">
           {user.name ?? "Unnamed contributor"}
@@ -51,10 +51,10 @@ export default async function UserPage({
         </p>
       </header>
 
-      <section className="py-7">
+      <section className="py-8">
         <h2 className="section-label">Contribution history</h2>
         <p className="mt-1 text-[0.78rem] text-ink-faint">
-          Every proposal this user has made, public by design — the archive&rsquo;s
+          Every proposal this user has made, public by design. The archive&rsquo;s
           accountability works in both directions.
         </p>
         {revisions.length === 0 ? (

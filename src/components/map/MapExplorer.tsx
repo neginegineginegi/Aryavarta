@@ -127,7 +127,7 @@ export function MapExplorer({ data }: { data: MapData }) {
         key = "__na";
         label = "Not yet formed / n.a.";
         order = 3;
-        line = `Not yet a separate state — established ${life.formedY}`;
+        line = `Not yet a separate state; established ${life.formedY}`;
       } else if (life?.dissolvedY != null && year >= life.dissolvedY) {
         hatch = true;
         color = NA_FILL;

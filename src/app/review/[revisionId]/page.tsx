@@ -22,16 +22,16 @@ const ERROR_MESSAGES: Record<string, string> = {
     "The live entry changed since this proposal was made. Review the differences below and, if the proposal is still correct, approve again with the conflict acknowledged.",
   not_pending: "This revision has already been decided.",
   gone: "The live entry this revision targets no longer exists.",
-  invalid: "The stored payload failed validation — it cannot be applied as-is.",
+  invalid: "The stored payload failed validation and cannot be applied as-is.",
   not_found: "Revision not found.",
-  bad_source: "That source didn't validate — check the URL is a full http(s) link and the title is at least 3 characters.",
+  bad_source: "That source didn't validate. Check that the URL is a full http(s) link and the title is at least 3 characters.",
   duplicate_source: "That URL is already cited on this draft.",
 };
 
 /** Authoritative places to find the citation of record while verifying. */
 const SOURCE_SHELF = [
   {
-    label: "ECI — Statistical Reports (elections)",
+    label: "ECI Statistical Reports (elections)",
     href: "https://old.eci.gov.in/statistical-report/statistical-reports/",
   },
   { label: "Election Commission of India", href: "https://www.eci.gov.in/" },
@@ -70,8 +70,8 @@ export default async function ReviewRevisionPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-5 pb-10">
-      <header className="border-b border-rule py-7">
+    <div className="mx-auto max-w-4xl px-6 pb-12">
+      <header className="border-b border-rule py-9">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/review" className="hover:text-ink">Review queue</Link>
           <span className="mx-1.5">/</span>
@@ -90,7 +90,7 @@ export default async function ReviewRevisionPage({
         )}
         {added && (
           <p className="rounded-sm border border-green-200 bg-green-50 px-3 py-2 text-[0.85rem] text-approved">
-            Source added to the draft — it now appears in the diff below and will publish with
+            Source added to the draft. It now appears in the diff below and will publish with
             the entry on approval.
           </p>
         )}
@@ -134,7 +134,7 @@ export default async function ReviewRevisionPage({
             <h2 className="section-label">Strengthen sources before approving</h2>
             <p className="mt-1 text-[0.8rem] text-ink-muted">
               Imported drafts cite their machine origin (Wikidata/Wikipedia). Verify the facts
-              against an authoritative source and add it here — the published record should cite
+              against an authoritative source and add it here; the published record should cite
               the record of authority, not the scaffolding. Look it up:
               {SOURCE_SHELF.map((s, i) => (
                 <span key={s.href}>
@@ -205,7 +205,7 @@ export default async function ReviewRevisionPage({
                 type="submit"
                 className="rounded-sm bg-approved px-5 py-2 text-[0.88rem] font-medium text-white transition-opacity hover:opacity-85"
               >
-                Approve — publish to live site
+                Approve and publish
               </button>
             </form>
 
@@ -216,7 +216,7 @@ export default async function ReviewRevisionPage({
                 name="reviewNote"
                 required
                 minLength={5}
-                placeholder="Reason (required — shown to the contributor and kept in the public log)"
+                placeholder="Reason (required; shown to the contributor and kept in the public log)"
                 className="min-h-20 w-full rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.85rem] outline-none focus:border-accent"
                 maxLength={1000}
               />
@@ -230,7 +230,7 @@ export default async function ReviewRevisionPage({
           </div>
         ) : (
           <p className="border-t border-rule pt-6 text-[0.85rem] text-ink-muted">
-            This revision has been decided — see the log above. Public view:{" "}
+            This revision has been decided; see the log above. Public view:{" "}
             <Link href={`/revision/${rev.id}`} className="text-accent hover:underline">
               /revision/{rev.id.slice(0, 8)}…
             </Link>
