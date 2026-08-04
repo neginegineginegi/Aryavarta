@@ -5,6 +5,7 @@ import { AuthNav } from "@/components/layout/AuthNav";
 const NAV_LINKS = [
   { href: "/", label: "Map" },
   { href: "/browse", label: "Browse" },
+  { href: "/insights", label: "Insights" },
   { href: "/compare", label: "Compare" },
   { href: "/search", label: "Search" },
   { href: "/contribute", label: "Contribute" },

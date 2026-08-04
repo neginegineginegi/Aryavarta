@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { SUPPORTED_QUESTIONS, tryAnswer } from "@/lib/ask";
 import { searchArchive, type SearchHit } from "@/lib/db/queries/search";
 
 export const metadata: Metadata = { title: "Search" };
@@ -88,7 +89,9 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
-  const results = query ? await searchArchive(query) : null;
+  const [results, answer] = query
+    ? await Promise.all([searchArchive(query), tryAnswer(query)])
+    : [null, null];
 
   return (
     <div className="mx-auto max-w-4xl px-5 pb-10">
@@ -111,6 +114,39 @@ export default async function SearchPage({
           </button>
         </form>
       </header>
+
+      {answer && (
+        <div className="mt-6 rounded-sm border border-rule-dark bg-paper-raised p-5">
+          <p className="section-label">Answer</p>
+          <h2 className="mt-1 font-display text-xl font-semibold text-ink">{answer.restated}</h2>
+          <ul className="mt-3 space-y-1.5">
+            {answer.lines.map((l, i) => (
+              <li key={i} className="text-[0.92rem] text-ink">
+                {l.href ? (
+                  <Link href={l.href} className="underline-offset-2 hover:text-accent hover:underline">
+                    {l.text}
+                  </Link>
+                ) : (
+                  l.text
+                )}
+              </li>
+            ))}
+          </ul>
+          {answer.followUp && (
+            <p className="mt-3">
+              <Link
+                href={answer.followUp.href}
+                className="text-[0.88rem] text-accent underline-offset-2 hover:underline"
+              >
+                {answer.followUp.label}
+              </Link>
+            </p>
+          )}
+          <p className="mt-3 border-t border-rule pt-2 text-[0.72rem] text-ink-faint">
+            How this was answered: {answer.method}
+          </p>
+        </div>
+      )}
 
       {results && (
         <div className="py-6">
@@ -154,10 +190,24 @@ export default async function SearchPage({
       )}
 
       {!results && (
-        <p className="py-8 text-[0.88rem] text-ink-muted">
-          Search covers state names, chief ministers, parties, and the full text of published
-          governance events.
-        </p>
+        <div className="py-8 text-[0.88rem] text-ink-muted">
+          <p>
+            Search covers state names, chief ministers, parties, and the full text of published
+            governance events — or ask a question directly:
+          </p>
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {SUPPORTED_QUESTIONS.map((sq) => (
+              <li key={sq}>
+                <Link
+                  href={`/search?q=${encodeURIComponent(sq)}`}
+                  className="inline-block rounded-sm border border-rule-dark px-2.5 py-1 text-[0.82rem] text-ink hover:border-ink"
+                >
+                  “{sq}”
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </div>
   );
