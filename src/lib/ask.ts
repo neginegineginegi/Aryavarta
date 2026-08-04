@@ -51,7 +51,7 @@ async function governingIn(stateId: string, year: number) {
   );
 }
 
-const OFFICE = { cm: "Chief Minister", pm: "Prime Minister", president: "President" } as const;
+const OFFICE = { cm: "Chief Minister", pm: "Prime Minister", president: "President", governor: "Governor" } as const;
 
 export async function tryAnswer(query: string): Promise<AskAnswer | null> {
   const q = query.trim();
@@ -59,7 +59,7 @@ export async function tryAnswer(query: string): Promise<AskAnswer | null> {
   // -- "who governed <state> in <year>" / "who was CM of <state> in <year>" --
   {
     const m =
-      /^who\s+(?:governed|ruled|led|was(?:\s+the)?\s+(?:cm|chief\s+minister|pm|prime\s+minister|president)(?:\s+of)?)\s+(.+?)\s+in\s+((?:19|20)\d{2})\??$/i.exec(
+      /^who\s+(?:governed|ruled|led|was(?:\s+the)?\s+(?:cm|chief\s+minister|pm|prime\s+minister|president|governor)(?:\s+of)?)\s+(.+?)\s+in\s+((?:19|20)\d{2})\??$/i.exec(
         q,
       ) ?? /^who\s+governed\s+(.+?)\s+in\s+((?:19|20)\d{2})\??$/i.exec(q);
     if (m) {

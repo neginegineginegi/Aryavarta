@@ -28,7 +28,7 @@ export type PersonProfile = {
     termId: string;
     stateId: string;
     stateName: string;
-    kind: "cm" | "presidents_rule" | "pm" | "president";
+    kind: "cm" | "presidents_rule" | "pm" | "president" | "governor";
     partyId: string | null;
     partyName: string | null;
     partyColor: string | null;

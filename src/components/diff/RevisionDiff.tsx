@@ -28,7 +28,15 @@ function displayValue(field: string, value: string | number | null, labels: Labe
     case "type":
       return EVENT_TYPE_LABELS[value as EventType] ?? String(value);
     case "kind":
-      return value === "presidents_rule" ? "President's Rule" : "Chief Minister term";
+      return (
+        {
+          presidents_rule: "President's Rule",
+          cm: "Chief Minister term",
+          pm: "Prime Minister term",
+          president: "President term",
+          governor: "Governor term",
+        }[String(value)] ?? String(value)
+      );
     case "startDate":
     case "endDate":
     case "eventDate":

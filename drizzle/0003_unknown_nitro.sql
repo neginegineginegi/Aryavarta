@@ -1,0 +1,1 @@
+ALTER TYPE "public"."term_kind" ADD VALUE 'governor';

@@ -104,7 +104,7 @@ export type EventPayload = z.infer<typeof eventPayloadSchema>;
 export const termPayloadSchema = z
   .object({
     stateId: z.string().trim().min(2).max(8),
-    kind: z.enum(["cm", "presidents_rule", "pm", "president"]),
+    kind: z.enum(["cm", "presidents_rule", "pm", "president", "governor"]),
     cmName: z.string().trim().min(2).max(150).nullish().transform((v) => (v ? v : null)),
     partyId: z.string().trim().min(2).max(64).nullish().transform((v) => (v ? v : null)),
     startDate: isoDate,
@@ -138,10 +138,14 @@ export const termPayloadSchema = z
         });
       if (!v.partyId)
         ctx.addIssue({ code: "custom", path: ["partyId"], message: "Party is required" });
-    } else if (v.kind === "president") {
+    } else if (v.kind === "president" || v.kind === "governor") {
       if (!v.cmName)
-        ctx.addIssue({ code: "custom", path: ["cmName"], message: "President's name is required" });
-      // Presidents are conventionally shown without a party; allow either.
+        ctx.addIssue({
+          code: "custom",
+          path: ["cmName"],
+          message: `${v.kind === "governor" ? "Governor's" : "President's"} name is required`,
+        });
+      // Presidents and Governors are conventionally shown without party; allow either.
     } else {
       if (v.cmName || v.partyId) {
         ctx.addIssue({

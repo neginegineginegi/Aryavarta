@@ -29,7 +29,9 @@ export function TermForm({
 }) {
   const p = edit?.payload;
   const [stateId, setStateId] = useState(p?.stateId ?? defaultStateId ?? "");
-  const [kind, setKind] = useState<"cm" | "presidents_rule" | "pm" | "president">(p?.kind ?? "cm");
+  const [kind, setKind] = useState<"cm" | "presidents_rule" | "pm" | "president" | "governor">(
+    p?.kind ?? "cm",
+  );
   const [cmName, setCmName] = useState(p?.cmName ?? "");
   const [partyId, setPartyId] = useState(p?.partyId ?? "");
   const [startDate, setStartDate] = useState(p?.startDate ?? "");
@@ -56,13 +58,20 @@ export function TermForm({
     ? kind === "pm" || kind === "president"
       ? kind
       : "pm"
-    : kind === "cm" || kind === "presidents_rule"
+    : kind === "cm" || kind === "presidents_rule" || kind === "governor"
       ? kind
       : "cm";
   const isPR = effectiveKind === "presidents_rule";
-  const isPresident = effectiveKind === "president";
+  // Presidents and Governors: party optional (conventionally non-partisan).
+  const isPresident = effectiveKind === "president" || effectiveKind === "governor";
   const personLabel =
-    effectiveKind === "pm" ? "Prime Minister" : isPresident ? "President" : "Chief Minister";
+    effectiveKind === "pm"
+      ? "Prime Minister"
+      : effectiveKind === "president"
+        ? "President"
+        : effectiveKind === "governor"
+          ? "Governor"
+          : "Chief Minister";
 
   if (result?.ok) return <SubmittedPanel revisionId={result.revisionId} isEdit={!!edit} />;
 
@@ -126,6 +135,7 @@ export function TermForm({
               <>
                 <option value="cm">Chief Minister term</option>
                 <option value="presidents_rule">President&rsquo;s Rule</option>
+                <option value="governor">Governor term</option>
               </>
             )}
           </select>

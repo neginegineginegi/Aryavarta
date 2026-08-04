@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { and, isNotNull, isNull } from "drizzle-orm";
 
+import { LeaderPanel, ModeTabs, PartyPanel, StatePanel } from "@/app/compare/extras";
 import { ComparePicker } from "@/components/compare/ComparePicker";
+import { db } from "@/lib/db";
+import { terms } from "@/lib/db/schema";
+import { getAllParties } from "@/lib/db/queries/party";
+import { personSlug } from "@/lib/db/queries/person";
 import { SeatBar } from "@/components/election/SeatBar";
 import { SeatDeltaTable } from "@/components/election/SeatDeltaTable";
 import { getElectionDetail, type ElectionDetail } from "@/lib/db/queries/election";
@@ -109,12 +115,149 @@ function SidePanel({ detail, events }: { detail: ElectionDetail; events: EventSu
   );
 }
 
+type CompareMode = "elections" | "leaders" | "parties" | "states";
+
+async function ComparisonExtras({
+  mode,
+  a,
+  b,
+}: {
+  mode: Exclude<CompareMode, "elections">;
+  a?: string;
+  b?: string;
+}) {
+  let options: Array<{ value: string; label: string }> = [];
+  if (mode === "leaders") {
+    const rows = await db.query.terms.findMany({
+      where: and(isNull(terms.deletedAt), isNotNull(terms.cmName)),
+      columns: { cmName: true },
+    });
+    const seen = new Map<string, string>();
+    for (const r of rows) if (r.cmName) seen.set(personSlug(r.cmName), r.cmName);
+    options = [...seen.entries()]
+      .map(([value, label]) => ({ value, label }))
+      .sort((x, y) => x.label.localeCompare(y.label));
+  } else if (mode === "parties") {
+    options = (await getAllParties())
+      .filter((p) => !p.isPseudo)
+      .map((p) => ({ value: p.id, label: p.name }));
+  } else {
+    const rows = await db.query.states.findMany({
+      columns: { id: true, name: true, kind: true },
+      orderBy: (s, { asc }) => [asc(s.name)],
+    });
+    options = rows
+      .filter((s) => s.kind !== "union")
+      .map((s) => ({ value: s.id, label: s.name }));
+  }
+
+  const valid = (v?: string) => !!v && options.some((o) => o.value === v);
+  const ready = valid(a) && valid(b) && a !== b;
+  const NOUN = { leaders: "leader", parties: "party", states: "state" }[mode];
+
+  return (
+    <div className="mx-auto max-w-6xl px-5 pb-10">
+      <header className="border-b border-rule py-7">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          Compare
+        </h1>
+        <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
+          Side-by-side, from approved sourced records. Every comparison URL is shareable and
+          citable.
+        </p>
+        <ModeTabs active={mode} />
+      </header>
+
+      <form method="get" action="/compare" className="mt-6 rounded-sm border border-rule bg-paper-raised p-4">
+        <input type="hidden" name="m" value={mode} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+          <label className="flex-1">
+            <span className="section-label mb-1 block">Compare</span>
+            <select
+              name="a"
+              defaultValue={valid(a) ? a : ""}
+              className="w-full rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.88rem]"
+            >
+              <option value="">Select {NOUN}…</option>
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <span className="hidden pb-2 font-display text-xl text-ink-faint sm:block">vs</span>
+          <label className="flex-1">
+            <span className="section-label mb-1 block">With</span>
+            <select
+              name="b"
+              defaultValue={valid(b) ? b : ""}
+              className="w-full rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.88rem]"
+            >
+              <option value="">Select {NOUN}…</option>
+              {options.map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          </label>
+          <button
+            type="submit"
+            className="rounded-sm bg-ink px-5 py-2 text-[0.88rem] font-medium text-paper hover:opacity-85"
+          >
+            Compare
+          </button>
+        </div>
+        {options.length === 0 && (
+          <p className="mt-3 text-[0.82rem] text-ink-muted">
+            Nothing to compare yet in this category — entries appear as data is approved.
+          </p>
+        )}
+      </form>
+
+      {ready && (
+        <div className="flex flex-col gap-5 py-8 lg:flex-row">
+          {mode === "leaders" && (
+            <>
+              <LeaderPanel slug={a!} />
+              <LeaderPanel slug={b!} />
+            </>
+          )}
+          {mode === "parties" && (
+            <>
+              <PartyPanel partyId={a!} />
+              <PartyPanel partyId={b!} />
+            </>
+          )}
+          {mode === "states" && (
+            <>
+              <StatePanel stateId={a!} />
+              <StatePanel stateId={b!} />
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+const MODES: Array<{ key: CompareMode; label: string }> = [
+  { key: "elections", label: "Elections" },
+  { key: "leaders", label: "Leaders" },
+  { key: "parties", label: "Parties" },
+  { key: "states", label: "States" },
+];
+
 export default async function ComparePage({
   searchParams,
 }: {
-  searchParams: Promise<{ a?: string; b?: string }>;
+  searchParams: Promise<{ a?: string; b?: string; m?: string }>;
 }) {
-  const { a, b } = await searchParams;
+  const { a, b, m } = await searchParams;
+  const mode: CompareMode = (MODES.find((x) => x.key === m)?.key ?? "elections") as CompareMode;
+  if (mode !== "elections") {
+    return <ComparisonExtras mode={mode} a={a} b={b} />;
+  }
   const index = await getElectionIndex();
 
   let left: ElectionDetail | null = null;
@@ -146,6 +289,7 @@ export default async function ComparePage({
           each government. Karnataka 2013 vs 2018, or the Union in 2004 vs 2014 — the archive
           becomes an analytical tool.
         </p>
+        <ModeTabs active="elections" />
       </header>
 
       <div className="py-6">

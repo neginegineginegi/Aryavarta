@@ -105,7 +105,7 @@ export async function createTermDrafts(
   stateName: string,
   stateQid: string,
   items: ImportedTerm[],
-  office: "cm" | "pm" | "president" = "cm",
+  office: "cm" | "pm" | "president" | "governor" = "cm",
 ): Promise<DraftOutcome> {
   const botId = await ensureImportBot();
   const accessedOn = new Date().toISOString().slice(0, 10);
@@ -117,8 +117,8 @@ export async function createTermDrafts(
       outcome.skipped.push({ label, reason: "no start date on Wikidata" });
       continue;
     }
-    // CM/PM terms need a party; Presidents are conventionally partyless.
-    if (!item.partyLabel && office !== "president") {
+    // CM/PM terms need a party; Presidents and Governors are conventionally partyless.
+    if (!item.partyLabel && office !== "president" && office !== "governor") {
       outcome.skipped.push({ label, reason: "no party on Wikidata — add manually" });
       continue;
     }

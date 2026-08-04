@@ -29,8 +29,14 @@ const tsvector = customType<{ data: string }>({ dataType: () => "tsvector" });
 export const stateKindEnum = pgEnum("state_kind", ["state", "union_territory", "union"]);
 
 // 'pm' and 'president' are only valid on the 'in' union row (enforced in
-// payload validation), just as cm/presidents_rule are only valid on states.
-export const termKindEnum = pgEnum("term_kind", ["cm", "presidents_rule", "pm", "president"]);
+// payload validation); cm/presidents_rule/governor only on states.
+export const termKindEnum = pgEnum("term_kind", [
+  "cm",
+  "presidents_rule",
+  "pm",
+  "president",
+  "governor",
+]);
 
 export const eventTypeEnum = pgEnum("event_type", [
   "paper_leak",

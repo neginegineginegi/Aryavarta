@@ -10,6 +10,7 @@ const OFFICE_LABEL = {
   cm: "Chief Minister",
   pm: "Prime Minister",
   president: "President",
+  governor: "Governor",
   presidents_rule: "President's Rule",
 } as const;
 

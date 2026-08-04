@@ -16,7 +16,7 @@ export type PartyProfile = {
     termId: string;
     stateId: string;
     stateName: string;
-    kind: "cm" | "presidents_rule" | "pm" | "president";
+    kind: "cm" | "presidents_rule" | "pm" | "president" | "governor";
     cmName: string | null;
     startDate: string;
     endDate: string | null;

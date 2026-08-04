@@ -51,12 +51,16 @@ export default async function StatePage({
   const article = await getStateArticle(stateId);
   if (!article) notFound();
 
-  const { state, terms, elections, events } = article;
+  const { state, terms: allTerms, elections, events } = article;
   const maxYear = new Date().getFullYear();
+  // Governors render in their own section; the CM table and control-timeline
+  // band show heads of government only.
+  const terms = allTerms.filter((t) => t.kind === "cm" || t.kind === "presidents_rule");
+  const governorTerms = allTerms.filter((t) => t.kind === "governor");
 
   // Footnote numbering follows document order: terms, then elections, then events.
   const citations = buildCitationIndex([
-    ...terms.map((t) => t.sources),
+    ...allTerms.map((t) => t.sources),
     ...elections.map((e) => e.sources),
     ...events.map((e) => e.sources),
   ]);
@@ -178,6 +182,42 @@ export default async function StatePage({
           </table>
         )}
       </section>
+
+      {/* Governors */}
+      {governorTerms.length > 0 && (
+        <section className="border-b border-rule py-7">
+          <h2 className="section-label">Governors</h2>
+          <table className="mt-4 w-full max-w-2xl text-left text-[0.88rem]">
+            <thead>
+              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+                <th className="py-2 pr-4 font-medium">Period</th>
+                <th className="py-2 pr-4 font-medium">Governor</th>
+                <th className="py-2 font-medium sr-only">Sources</th>
+              </tr>
+            </thead>
+            <tbody>
+              {governorTerms.map((t) => (
+                <tr key={t.id} className="border-b border-rule align-baseline">
+                  <td className="py-2.5 pr-4 whitespace-nowrap tabular-nums text-ink-muted">
+                    {yearOf(t.startDate)} – {t.endDate ? yearOf(t.endDate) : "present"}
+                  </td>
+                  <td className="py-2.5 pr-4">
+                    <Link
+                      href={`/person/${personSlug(t.cmName ?? "")}`}
+                      className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+                    >
+                      {t.cmName}
+                    </Link>
+                  </td>
+                  <td className="py-2.5 text-right whitespace-nowrap">
+                    <CiteMarks sources={t.sources} numberOf={citations.numberOf} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </section>
+      )}
 
       {/* Elections */}
       <section className="border-b border-rule py-7">

@@ -20,7 +20,7 @@ export type SourceRef = {
 
 export type TermWithSources = {
   id: string;
-  kind: "cm" | "presidents_rule" | "pm" | "president";
+  kind: "cm" | "presidents_rule" | "pm" | "president" | "governor";
   cmName: string | null;
   partyId: string | null;
   partyName: string | null;

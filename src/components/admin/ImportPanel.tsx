@@ -125,6 +125,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
             ) : (
               <>
                 <option value="cm_terms">Chief Minister history</option>
+                <option value="heads_of_state">Governor history</option>
                 <option value="elections">Assembly elections</option>
               </>
             )}

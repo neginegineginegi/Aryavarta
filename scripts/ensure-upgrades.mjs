@@ -36,6 +36,8 @@ const STATEMENTS = [
   `INSERT INTO states (id, name, kind, formed_on, dissolved_on, has_geometry)
    VALUES ('in', 'India (Union)', 'union', '1950-01-26', NULL, false)
    ON CONFLICT (id) DO NOTHING`,
+  // --- upgrade 3: governors -------------------------------------------------
+  `ALTER TYPE "public"."term_kind" ADD VALUE IF NOT EXISTS 'governor'`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

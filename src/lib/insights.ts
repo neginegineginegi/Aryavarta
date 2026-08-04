@@ -12,7 +12,7 @@ export type InsightTermRow = {
   id: string;
   stateId: string;
   stateName: string;
-  kind: "cm" | "presidents_rule" | "pm" | "president";
+  kind: "cm" | "presidents_rule" | "pm" | "president" | "governor";
   cmName: string | null;
   partyId: string | null;
   partyName: string | null;

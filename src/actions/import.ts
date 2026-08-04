@@ -61,9 +61,7 @@ export async function previewImport(input: {
       resolution = candidates[0];
     }
 
-    if (input.kind === "heads_of_state" && state.id !== "in") {
-      return { ok: false, error: "President history applies only to India (Union)." };
-    }
+    // heads_of_state (P35) = President on India's item, Governor on a state's.
     if (input.kind === "cm_terms" || input.kind === "heads_of_state") {
       const terms = await fetchHeadTerms(
         resolution.qid,
@@ -109,7 +107,13 @@ export async function commitImport(input: {
       const items = (input.terms ?? []).slice(0, MAX_BATCH);
       if (items.length === 0) return { ok: false, error: "Nothing selected." };
       const office =
-        input.kind === "heads_of_state" ? "president" : input.stateId === "in" ? "pm" : "cm";
+        input.kind === "heads_of_state"
+          ? input.stateId === "in"
+            ? "president"
+            : "governor"
+          : input.stateId === "in"
+            ? "pm"
+            : "cm";
       const outcome = await createTermDrafts(
         input.stateId,
         state.name,
