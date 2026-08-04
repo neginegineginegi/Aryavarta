@@ -20,8 +20,8 @@
   --color-nodata: #ece7db; /* map fill when no term covers the year */
   --color-pr: #8a8a8a; /* President's Rule */
 
-  --font-display: var(--font-fraunces), "Georgia", serif;
-  --font-body: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-garamond), "Georgia", serif;
+  --font-body: var(--font-garamond), "Georgia", serif;
 }
 
 html {
@@ -32,8 +32,15 @@ html {
 }
 
 body {
-  font-size: 0.9375rem;
-  line-height: 1.65;
+  /* Garamond-family faces have a small x-height — set slightly larger than
+     a sans would be, with book-like leading. */
+  font-size: 1.0625rem;
+  line-height: 1.55;
+}
+
+/* Old-style faces need real tabular figures in data tables and year readouts. */
+.tabular-nums {
+  font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
 ::selection {

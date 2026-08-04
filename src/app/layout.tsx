@@ -1,18 +1,17 @@
 import type { Metadata } from "next";
-import { Fraunces, Inter } from "next/font/google";
+import { EB_Garamond } from "next/font/google";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 
 import "./globals.css";
 
-const fraunces = Fraunces({
-  variable: "--font-fraunces",
-  subsets: ["latin"],
-});
-
-const inter = Inter({
-  variable: "--font-inter",
+// EB Garamond: the open-source relative of Sabon (both are Garamond
+// revivals) — set site-wide for a book-like reading experience.
+// To use licensed Sabon instead: place the purchased .woff2 files under
+// src/fonts/ and swap this for next/font/local — ask Claude to wire it.
+const garamond = EB_Garamond({
+  variable: "--font-garamond",
   subsets: ["latin"],
 });
 
@@ -41,7 +40,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${fraunces.variable} ${inter.variable} min-h-screen flex flex-col`}>
+      <body className={`${garamond.variable} min-h-screen flex flex-col`}>
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />
