@@ -21,7 +21,9 @@ export function Footer() {
       <div className="mx-auto max-w-6xl px-6 py-10 text-[0.82rem] leading-relaxed text-ink-muted">
         <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
           <div className="max-w-md">
-            <p className="font-display text-lg font-semibold text-ink">Abhilekh</p>
+            <p lang="sa" className="font-brand text-lg text-ink">
+              अभिलेखः
+            </p>
             <p className="mt-2">
               A public, crowdsourced record of who governed India, state by state and year
               by year. Every fact cites a source, every edit passes review, and the full
