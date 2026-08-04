@@ -1,0 +1,138 @@
+import type { Metadata } from "next";
+import Link from "next/link";
+
+import { getAllParties } from "@/lib/db/queries/party";
+import { getElectionIndex } from "@/lib/db/queries/compare";
+import { db } from "@/lib/db";
+import { formatDate } from "@/lib/format";
+
+export const metadata: Metadata = {
+  title: "Browse",
+  description:
+    "Browse the archive by state, union territory, party, year, or election.",
+};
+
+export const revalidate = 3600;
+
+export default async function BrowsePage() {
+  const [states, parties, electionIndex] = await Promise.all([
+    db.query.states.findMany({ orderBy: (s, { asc }) => [asc(s.name)] }),
+    getAllParties(),
+    getElectionIndex(),
+  ]);
+
+  const realStates = states.filter((s) => s.kind !== "union");
+  const currentYear = new Date().getFullYear();
+  const decades: number[] = [];
+  for (let y = 1950; y <= currentYear; y += 10) decades.push(y);
+  const recentElections = electionIndex.slice(-12).reverse();
+
+  return (
+    <div className="mx-auto max-w-5xl px-5 pb-10">
+      <header className="border-b border-rule py-7">
+        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
+          Browse the archive
+        </h1>
+        <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
+          Every entity interlinks: states to years to elections to parties to people — pick any
+          thread and follow it.
+        </p>
+      </header>
+
+      <section className="border-b border-rule py-7">
+        <h2 className="section-label">Union</h2>
+        <p className="mt-2">
+          <Link href="/union" className="text-accent underline-offset-2 hover:underline">
+            Union Government of India →
+          </Link>{" "}
+          <span className="text-[0.82rem] text-ink-faint">
+            Prime Ministers, Presidents, Lok Sabha elections
+          </span>
+        </p>
+      </section>
+
+      <section className="border-b border-rule py-7">
+        <h2 className="section-label">States &amp; Union Territories</h2>
+        <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9rem] sm:grid-cols-3 md:grid-cols-4">
+          {realStates.map((s) => (
+            <li key={s.id}>
+              <Link
+                href={`/state/${s.id}`}
+                className={`underline-offset-2 hover:text-accent hover:underline ${s.dissolvedOn ? "text-ink-faint line-through decoration-ink-faint/40" : "text-ink"}`}
+              >
+                {s.name}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="border-b border-rule py-7">
+        <h2 className="section-label">Parties</h2>
+        {parties.length === 0 ? (
+          <p className="mt-3 text-[0.85rem] text-ink-muted">No parties recorded yet.</p>
+        ) : (
+          <ul className="mt-3 flex flex-wrap gap-2">
+            {parties.map((p) => (
+              <li key={p.id}>
+                <Link
+                  href={`/party/${p.id}`}
+                  className="inline-flex items-center gap-1.5 rounded-sm border border-rule-dark px-2.5 py-1 text-[0.85rem] text-ink hover:border-ink"
+                >
+                  <span
+                    aria-hidden
+                    className="h-2.5 w-2.5 rounded-[2px] border border-black/10"
+                    style={{ backgroundColor: p.color }}
+                  />
+                  {p.abbreviation ?? p.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="border-b border-rule py-7">
+        <h2 className="section-label">By year</h2>
+        <p className="mt-1 text-[0.8rem] text-ink-faint">
+          Opens the map at that year — scrub from there.
+        </p>
+        <ul className="mt-3 flex flex-wrap gap-2 tabular-nums">
+          {decades.map((y) => (
+            <li key={y}>
+              <Link
+                href={`/?y=${Math.min(y, currentYear)}`}
+                className="inline-block rounded-sm border border-rule-dark px-2.5 py-1 text-[0.85rem] text-ink hover:border-ink"
+              >
+                {y}s
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+
+      <section className="py-7">
+        <h2 className="section-label">Recent elections in the archive</h2>
+        {recentElections.length === 0 ? (
+          <p className="mt-3 text-[0.85rem] text-ink-muted">
+            No elections recorded yet — they appear here as they are approved.
+          </p>
+        ) : (
+          <ul className="mt-3 space-y-1.5 text-[0.9rem]">
+            {recentElections.map((e) => (
+              <li key={e.id}>
+                <Link
+                  href={`/election/${e.id}`}
+                  className="text-accent underline-offset-2 hover:underline"
+                >
+                  {e.stateName} — {formatDate(e.electionDate)}
+                  {e.scope === "lok_sabha" ? " (Lok Sabha)" : ""}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}

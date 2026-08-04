@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { personSlug } from "@/lib/db/queries/person";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
@@ -59,12 +60,21 @@ function TermTable({
               </Link>
             </td>
             <td className="py-2.5 pr-4">
-              <span className="font-medium text-ink">{t.cmName}</span>
+              <Link
+                href={`/person/${personSlug(t.cmName ?? "")}`}
+                className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+              >
+                {t.cmName}
+              </Link>
               {t.notes ? <span className="block text-[0.8rem] text-ink-faint">{t.notes}</span> : null}
             </td>
             {showParty && (
               <td className="py-2.5 pr-4">
-                {t.partyName ? (
+                {t.partyName && t.partyId ? (
+                  <Link href={`/party/${t.partyId}`} className="hover:underline">
+                    <PartyTag name={t.partyName} abbreviation={t.partyAbbreviation} color={t.partyColor} />
+                  </Link>
+                ) : t.partyName ? (
                   <PartyTag name={t.partyName} abbreviation={t.partyAbbreviation} color={t.partyColor} />
                 ) : (
                   <span className="text-ink-faint">—</span>

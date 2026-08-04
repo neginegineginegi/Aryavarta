@@ -67,7 +67,12 @@ function HitRow({ hit }: { hit: SearchHit }) {
   return (
     <li className="py-3">
       <div className="flex flex-wrap items-baseline gap-x-3">
-        <span className="font-medium text-ink">{hit.label}</span>
+        <Link
+          href={`/party/${hit.id}`}
+          className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+        >
+          {hit.label}
+        </Link>
         <span className="text-[0.78rem] text-ink-faint">
           Party{hit.extra ? ` · ${hit.extra}` : ""}
         </span>

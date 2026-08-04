@@ -6,6 +6,7 @@ import { TimelineBand } from "@/components/state/TimelineBand";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
+import { personSlug } from "@/lib/db/queries/person";
 import { getAllStateIds, getStateArticle } from "@/lib/db/queries/state";
 import {
   EVENT_TYPE_LABELS,
@@ -139,7 +140,12 @@ export default async function StatePage({
                     {t.kind === "presidents_rule" ? (
                       <span className="italic text-ink-muted">President&rsquo;s Rule</span>
                     ) : (
-                      <span className="font-medium text-ink">{t.cmName}</span>
+                      <Link
+                        href={`/person/${personSlug(t.cmName ?? "")}`}
+                        className="font-medium text-ink underline-offset-2 hover:text-accent hover:underline"
+                      >
+                        {t.cmName}
+                      </Link>
                     )}
                     {t.notes ? (
                       <span className="block text-[0.8rem] text-ink-faint">{t.notes}</span>
@@ -148,6 +154,10 @@ export default async function StatePage({
                   <td className="py-2.5 pr-4">
                     {t.kind === "presidents_rule" ? (
                       <span className="text-ink-faint">—</span>
+                    ) : t.partyId ? (
+                      <Link href={`/party/${t.partyId}`} className="hover:underline">
+                        <PartyTag name={t.partyName} abbreviation={t.partyAbbreviation} color={t.partyColor} />
+                      </Link>
                     ) : (
                       <PartyTag name={t.partyName} abbreviation={t.partyAbbreviation} color={t.partyColor} />
                     )}
