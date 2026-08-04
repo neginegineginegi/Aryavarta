@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { approveRevisionAction, rejectRevisionAction } from "@/actions/review";
+import {
+  amendRevisionSourcesAction,
+  approveRevisionAction,
+  rejectRevisionAction,
+} from "@/actions/review";
 import { RevisionDiff } from "@/components/diff/RevisionDiff";
 import { RevisionMeta } from "@/components/diff/RevisionMeta";
 import { requireRole } from "@/lib/authz";
@@ -20,18 +24,31 @@ const ERROR_MESSAGES: Record<string, string> = {
   gone: "The live entry this revision targets no longer exists.",
   invalid: "The stored payload failed validation — it cannot be applied as-is.",
   not_found: "Revision not found.",
+  bad_source: "That source didn't validate — check the URL is a full http(s) link and the title is at least 3 characters.",
+  duplicate_source: "That URL is already cited on this draft.",
 };
+
+/** Authoritative places to find the citation of record while verifying. */
+const SOURCE_SHELF = [
+  {
+    label: "ECI — Statistical Reports (elections)",
+    href: "https://old.eci.gov.in/statistical-report/statistical-reports/",
+  },
+  { label: "Election Commission of India", href: "https://www.eci.gov.in/" },
+  { label: "eGazette of India", href: "https://egazette.gov.in/" },
+  { label: "Legislative Assembly websites (via NIC)", href: "https://legislativebodiesofindia.nic.in/" },
+];
 
 export default async function ReviewRevisionPage({
   params,
   searchParams,
 }: {
   params: Promise<{ revisionId: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; added?: string }>;
 }) {
   await requireRole("moderator");
   const { revisionId } = await params;
-  const { error } = await searchParams;
+  const { error, added } = await searchParams;
 
   const rev = await getRevisionDetail(revisionId);
   if (!rev) notFound();
@@ -71,6 +88,12 @@ export default async function ReviewRevisionPage({
             {ERROR_MESSAGES[error] ?? "Something went wrong."}
           </p>
         )}
+        {added && (
+          <p className="rounded-sm border border-green-200 bg-green-50 px-3 py-2 text-[0.85rem] text-approved">
+            Source added to the draft — it now appears in the diff below and will publish with
+            the entry on approval.
+          </p>
+        )}
 
         <RevisionMeta rev={rev} />
 
@@ -105,6 +128,60 @@ export default async function ReviewRevisionPage({
             </Link>
           </p>
         )}
+
+        {rev.status === "pending" && rev.afterData ? (
+          <div className="rounded-sm border border-rule bg-paper-sunken/50 p-4">
+            <h2 className="section-label">Strengthen sources before approving</h2>
+            <p className="mt-1 text-[0.8rem] text-ink-muted">
+              Imported drafts cite their machine origin (Wikidata/Wikipedia). Verify the facts
+              against an authoritative source and add it here — the published record should cite
+              the record of authority, not the scaffolding. Look it up:
+              {SOURCE_SHELF.map((s, i) => (
+                <span key={s.href}>
+                  {i === 0 ? " " : " · "}
+                  <a
+                    href={s.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-accent underline-offset-2 hover:underline"
+                  >
+                    {s.label}
+                  </a>
+                </span>
+              ))}
+            </p>
+            <form action={amendRevisionSourcesAction} className="mt-3 grid gap-2 sm:grid-cols-[2fr_2fr_1fr_auto]">
+              <input type="hidden" name="revisionId" value={rev.id} />
+              <input
+                name="title"
+                required
+                minLength={3}
+                maxLength={300}
+                placeholder="Source title (e.g. ECI Statistical Report, General Election to Legislative Assembly …)"
+                className="rounded-sm border border-rule-dark bg-paper-raised px-3 py-1.5 text-[0.85rem] outline-none focus:border-accent"
+              />
+              <input
+                name="url"
+                type="url"
+                required
+                placeholder="https://…"
+                className="rounded-sm border border-rule-dark bg-paper-raised px-3 py-1.5 text-[0.85rem] outline-none focus:border-accent"
+              />
+              <input
+                name="publisher"
+                placeholder="Publisher"
+                maxLength={200}
+                className="rounded-sm border border-rule-dark bg-paper-raised px-3 py-1.5 text-[0.85rem] outline-none focus:border-accent"
+              />
+              <button
+                type="submit"
+                className="rounded-sm border border-rule-dark px-3 py-1.5 text-[0.85rem] text-ink hover:border-ink"
+              >
+                Add source
+              </button>
+            </form>
+          </div>
+        ) : null}
 
         {rev.status === "pending" ? (
           <div className="grid gap-6 border-t border-rule pt-6 sm:grid-cols-2">
