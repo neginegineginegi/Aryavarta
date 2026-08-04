@@ -185,8 +185,19 @@ export default async function StatePage({
                 <div key={e.id}>
                   <div className="flex flex-wrap items-baseline gap-x-3">
                     <h3 className="font-display text-lg font-semibold text-ink">
-                      {formatDate(e.electionDate)}
+                      <Link
+                        href={`/election/${e.id}`}
+                        className="underline-offset-4 hover:text-accent hover:underline"
+                      >
+                        {formatDate(e.electionDate)}
+                      </Link>
                     </h3>
+                    <Link
+                      href={`/election/${e.id}`}
+                      className="text-[0.78rem] text-accent underline-offset-2 hover:underline"
+                    >
+                      dashboard →
+                    </Link>
                     <span className="text-[0.8rem] text-ink-faint">
                       {e.totalSeats ? `${formatNumber(e.totalSeats)} seats` : null}
                       {e.turnoutPercent ? ` · ${e.turnoutPercent}% turnout` : null}

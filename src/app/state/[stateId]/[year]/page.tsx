@@ -157,10 +157,10 @@ export default async function StateYearPage({
                   <p className="mt-0.5 max-w-2xl text-ink-muted">{e.resultSummary}</p>
                 ) : null}
                 <Link
-                  href={`/state/${state.id}#elections`}
+                  href={`/election/${e.id}`}
                   className="text-[0.82rem] text-accent underline-offset-2 hover:underline"
                 >
-                  Full results on the state page →
+                  Full election dashboard →
                 </Link>
               </li>
             ))}

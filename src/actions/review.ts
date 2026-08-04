@@ -18,6 +18,7 @@ function revalidateFor(rev: ApprovedRevision) {
   updateTag(tags.state(rev.stateId));
   if (rev.entityType === "term") updateTag(tags.mapData);
   if (rev.entityType === "event") updateTag(tags.event(rev.entityId));
+  if (rev.entityType === "election") updateTag(tags.election(rev.entityId));
 }
 
 /**

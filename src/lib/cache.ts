@@ -6,4 +6,5 @@ export const tags = {
   mapData: "map-data",
   state: (stateId: string) => `state:${stateId}`,
   event: (eventId: string) => `event:${eventId}`,
+  election: (electionId: string) => `election:${electionId}`,
 } as const;
