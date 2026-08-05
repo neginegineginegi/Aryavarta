@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { notFound } from "next/navigation";
 
 import {
@@ -201,12 +203,12 @@ export default async function ReviewRevisionPage({
                   the current live entry.
                 </label>
               )}
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Publishing…"
                 className="rounded-sm bg-approved px-5 py-2 text-[0.88rem] font-medium text-white transition-opacity hover:opacity-85"
               >
                 Approve and publish
-              </button>
+              </SubmitButton>
             </form>
 
             <form action={rejectRevisionAction} className="space-y-3">
@@ -220,12 +222,12 @@ export default async function ReviewRevisionPage({
                 className="min-h-20 w-full rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.85rem] outline-none focus:border-accent"
                 maxLength={1000}
               />
-              <button
-                type="submit"
+              <SubmitButton
+                pendingLabel="Rejecting…"
                 className="rounded-sm bg-danger px-5 py-2 text-[0.88rem] font-medium text-white transition-opacity hover:opacity-85"
               >
                 Reject
-              </button>
+              </SubmitButton>
             </form>
           </div>
         ) : (

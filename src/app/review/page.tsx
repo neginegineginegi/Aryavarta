@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { approveRevisionAction } from "@/actions/review";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 import { requireRole } from "@/lib/authz";
 import { getPendingQueue } from "@/lib/db/queries/revisions";
 import { db } from "@/lib/db";
@@ -119,12 +120,12 @@ export default async function ReviewQueuePage({
                     name="next"
                     value={stateFilter ? `/review?state=${stateFilter}` : "/review"}
                   />
-                  <button
-                    type="submit"
+                  <SubmitButton
+                    pendingLabel="Publishing…"
                     className="rounded-sm bg-approved px-2.5 py-1 font-mono text-[0.68rem] font-bold text-white transition-opacity hover:opacity-85"
                   >
                     Approve
-                  </button>
+                  </SubmitButton>
                 </form>
               </div>
             </li>

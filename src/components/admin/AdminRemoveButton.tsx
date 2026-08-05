@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { adminRemoveEntryAction } from "@/actions/admin-remove";
+import { SubmitButton } from "@/components/ui/SubmitButton";
 
 // One session fetch per page load, shared by every button instance (a state
 // page can render dozens of rows). Public pages stay static: the session is
@@ -63,13 +64,12 @@ export function AdminRemoveButton({
       <input type="hidden" name="entityType" value={entityType} />
       <input type="hidden" name="entityId" value={entityId} />
       <input type="hidden" name="next" value={pathname} />
-      <button
-        type="submit"
-        title="Admin: remove this entry (publishes a removal revision)"
+      <SubmitButton
+        pendingLabel="removing…"
         className="font-mono text-[0.66rem] text-danger underline-offset-2 opacity-70 hover:opacity-100 hover:underline"
       >
         remove
-      </button>
+      </SubmitButton>
     </form>
   );
 }
