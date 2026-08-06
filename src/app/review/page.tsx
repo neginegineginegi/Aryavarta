@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { approveRevisionAction } from "@/actions/review";
+import { BulkApproveButton } from "@/components/admin/BulkApproveButton";
 import { SubmitButton } from "@/components/ui/SubmitButton";
 import { requireRole } from "@/lib/authz";
 import { getPendingQueue } from "@/lib/db/queries/revisions";
@@ -9,13 +10,16 @@ import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Review queue" };
 
+// Bulk approval processes up to 50 drafts in one request; give it room.
+export const maxDuration = 60;
+
 export default async function ReviewQueuePage({
   searchParams,
 }: {
-  searchParams: Promise<{ state?: string; done?: string }>;
+  searchParams: Promise<{ state?: string; done?: string; bulk?: string }>;
 }) {
-  await requireRole("moderator");
-  const { state: stateFilter, done } = await searchParams;
+  const viewer = await requireRole("moderator");
+  const { state: stateFilter, done, bulk } = await searchParams;
 
   const [queue, states] = await Promise.all([
     getPendingQueue(stateFilter),
@@ -45,6 +49,17 @@ export default async function ReviewQueuePage({
             Revision {done}.
           </p>
         )}
+        {bulk && (() => {
+          const [a, sk, rem] = bulk.split(".").map(Number);
+          return (
+            <p className="mt-3 rounded-sm border border-green-200 bg-green-50 px-3 py-2 text-[0.85rem] text-approved">
+              Bulk approval: {a} published{sk ? `, ${sk} skipped (need individual review)` : ""}.
+              {rem > 0
+                ? ` ${rem} imported draft${rem === 1 ? "" : "s"} still queued; click the button again to continue.`
+                : " No imported drafts remain."}
+            </p>
+          );
+        })()}
       </header>
 
       <div className="flex flex-wrap gap-1.5 border-b border-rule py-4 text-[0.8rem]">
@@ -64,6 +79,20 @@ export default async function ReviewQueuePage({
           </Link>
         ))}
       </div>
+
+      {viewer.role === "admin" && queue.some((r) => r.origin === "import") && (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-rule py-4">
+          <p className="text-[0.85rem] text-ink-muted">
+            {queue.filter((r) => r.origin === "import").length} of the pending submissions are
+            imported drafts from your own data sheets. Community submissions are excluded from
+            bulk approval and always reviewed individually.
+          </p>
+          <BulkApproveButton
+            stateFilter={stateFilter}
+            importCount={queue.filter((r) => r.origin === "import").length}
+          />
+        </div>
+      )}
 
       {queue.length === 0 ? (
         <p className="py-10 text-center text-[0.9rem] text-ink-muted">

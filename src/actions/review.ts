@@ -122,6 +122,76 @@ export async function amendRevisionSourcesAction(formData: FormData): Promise<vo
   redirect(`/review/${revisionId}?added=1`);
 }
 
+/**
+ * Admin-only mass approval of IMPORTED drafts (never community submissions).
+ * Processes up to 50 per invocation, oldest first, so one click can never
+ * outlive the serverless time budget; the queue banner reports what remains
+ * and the button is clicked again. Conflicts/validation failures are skipped
+ * and stay in the queue for individual review.
+ */
+export async function bulkApproveImportsAction(formData: FormData): Promise<void> {
+  const stateFilter = String(formData.get("state") ?? "");
+  const CHUNK = 50;
+
+  let reviewer;
+  try {
+    reviewer = await requireRole("admin");
+  } catch (e) {
+    if (e instanceof AuthzError) redirect("/login?next=/review");
+    throw e;
+  }
+
+  const { db } = await import("@/lib/db");
+  const { revisions } = await import("@/lib/db/schema");
+  const { and, asc, eq, count } = await import("drizzle-orm");
+
+  const scope = (extra: ReturnType<typeof eq>[]) =>
+    and(
+      eq(revisions.status, "pending"),
+      eq(revisions.origin, "import"),
+      ...(stateFilter ? [eq(revisions.stateId, stateFilter)] : []),
+      ...extra,
+    );
+
+  const batch = await db
+    .select({ id: revisions.id })
+    .from(revisions)
+    .where(scope([]))
+    .orderBy(asc(revisions.createdAt))
+    .limit(CHUNK);
+
+  let approved = 0;
+  let skipped = 0;
+  const tagsToBump = new Set<string>();
+  for (const { id } of batch) {
+    try {
+      const rev = await applyApprove({
+        revisionId: id,
+        reviewerId: reviewer.id,
+        reviewNote: "Bulk-approved imported batch.",
+        acknowledgeConflict: false,
+      });
+      approved++;
+      tagsToBump.add(tags.state(rev.stateId));
+      if (rev.entityType === "term") tagsToBump.add(tags.mapData);
+      if (rev.entityType === "event") tagsToBump.add(tags.event(rev.entityId));
+      if (rev.entityType === "election") tagsToBump.add(tags.election(rev.entityId));
+    } catch (e) {
+      if (e instanceof ApplyError) {
+        skipped++;
+        continue;
+      }
+      throw e;
+    }
+  }
+  for (const t of tagsToBump) updateTag(t);
+
+  const [{ n: remaining }] = await db.select({ n: count() }).from(revisions).where(scope([]));
+
+  const base = stateFilter ? `/review?state=${stateFilter}&` : "/review?";
+  redirect(`${base}bulk=${approved}.${skipped}.${remaining}`);
+}
+
 export async function rejectRevisionAction(formData: FormData): Promise<void> {
   const revisionId = String(formData.get("revisionId") ?? "");
   const reviewNote = String(formData.get("reviewNote") ?? "");
