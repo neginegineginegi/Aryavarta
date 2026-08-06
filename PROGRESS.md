@@ -36,6 +36,13 @@ project package.json. After any DB reseed: `rm -rf .next` (stale data cache serv
 merge --ff-only <branch> && git push` → push feature branch too. Schema changes go in
 `scripts/ensure-upgrades.mjs` (append-only, idempotent; runs during Vercel build).
 
+Product-evolution increment (from the user's PRODUCT EVOLUTION doc): event taxonomy widened
+to 17 types (upgrade 4), Development Lens tables + state-page section (upgrade 5; admin-curated
+like parties, every value carries source + verified date, NEVER scores governments), two new
+insight groups (average turnout by state, government stability), ARCHITECTURE.md (records the
+Phase 3 live-mode plug-in design: provisional-results flag, feed bot, historical context from
+existing queries), docs/DATA_FORMAT.md (durable CSV spec incl. indicators sheets).
+
 ## 2. Open TODOs (priority order)
 
 1. **Redesign sign-off** — user hasn't reacted to the shipped redesign yet; fix whatever page

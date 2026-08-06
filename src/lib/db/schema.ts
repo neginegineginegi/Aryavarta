@@ -14,6 +14,7 @@ import {
   smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -45,6 +46,18 @@ export const eventTypeEnum = pgEnum("event_type", [
   "policy_failure",
   "communal_incident",
   "infrastructure_failure",
+  // Political-context taxonomy (additive; values below were appended after
+  // launch, so keep them AFTER the original seven and never reorder).
+  "cabinet_change",
+  "legislation",
+  "constitutional_amendment",
+  "court_judgment",
+  "coalition_change",
+  "welfare_scheme",
+  "infrastructure_project",
+  "natural_disaster",
+  "administrative_reform",
+  "international_agreement",
   "other",
 ]);
 
@@ -111,6 +124,48 @@ export const parties = pgTable(
     ),
   },
   (t) => [index("parties_search_idx").using("gin", t.searchTsv)],
+);
+
+// ---------------------------------------------------------------------------
+// Development Lens: sourced factual indicators, never scores.
+//
+// Curated like `parties` (admin-managed, not revision-managed): values arrive
+// in bulk from statistical publications, and each row carries its own source,
+// reporting period, and verification date, which is the trust surface. The
+// UI presents series neutrally and never ranks or grades governments.
+// ---------------------------------------------------------------------------
+
+export const indicators = pgTable("indicators", {
+  id: text("id").primaryKey(), // slug, e.g. 'literacy-rate'
+  name: text("name").notNull().unique(), // 'Literacy rate'
+  unit: text("unit").notNull(), // '%', '₹ crore', 'per 1,000 people'
+  category: text("category").notNull(), // 'Economy', 'Education', 'Health', ...
+  methodology: text("methodology").notNull(), // how the number is defined/collected
+  displayOrder: smallint("display_order").notNull().default(100),
+});
+
+export const indicatorValues = pgTable(
+  "indicator_values",
+  {
+    id: uuid("id").primaryKey(), // UUIDv7, generated app-side
+    indicatorId: text("indicator_id")
+      .notNull()
+      .references(() => indicators.id),
+    stateId: text("state_id")
+      .notNull()
+      .references(() => states.id),
+    year: smallint("year").notNull(), // reporting year the value describes
+    value: numeric("value").notNull(),
+    // Trust surface: every value names where it came from.
+    sourceTitle: text("source_title").notNull(),
+    sourceUrl: text("source_url").notNull(),
+    reportingPeriod: text("reporting_period"), // e.g. 'FY 2021-22', 'Census 2011'
+    verifiedOn: date("verified_on").notNull(), // when an admin last checked it
+  },
+  (t) => [
+    uniqueIndex("indicator_values_series_idx").on(t.indicatorId, t.stateId, t.year),
+    index("indicator_values_state_idx").on(t.stateId),
+  ],
 );
 
 // ---------------------------------------------------------------------------

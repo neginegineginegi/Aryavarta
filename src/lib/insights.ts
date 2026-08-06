@@ -312,5 +312,74 @@ export function computeInsights(
     }
   }
 
+  // --- Average recorded turnout by state ------------------------------------
+  {
+    const byState = new Map<string, { stateId: string; stateName: string; sum: number; n: number }>();
+    for (const e of elections) {
+      if (e.turnoutPercent == null) continue;
+      const t = Number(e.turnoutPercent);
+      if (!Number.isFinite(t)) continue;
+      const cur = byState.get(e.stateId) ?? { stateId: e.stateId, stateName: e.stateName, sum: 0, n: 0 };
+      cur.sum += t;
+      cur.n += 1;
+      byState.set(e.stateId, cur);
+    }
+    const ranked = [...byState.values()]
+      .filter((s) => s.n >= 2)
+      .map((s) => ({ ...s, avg: s.sum / s.n }))
+      .sort((a, b) => b.avg - a.avg);
+    if (ranked.length >= 2) {
+      const top = ranked.slice(0, 3);
+      const bottom = ranked.slice(-2).reverse();
+      groups.push({
+        key: "avg-turnout",
+        title: "Average turnout by state",
+        method:
+          "Mean of recorded turnout percentages across all approved elections for the state; states with fewer than two recorded turnouts are excluded.",
+        items: [...top, ...bottom.filter((b) => !top.some((t) => t.stateId === b.stateId))].map(
+          (s) => ({
+            headline: `${s.stateName} · ${s.avg.toFixed(1)}% average`,
+            detail: `${s.n} election${s.n === 1 ? "" : "s"} with recorded turnout`,
+            links: [{ label: s.stateName, href: `/state/${s.stateId}` }],
+          }),
+        ),
+      });
+    }
+  }
+
+  // --- Government stability (average completed term length) -----------------
+  {
+    const byState = new Map<string, { stateId: string; stateName: string; sum: number; n: number }>();
+    for (const t of cmTerms) {
+      if (!t.endDate) continue; // ongoing terms would bias the average downward
+      const cur = byState.get(t.stateId) ?? { stateId: t.stateId, stateName: t.stateName, sum: 0, n: 0 };
+      cur.sum += daysBetween(t.startDate, t.endDate, today);
+      cur.n += 1;
+      byState.set(t.stateId, cur);
+    }
+    const ranked = [...byState.values()]
+      .filter((s) => s.n >= 3)
+      .map((s) => ({ ...s, avg: s.sum / s.n }))
+      .sort((a, b) => b.avg - a.avg);
+    if (ranked.length >= 2) {
+      const mostStable = ranked.slice(0, 3);
+      const leastStable = ranked.slice(-2).reverse();
+      groups.push({
+        key: "gov-stability",
+        title: "Government stability",
+        method:
+          "Average length of completed CM terms per state (ongoing terms excluded); states with fewer than three completed terms are excluded. Longer averages mean governments more often ran their course.",
+        items: [
+          ...mostStable,
+          ...leastStable.filter((b) => !mostStable.some((t) => t.stateId === b.stateId)),
+        ].map((s) => ({
+          headline: `${s.stateName} · ${formatTenure(Math.round(s.avg))} per government`,
+          detail: `Across ${s.n} completed CM terms`,
+          links: [{ label: s.stateName, href: `/state/${s.stateId}` }],
+        })),
+      });
+    }
+  }
+
   return groups;
 }

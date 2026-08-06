@@ -10,16 +10,38 @@ export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   policy_failure: "Policy failure",
   communal_incident: "Communal incident",
   infrastructure_failure: "Infrastructure failure",
+  cabinet_change: "Cabinet formation / reshuffle",
+  legislation: "Major legislation",
+  constitutional_amendment: "Constitutional amendment",
+  court_judgment: "Court judgment",
+  coalition_change: "Coalition change",
+  welfare_scheme: "Welfare scheme",
+  infrastructure_project: "Infrastructure project",
+  natural_disaster: "Natural disaster",
+  administrative_reform: "Administrative reform",
+  international_agreement: "International agreement",
   other: "Other",
 };
 
+/** Display order for grouped event listings: governance record first, then
+    institutional milestones, then failures and incidents. */
 export const EVENT_TYPE_ORDER: EventType[] = [
+  "cabinet_change",
+  "coalition_change",
+  "legislation",
+  "constitutional_amendment",
+  "court_judgment",
+  "welfare_scheme",
+  "infrastructure_project",
+  "administrative_reform",
+  "international_agreement",
   "corruption",
   "paper_leak",
   "governance_failure",
   "policy_failure",
   "communal_incident",
   "infrastructure_failure",
+  "natural_disaster",
   "other",
 ];
 

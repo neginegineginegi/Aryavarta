@@ -38,6 +38,41 @@ const STATEMENTS = [
    ON CONFLICT (id) DO NOTHING`,
   // --- upgrade 3: governors -------------------------------------------------
   `ALTER TYPE "public"."term_kind" ADD VALUE IF NOT EXISTS 'governor'`,
+  // --- upgrade 4: political-context event taxonomy --------------------------
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'cabinet_change'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'legislation'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'constitutional_amendment'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'court_judgment'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'coalition_change'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'welfare_scheme'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'infrastructure_project'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'natural_disaster'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'administrative_reform'`,
+  `ALTER TYPE "public"."event_type" ADD VALUE IF NOT EXISTS 'international_agreement'`,
+  // --- upgrade 5: development lens ------------------------------------------
+  `CREATE TABLE IF NOT EXISTS "indicators" (
+     "id" text PRIMARY KEY,
+     "name" text NOT NULL UNIQUE,
+     "unit" text NOT NULL,
+     "category" text NOT NULL,
+     "methodology" text NOT NULL,
+     "display_order" smallint NOT NULL DEFAULT 100
+   )`,
+  `CREATE TABLE IF NOT EXISTS "indicator_values" (
+     "id" uuid PRIMARY KEY,
+     "indicator_id" text NOT NULL REFERENCES "indicators"("id"),
+     "state_id" text NOT NULL REFERENCES "states"("id"),
+     "year" smallint NOT NULL,
+     "value" numeric NOT NULL,
+     "source_title" text NOT NULL,
+     "source_url" text NOT NULL,
+     "reporting_period" text,
+     "verified_on" date NOT NULL
+   )`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "indicator_values_series_idx"
+     ON "indicator_values" ("indicator_id", "state_id", "year")`,
+  `CREATE INDEX IF NOT EXISTS "indicator_values_state_idx"
+     ON "indicator_values" ("state_id")`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

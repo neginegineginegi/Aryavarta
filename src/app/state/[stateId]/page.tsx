@@ -4,6 +4,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
 import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
+import { DevelopmentSection } from "@/components/state/DevelopmentSection";
+import { getDevelopment } from "@/lib/db/queries/development";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
@@ -49,7 +51,10 @@ export default async function StatePage({
 }) {
   const { stateId } = await params;
   if (stateId === "in") redirect("/union"); // the union pseudo-entity has its own home
-  const article = await getStateArticle(stateId);
+  const [article, development] = await Promise.all([
+    getStateArticle(stateId),
+    getDevelopment(stateId),
+  ]);
   if (!article) notFound();
 
   const { state, terms: allTerms, elections, events } = article;
@@ -352,6 +357,8 @@ export default async function StatePage({
       </section>
 
       {/* References */}
+      <DevelopmentSection grouped={development} />
+
       <section className="py-8">
         <h2 className="section-label">References</h2>
         {citations.ordered.length === 0 ? (
