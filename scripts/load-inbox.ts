@@ -110,6 +110,7 @@ async function main() {
     canonicalizeEvent,
   } = await import("../src/lib/revisions/payloads");
   const { ensureImportBot, ensureParty } = await import("../src/lib/import/drafts");
+  const { snapshotEntity } = await import("../src/lib/revisions/snapshot");
   const { yearOf } = await import("../src/lib/format");
 
   const today = new Date().toISOString().slice(0, 10);
@@ -237,6 +238,106 @@ async function main() {
       proposedBy: botId,
     });
     bump("terms");
+  }
+
+  // --- term updates: end an incumbency (or correct an end date) -------------
+  // Columns: state,office,start_date,new_end_date,notes,sources
+  // Matches the term by state + office + start date. A live term gets a
+  // pending UPDATE revision (reviewed like everything else); a still-pending
+  // imported draft is amended in place before it ever publishes.
+  for (const r of readSheet("term_updates.csv")) {
+    const label = `term update: ${r.state} ${r.office} ${r.start_date}`;
+    const st = resolveState(r.state ?? "");
+    if (!st) { skip(`${label}: unknown state "${r.state}"`); continue; }
+    const office = (r.office ?? "").toLowerCase();
+    const start = normalizeDate(r.start_date ?? "");
+    const end = normalizeDate(r.new_end_date ?? "");
+    if (!start.date || !end.date) { skip(`${label}: start and new_end_date are required`); continue; }
+    const srcs = r.sources ? resolveSources(r.sources, label) : [];
+    if (srcs === null) continue;
+
+    const live = await db.query.terms.findFirst({
+      where: and(
+        eq(terms.stateId, st.id),
+        eq(terms.kind, office as "cm"),
+        eq(terms.startDate, start.date),
+        sql`${terms.deletedAt} IS NULL`,
+      ),
+    });
+    if (live) {
+      const before = await snapshotEntity(db, "term", live.id);
+      if (!before) { skip(`${label}: live term vanished mid-run`); continue; }
+      const beforeTerm = before as { endDate: string | null; notes: string | null; sources: unknown[] } & Record<string, unknown>;
+      if (beforeTerm.endDate === end.date) { skip(`${label}: end date already set`); continue; }
+      const pendingUpdate = await db.query.revisions.findFirst({
+        where: and(
+          eq(revisions.entityType, "term"),
+          eq(revisions.entityId, live.id),
+          eq(revisions.status, "pending"),
+        ),
+      });
+      if (pendingUpdate) { skip(`${label}: an update for this term is already pending`); continue; }
+      const after = canonicalizeTerm({
+        ...(before as Parameters<typeof canonicalizeTerm>[0]),
+        endDate: end.date,
+        notes: r.notes ? [beforeTerm.notes, r.notes].filter(Boolean).join(" ") : beforeTerm.notes,
+        sources: [
+          ...(before as Parameters<typeof canonicalizeTerm>[0]).sources,
+          ...(srcs ?? []).filter((s) => !(before as Parameters<typeof canonicalizeTerm>[0]).sources.some((x) => x.url === s.url)),
+        ],
+      });
+      const parsed = termPayloadSchema.safeParse(after);
+      if (!parsed.success) {
+        skip(`${label}: ${parsed.error.issues[0]?.path.join(".")}: ${parsed.error.issues[0]?.message}`);
+        continue;
+      }
+      await db.insert(revisions).values({
+        id: uuidv7(),
+        entityType: "term",
+        entityId: live.id,
+        stateId: st.id,
+        action: "update",
+        beforeData: before,
+        afterData: parsed.data,
+        title: `End of term: ${(before as { cmName?: string | null }).cmName ?? "President's Rule"}, ${st.name} (${yearOf(start.date)} – ${yearOf(end.date)})`,
+        summary: SUMMARY,
+        origin: "import",
+        status: "pending",
+        proposedBy: botId,
+      });
+      bump("term updates");
+      continue;
+    }
+
+    const pend = await db.query.revisions.findFirst({
+      where: and(
+        eq(revisions.stateId, st.id),
+        eq(revisions.entityType, "term"),
+        eq(revisions.status, "pending"),
+        eq(revisions.origin, "import"),
+        sql`${revisions.afterData} ->> 'startDate' = ${start.date}`,
+        sql`${revisions.afterData} ->> 'kind' = ${office}`,
+      ),
+    });
+    if (!pend) { skip(`${label}: no live term or pending draft matches`); continue; }
+    const draft = pend.afterData as { endDate: string | null; sources: Array<{ url: string }> } & Record<string, unknown>;
+    if (draft.endDate === end.date) { skip(`${label}: draft already has this end date`); continue; }
+    await db
+      .update(revisions)
+      .set({
+        afterData: {
+          ...draft,
+          endDate: end.date,
+          sources: [
+            ...draft.sources,
+            ...(srcs ?? []).filter((s) => !draft.sources.some((x) => x.url === s.url)),
+          ],
+        },
+        title: pend.title.replace(/ – present\)$/, ` – ${yearOf(end.date)})`),
+        summary: `${pend.summary} [end date set by a later data sheet]`,
+      })
+      .where(eq(revisions.id, pend.id));
+    bump("term updates (amended drafts)");
   }
 
   // --- elections (+ results merged) ----------------------------------------

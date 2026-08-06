@@ -90,3 +90,15 @@ The loader validates everything (dates, offices, enum values, source links,
 duplicate series points), reports anything suspicious back, and files
 political content as pending Import Bot drafts for review. Development Lens
 rows are admin-curated and load directly with their inline sources.
+
+## term_updates.csv (end an incumbency, or correct an end date)
+
+```csv
+state,office,start_date,new_end_date,notes,sources
+West Bengal,cm,2011-05-20,2026-05-04,,S9
+```
+
+Matches the existing term by state + office + start_date. If the term is
+live, a pending update revision is filed for review; if it is still an
+unpublished imported draft, the draft itself is amended. Optional `sources`
+ids are added to the term's citations; `notes` is appended.
