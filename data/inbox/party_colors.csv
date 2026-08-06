@@ -1,51 +1,50 @@
 party_name,abbreviation,primary_hex,secondary_hex,primary_region,notes
-Bharatiya Janata Party,BJP,#FF9933,,National,Standard Saffron
-Indian National Congress,INC,#19AAED,,National,Cyan-Blue to completely separate from TMC and BSP
-Aam Aadmi Party,AAP,#FFC000,#0000FF,National,Mustard/Amber to separate from TDP Yellow
-Communist Party of India,CPI,#FF0000,,National,Pure Red
-Communist Party of India (Marxist),CPI(M),#8B0000,,National,Maroon/Dark Red to contrast with CPI
-Bahujan Samaj Party,BSP,#000080,,National,Navy Blue to heavily contrast with INC Cyan
-National People's Party,NPP,#DAA520,,National,Goldenrod to separate from AAP and BJP
-All India Trinamool Congress,TMC,#32CD32,,East,Bright Lime Green to guarantee zero visual overlap with INC Blue
-Biju Janata Dal,BJD,#006400,,East,Dark Green to separate from TMC and RJD
-Jharkhand Mukti Morcha,JMM,#00FA9A,,East,Medium Spring Green to contrast with BJD Dark Green
-Janata Dal (United),JD(U),#808000,,East,Olive Green to stand apart from Bihar rival RJD
-Rashtriya Janata Dal,RJD,#2E8B57,,East,Sea Green to contrast with JD(U) Olive
-Lok Janshakti Party,LJP,#8A2BE2,,East,Blue-Violet to separate from BSP Navy and INC Cyan
-All Jharkhand Students Union,AJSU,#FF1493,,East,Deep Pink
-Samajwadi Party,SP,#FF4500,#008000,East,Orange-Red to contrast with BJP Saffron
-Rashtriya Lok Dal,RLD,#66CDAA,,North,Medium Aquamarine
-Shiromani Akali Dal,SAD,#4B0082,#FF8C00,North,Indigo to separate from INC and BSP
-Indian National Lok Dal,INLD,#00FF00,,North,Bright Neon Green
-Jannayak Janta Party,JJP,#BDB76B,#FFFF00,North,Dark Khaki to separate from INLD
-Jammu & Kashmir National Conference,NC,#DC143C,,North,Crimson Red to contrast with CPI(M)
-Jammu and Kashmir Peoples Democratic Party,PDP,#556B2F,,North,Dark Olive Green to separate from NC
-Telugu Desam Party,TDP,#FFFF00,,South,Pure Yellow to separate from AAP Mustard
-YSR Congress Party,YSRCP,#008080,#0000FF,South,Teal to ensure no collision with INC or TDP
-Bharat Rashtra Samithi,BRS,#FF1493,,South,Deep Pink
-Telangana Rashtra Samithi,TRS,#FF1493,,South,"Deep Pink, same lineage as BRS"
-All India Majlis-e-Ittehadul Muslimeen,AIMIM,#008000,,South,Standard Green
-Dravida Munnetra Kazhagam,DMK,#A52A2A,#000000,South,Brown/Deep Maroon to separate from CPI Red
-All India Anna Dravida Munnetra Kazhagam,AIADMK,#2F4F4F,#000000,South,Dark Slate Gray to heavily contrast with DMK
-Janata Dal (Secular),JD(S),#8FBC8F,,South,Dark Sea Green
-Indian Union Muslim League,IUML,#00FF7F,,South,Spring Green
-Pattali Makkal Katchi,PMK,#F4A460,,South,Sandy Brown to avoid TDP Yellow clash
-Shiv Sena (Uddhav Balasaheb Thackeray),SS(UBT),#D2691E,,West,Chocolate/Deep Orange to contrast with Shinde faction
-Shiv Sena,SHS,#FF8C00,,West,Dark Orange to contrast with UBT faction
-Nationalist Congress Party (Sharadchandra Pawar),NCP(SP),#4169E1,,West,Royal Blue to separate from INC Cyan
-Nationalist Congress Party,NCP,#4682B4,,West,Steel Blue to separate from SP faction
-Maharashtra Navnirman Sena,MNS,#B8860B,,West,Dark Goldenrod
-Asom Gana Parishad,AGP,#EEE8AA,,North-East,Pale Goldenrod
-All India United Democratic Front,AIUDF,#228B22,,North-East,Forest Green
-Mizo National Front,MNF,#1E90FF,,North-East,Dodger Blue
-Zoram People's Movement,ZPM,#C71585,,North-East,Medium Violet Red
-Nationalist Democratic Progressive Party,NDPP,#FF69B4,,North-East,Hot Pink
-Naga People's Front,NPF,#5F9EA0,,North-East,Cadet Blue
-Sikkim Democratic Front,SDF,#DDA0DD,,North-East,Plum
-Sikkim Krantikari Morcha,SKM,#FF7F50,,North-East,Coral
-Tipra Motha Party,TMP,#F08080,,North-East,Light Coral
-Janata Party,JP,#708090,,Historical,Slate Gray for distinct 1970s historical sweeps
-Swatantra Party,SWA,#6495ED,,Historical,Cornflower Blue
-Indian National Congress (O),INC(O),#40E0D0,,Historical,Turquoise to contrast with INC Cyan
-Bharatiya Jana Sangh,BJS,#8B4513,,Historical,Saddle Brown to distinctively separate from modern BJP
-Praja Socialist Party,PSP,#CD5C5C,,Historical,Indian Red
+Bharatiya Janata Party,BJP,#FF9933,,National,Saffron (Orange spectrum)
+Indian National Congress,INC,#00BFFF,,National,Deep Sky Blue (Cyan spectrum)
+Aam Aadmi Party,AAP,#FFD700,#000000,National,Pure Gold (Yellow spectrum)
+Communist Party of India,CPI,#FF0000,,National,Pure Red (Red spectrum - explicit and undeniable)
+Communist Party of India (Marxist),CPI(M),#8B0000,,National,Dark Maroon (Dark Red spectrum)
+Bahujan Samaj Party,BSP,#800080,,National,Pure Purple (Violet spectrum - completely distinct from INC blue)
+National People's Party,NPP,#8B4513,,National,Saddle Brown (Brown spectrum)
+All India Trinamool Congress,TMC,#00FF00,,East,Bright Lime (Neon Green spectrum)
+Biju Janata Dal,BJD,#008080,,East,Teal (Blue-Green spectrum)
+Jharkhand Mukti Morcha,JMM,#228B22,,East,Forest Green (Dark Green spectrum)
+Janata Dal (United),JD(U),#40E0D0,,East,Turquoise (Cyan-Green spectrum)
+Rashtriya Janata Dal,RJD,#32CD32,,East,Lime Green (Light Green spectrum)
+Lok Janshakti Party,LJP,#FF1493,,East,Deep Pink (Pink spectrum)
+All Jharkhand Students Union,AJSU,#FF69B4,,East,Hot Pink (Light Pink spectrum)
+Samajwadi Party,SP,#FF4500,#008000,East,Orange-Red (Between Red and Orange)
+Rashtriya Lok Dal,RLD,#66CDAA,,North,Medium Aquamarine (Pastel Green spectrum)
+Shiromani Akali Dal,SAD,#000080,#FF8C00,North,Navy Blue (Dark Blue spectrum)
+Indian National Lok Dal,INLD,#ADFF2F,,North,Green Yellow (Yellow-Green spectrum)
+Jannayak Janta Party,JJP,#F0E68C,#FFFF00,North,Khaki (Pale Yellow spectrum)
+Jammu & Kashmir National Conference,NC,#FA8072,,North,Salmon (Pink-Orange spectrum)
+Jammu and Kashmir Peoples Democratic Party,PDP,#556B2F,,North,Dark Olive Green (Olive spectrum)
+Telugu Desam Party,TDP,#FFFF00,,South,Pure Yellow (High intensity yellow)
+Yuvajana Sramika Rythu Congress Party,YSRCP,#4682B4,#0000FF,South,Steel Blue (Grey-Blue spectrum)
+Bharat Rashtra Samithi,BRS,#FFC0CB,,South,Light Pink (Pastel Pink spectrum)
+All India Majlis-e-Ittehadul Muslimeen,AIMIM,#20B2AA,,South,Light Sea Green (Desaturated Teal)
+Dravida Munnetra Kazhagam,DMK,#000000,#FF0000,South,Pure Black (Greyscale spectrum - 100% distinct)
+All India Anna Dravida Munnetra Kazhagam,AIADMK,#5F9EA0,#000000,South,Cadet Blue (Muted Blue-Grey)
+Janata Dal (Secular),JD(S),#8FBC8F,,South,Dark Sea Green (Muted Green)
+Indian Union Muslim League,IUML,#00FA9A,,South,Medium Spring Green (Mint spectrum)
+Pattali Makkal Katchi,PMK,#DAA520,,South,Goldenrod (Dark Yellow spectrum)
+Shiv Sena (Uddhav Balasaheb Thackeray),SS(UBT),#D2691E,,West,Chocolate (Orange-Brown spectrum)
+Shiv Sena,SHS,#FF8C00,,West,Dark Orange (Bright Orange spectrum)
+Nationalist Congress Party (Sharadchandra Pawar),NCP(SP),#4169E1,,West,Royal Blue (Bright Blue spectrum)
+Nationalist Congress Party,NCP,#7B68EE,,West,Medium Slate Blue (Purple-Blue spectrum)
+Maharashtra Navnirman Sena,MNS,#A0522D,,West,Sienna (Red-Brown spectrum)
+Asom Gana Parishad,AGP,#EEE8AA,,North-East,Pale Goldenrod (Off-White/Yellow spectrum)
+All India United Democratic Front,AIUDF,#2E8B57,,North-East,Sea Green (Standard Green spectrum)
+Mizo National Front,MNF,#1E90FF,,North-East,Dodger Blue (Mid-Blue spectrum)
+Zoram People's Movement,ZPM,#C71585,,North-East,Medium Violet Red (Magenta spectrum)
+Nationalist Democratic Progressive Party,NDPP,#FF6347,,North-East,Tomato (Light Red spectrum)
+Naga People's Front,NPF,#6495ED,,North-East,Cornflower Blue (Soft Blue spectrum)
+Sikkim Democratic Front,SDF,#DDA0DD,,North-East,Plum (Light Purple spectrum)
+Sikkim Krantikari Morcha,SKM,#FF7F50,,North-East,Coral (Orange-Pink spectrum)
+Tipra Motha Party,TMP,#F08080,,North-East,Light Coral (Muted Red spectrum)
+Janata Party,JP,#708090,,Historical,Slate Gray (Neutral grey spectrum)
+Swatantra Party,SWA,#00CED1,,Historical,Dark Turquoise (Bright Cyan spectrum)
+Indian National Congress (Organisation),INC(O),#BDB76B,,Historical,Dark Khaki (Muted yellow-green)
+Bharatiya Jana Sangh,BJS,#8B008B,,Historical,Dark Magenta (Deep Purple spectrum)
+Praja Socialist Party,PSP,#CD5C5C,,Historical,Indian Red (Muted Red-Brown)
