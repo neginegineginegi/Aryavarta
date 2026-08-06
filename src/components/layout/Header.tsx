@@ -13,7 +13,7 @@ import { NavLinks } from "@/components/layout/HeaderNav";
 export function Header() {
   return (
     <header className="masthead-rule sticky top-0 z-40 bg-paper/95 backdrop-blur-sm">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-3.5 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+      <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         <Link href="/" className="flex items-baseline gap-3 justify-self-start">
           <span lang="sa" className="font-brand text-[1.6rem] leading-none text-ink">
             अभिलेखः
@@ -22,7 +22,7 @@ export function Header() {
             Indian Political Archive
           </span>
         </Link>
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-1 font-mono text-[0.78rem] leading-none justify-self-center">
+        <nav className="-mx-3 flex flex-wrap items-center gap-y-1 font-mono text-[0.82rem] leading-none justify-self-center">
           <NavLinks />
         </nav>
         {/* Account cluster: pinned to the far edge, visually quieter than

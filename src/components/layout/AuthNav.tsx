@@ -40,23 +40,31 @@ function AuthNavInner() {
     return (
       <Link
         href="/login"
-        className="rounded-sm border border-rule-dark px-3 py-1 font-mono text-[0.72rem] text-ink transition-colors hover:border-ink"
+        className="rounded-full border border-rule-dark px-4 py-1.5 font-mono text-[0.75rem] leading-none text-ink transition-colors hover:border-ink hover:bg-paper-sunken"
       >
         Sign in
       </Link>
     );
   }
 
+  // Same pill rhythm as the primary nav, one step quieter: Review is the only
+  // tinted item because it is the only one that carries pending work.
+  const item =
+    "flex items-center gap-1.5 rounded-full px-3 py-1.5 leading-none transition-colors";
+
   return (
-    <span className="flex items-center gap-x-5 border-l border-rule pl-6 font-mono text-[0.72rem]">
+    <span className="-mr-3 flex items-center border-l border-rule pl-4 font-mono text-[0.75rem]">
       {(user.role === "moderator" || user.role === "admin") && (
-        <Link href="/review" className="text-accent underline-offset-2 hover:underline">
+        <Link
+          href="/review"
+          className={`${item} font-medium text-accent-dark hover:bg-accent-wash`}
+        >
           Review
         </Link>
       )}
       <Link
         href={`/user/${user.id}`}
-        className="flex items-center gap-1.5 text-ink-muted transition-colors hover:text-ink"
+        className={`${item} text-ink-muted hover:bg-paper-sunken hover:text-ink`}
         title={user.name ?? user.email ?? "Account"}
       >
         <UserIcon />
@@ -65,7 +73,7 @@ function AuthNavInner() {
       <button
         type="button"
         onClick={() => signOut({ callbackUrl: "/" })}
-        className="flex items-center gap-1.5 text-ink-faint transition-colors hover:text-ink"
+        className={`${item} text-ink-faint hover:bg-paper-sunken hover:text-ink`}
       >
         <SignOutIcon />
         Sign out

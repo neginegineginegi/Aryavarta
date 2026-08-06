@@ -17,7 +17,11 @@ function isActive(pathname: string, href: string): boolean {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Primary nav with an underline on the current section. */
+/**
+ * Primary nav. Each link is an evenly padded pill so the row reads as one
+ * set of equal-weight destinations; the current section is a tinted chip
+ * rather than a detached underline, matching the ModeSwitch below it.
+ */
 export function NavLinks() {
   const pathname = usePathname();
   return (
@@ -29,10 +33,10 @@ export function NavLinks() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`border-b-2 pb-0.5 pt-1 transition-colors ${
+            className={`rounded-full px-3 py-1.5 transition-colors ${
               active
-                ? "border-accent font-medium text-ink"
-                : "border-transparent text-ink-muted hover:border-rule-dark hover:text-ink"
+                ? "bg-accent-wash font-medium text-accent-dark"
+                : "text-ink-muted hover:bg-paper-sunken hover:text-ink"
             }`}
           >
             {l.label}
