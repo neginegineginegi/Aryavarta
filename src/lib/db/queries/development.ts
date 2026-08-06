@@ -1,4 +1,4 @@
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
@@ -178,6 +178,41 @@ export async function getIndicatorAcrossStates(indicatorId: string): Promise<{
     },
     series,
   };
+}
+
+export type IndicatorIndexEntry = IndicatorDefinition & {
+  seriesCount: number; // distinct states/UTs (plus the national series) with values
+  minYear: number;
+  maxYear: number;
+};
+
+/**
+ * Only indicators that actually have recorded values, with coverage counts.
+ * Backs the Browse index; definitions without data stay out of the way until
+ * their first values load.
+ */
+export async function getIndicatorIndex(): Promise<IndicatorIndexEntry[]> {
+  const rows = await db
+    .select({
+      id: indicators.id,
+      name: indicators.name,
+      unit: indicators.unit,
+      category: indicators.category,
+      methodology: indicators.methodology,
+      seriesCount: sql<number>`count(distinct ${indicatorValues.stateId})`,
+      minYear: sql<number>`min(${indicatorValues.year})`,
+      maxYear: sql<number>`max(${indicatorValues.year})`,
+    })
+    .from(indicators)
+    .innerJoin(indicatorValues, eq(indicatorValues.indicatorId, indicators.id))
+    .groupBy(indicators.id)
+    .orderBy(asc(indicators.category), asc(indicators.displayOrder), asc(indicators.name));
+  return rows.map((r) => ({
+    ...r,
+    seriesCount: Number(r.seriesCount),
+    minYear: Number(r.minYear),
+    maxYear: Number(r.maxYear),
+  }));
 }
 
 export async function getAllIndicators(): Promise<IndicatorDefinition[]> {

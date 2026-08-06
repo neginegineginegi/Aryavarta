@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { getAllParties } from "@/lib/db/queries/party";
 import { getElectionIndex } from "@/lib/db/queries/compare";
+import { getIndicatorIndex, type IndicatorIndexEntry } from "@/lib/db/queries/development";
 import { db } from "@/lib/db";
 import { formatDate } from "@/lib/format";
 
@@ -15,11 +16,19 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default async function BrowsePage() {
-  const [states, parties, electionIndex] = await Promise.all([
+  const [states, parties, electionIndex, indicatorIndex] = await Promise.all([
     db.query.states.findMany({ orderBy: (s, { asc }) => [asc(s.name)] }),
     getAllParties(),
     getElectionIndex(),
+    getIndicatorIndex(),
   ]);
+
+  const indicatorsByCategory = new Map<string, IndicatorIndexEntry[]>();
+  for (const ind of indicatorIndex) {
+    const arr = indicatorsByCategory.get(ind.category);
+    if (arr) arr.push(ind);
+    else indicatorsByCategory.set(ind.category, [ind]);
+  }
 
   const realStates = states.filter((s) => s.kind !== "union");
   const currentYear = new Date().getFullYear();
@@ -89,6 +98,45 @@ export default async function BrowsePage() {
               </li>
             ))}
           </ul>
+        )}
+      </section>
+
+      <section id="indicators" className="border-b border-rule py-8">
+        <h2 className="section-label">Development indicators</h2>
+        <p className="mt-1 max-w-2xl text-[0.8rem] text-ink-faint">
+          Statistical series from named official sources, shown as published, year by year,
+          for every state and the nation. Abhilekh does not score, rank, or grade governments.
+        </p>
+        {indicatorIndex.length === 0 ? (
+          <p className="mt-3 text-[0.85rem] text-ink-muted">
+            No indicator data loaded yet. Series appear here as they are added.
+          </p>
+        ) : (
+          <div className="mt-4 space-y-5">
+            {[...indicatorsByCategory.entries()].map(([category, defs]) => (
+              <div key={category}>
+                <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ink-muted">
+                  {category}
+                </h3>
+                <ul className="mt-1.5 grid gap-x-8 gap-y-1.5 text-[0.9rem] sm:grid-cols-2">
+                  {defs.map((d) => (
+                    <li key={d.id}>
+                      <Link
+                        href={`/indicator/${d.id}`}
+                        title={d.methodology}
+                        className="text-ink underline-offset-2 hover:text-accent hover:underline"
+                      >
+                        {d.name}
+                      </Link>{" "}
+                      <span className="whitespace-nowrap text-[0.78rem] text-ink-faint">
+                        {d.unit} · {d.minYear}–{d.maxYear} · {d.seriesCount} series
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
         )}
       </section>
 

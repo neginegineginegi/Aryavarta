@@ -40,7 +40,9 @@ export default async function IndicatorPage({
             Browse
           </Link>
           <span className="mx-1.5">/</span>
-          <span>Indicators</span>
+          <Link href="/browse#indicators" className="hover:text-ink">
+            Indicators
+          </Link>
         </nav>
         <h1 className="mt-2 font-display text-4xl font-semibold tracking-tight text-ink">
           {indicator.name}

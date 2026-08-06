@@ -1,11 +1,14 @@
 import Link from "next/link";
 
 import { PartyTag } from "@/components/ui/PartyTag";
+import { TrendChart } from "@/components/ui/TrendChart";
+import { getDevelopment, type IndicatorSeries } from "@/lib/db/queries/development";
 import { getPartyProfile } from "@/lib/db/queries/party";
 import { getPersonBySlug } from "@/lib/db/queries/person";
 import { getStateArticle } from "@/lib/db/queries/state";
+import { db } from "@/lib/db";
 import { formatTenure } from "@/lib/insights";
-import { yearOf } from "@/lib/format";
+import { formatNumber, yearOf } from "@/lib/format";
 
 export function ModeTabs({ active }: { active: string }) {
   const modes = [
@@ -170,6 +173,123 @@ export async function StatePanel({ stateId }: { stateId: string }) {
         <Row k="Governance events" v={String(events.length)} />
       </dl>
     </PanelShell>
+  );
+}
+
+/**
+ * Development indicators for two states, aligned row by row so the same
+ * indicator sits side by side. Strictly factual: values as published, every
+ * cell keeps its source. No scores, no rankings, no verdicts.
+ */
+export async function StateIndicatorCompare({ a, b }: { a: string; b: string }) {
+  const [devA, devB, stateRows] = await Promise.all([
+    getDevelopment(a),
+    getDevelopment(b),
+    db.query.states.findMany({ columns: { id: true, name: true } }),
+  ]);
+  if (devA.length === 0 && devB.length === 0) return null;
+
+  const names = new Map(stateRows.map((s) => [s.id, s.name]));
+
+  // Union of both states' indicators, grouped by category, in display order.
+  const byCategory = new Map<string, Map<string, { left?: IndicatorSeries; right?: IndicatorSeries }>>();
+  const put = (grouped: Array<[string, IndicatorSeries[]]>, side: "left" | "right") => {
+    for (const [category, list] of grouped) {
+      const cat = byCategory.get(category) ?? new Map();
+      for (const s of list) {
+        const pair = cat.get(s.id) ?? {};
+        pair[side] = s;
+        cat.set(s.id, pair);
+      }
+      byCategory.set(category, cat);
+    }
+  };
+  put(devA, "left");
+  put(devB, "right");
+
+  return (
+    <section className="pb-8">
+      <h2 className="section-label">Development indicators, side by side</h2>
+      <p className="mt-1 max-w-2xl text-[0.8rem] text-ink-faint">
+        Values from named statistical sources, shown as published. Abhilekh does not score,
+        rank, or grade governments; the numbers and their sources speak for themselves.
+      </p>
+      <div className="mt-4 space-y-6">
+        {[...byCategory.entries()].map(([category, pairs]) => (
+          <div key={category} className="overflow-x-auto">
+            <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ink-muted">
+              {category}
+            </h3>
+            <table className="mt-2 w-full min-w-[560px] text-left text-[0.85rem]">
+              <thead>
+                <tr className="border-b border-rule-dark text-[0.7rem] uppercase tracking-wider text-ink-faint">
+                  <th className="w-[28%] py-1.5 pr-4 font-medium">Indicator</th>
+                  <th className="w-[36%] py-1.5 pr-4 font-medium">{names.get(a) ?? a}</th>
+                  <th className="w-[36%] py-1.5 font-medium">{names.get(b) ?? b}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...pairs.entries()].map(([id, pair]) => {
+                  const def = pair.left ?? pair.right!;
+                  return (
+                    <tr key={id} className="border-b border-rule align-top">
+                      <td className="py-2.5 pr-4">
+                        <Link
+                          href={`/indicator/${id}`}
+                          title={def.methodology}
+                          className="text-ink underline-offset-2 hover:text-accent hover:underline"
+                        >
+                          {def.name}
+                        </Link>
+                        <span className="block text-[0.72rem] text-ink-faint">{def.unit}</span>
+                      </td>
+                      <IndicatorCell series={pair.left} />
+                      <IndicatorCell series={pair.right} last />
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function IndicatorCell({ series, last }: { series?: IndicatorSeries; last?: boolean }) {
+  const pad = last ? "" : " pr-4";
+  if (!series || series.values.length === 0) {
+    return <td className={`py-2.5 text-ink-faint${pad}`}>—</td>;
+  }
+  const latest = series.values[series.values.length - 1];
+  return (
+    <td className={`py-2.5${pad}`}>
+      <p className="whitespace-nowrap">
+        <span className="tabular-nums font-medium text-ink">{formatNumber(latest.value)}</span>{" "}
+        <span className="tabular-nums text-[0.75rem] text-ink-faint">
+          ({latest.reportingPeriod ?? latest.year})
+        </span>
+      </p>
+      {series.values.length >= 2 && (
+        <div className="mt-1.5">
+          <TrendChart
+            points={series.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+            width={170}
+            height={44}
+            ariaLabel={`${series.name}, ${series.values[0].year} to ${latest.year}`}
+          />
+        </div>
+      )}
+      <a
+        href={latest.sourceUrl}
+        target="_blank"
+        rel="nofollow noopener noreferrer"
+        className="mt-1 inline-block text-[0.72rem] text-accent underline-offset-2 hover:underline"
+      >
+        {latest.sourceTitle}
+      </a>
+    </td>
   );
 }
 

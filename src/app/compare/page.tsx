@@ -2,7 +2,13 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { and, isNotNull, isNull } from "drizzle-orm";
 
-import { LeaderPanel, ModeTabs, PartyPanel, StatePanel } from "@/app/compare/extras";
+import {
+  LeaderPanel,
+  ModeTabs,
+  PartyPanel,
+  StateIndicatorCompare,
+  StatePanel,
+} from "@/app/compare/extras";
 import { ComparePicker } from "@/components/compare/ComparePicker";
 import { db } from "@/lib/db";
 import { terms } from "@/lib/db/schema";
@@ -217,26 +223,29 @@ async function ComparisonExtras({
       </form>
 
       {ready && (
-        <div className="flex flex-col gap-5 py-8 lg:flex-row">
-          {mode === "leaders" && (
-            <>
-              <LeaderPanel slug={a!} />
-              <LeaderPanel slug={b!} />
-            </>
-          )}
-          {mode === "parties" && (
-            <>
-              <PartyPanel partyId={a!} />
-              <PartyPanel partyId={b!} />
-            </>
-          )}
-          {mode === "states" && (
-            <>
-              <StatePanel stateId={a!} />
-              <StatePanel stateId={b!} />
-            </>
-          )}
-        </div>
+        <>
+          <div className="flex flex-col gap-5 py-8 lg:flex-row">
+            {mode === "leaders" && (
+              <>
+                <LeaderPanel slug={a!} />
+                <LeaderPanel slug={b!} />
+              </>
+            )}
+            {mode === "parties" && (
+              <>
+                <PartyPanel partyId={a!} />
+                <PartyPanel partyId={b!} />
+              </>
+            )}
+            {mode === "states" && (
+              <>
+                <StatePanel stateId={a!} />
+                <StatePanel stateId={b!} />
+              </>
+            )}
+          </div>
+          {mode === "states" && <StateIndicatorCompare a={a!} b={b!} />}
+        </>
       )}
     </div>
   );

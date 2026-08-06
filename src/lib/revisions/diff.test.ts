@@ -54,16 +54,14 @@ describe("diffSources", () => {
 
 describe("diffResults", () => {
   it("reports seat deltas including added/removed parties", () => {
-    const rows = diffResults(
-      [
-        { partyId: "a", seats: 60, voteSharePercent: null },
-        { partyId: "b", seats: 40, voteSharePercent: null },
-      ],
-      [
-        { partyId: "a", seats: 62, voteSharePercent: null },
-        { partyId: "c", seats: 38, voteSharePercent: null },
-      ],
-    );
+    const r = (partyId: string, seats: number) => ({
+      partyId,
+      seats,
+      voteSharePercent: null,
+      seatsContested: null,
+      allianceName: null,
+    });
+    const rows = diffResults([r("a", 60), r("b", 40)], [r("a", 62), r("c", 38)]);
     const byParty = Object.fromEntries(rows.map((r) => [r.partyId, r]));
     expect(byParty.a).toMatchObject({ beforeSeats: 60, afterSeats: 62, changed: true });
     expect(byParty.b).toMatchObject({ beforeSeats: 40, afterSeats: null, changed: true });
