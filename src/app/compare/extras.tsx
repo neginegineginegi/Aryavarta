@@ -5,10 +5,16 @@ import { PartyTag } from "@/components/ui/PartyTag";
 import { TrendChart } from "@/components/ui/TrendChart";
 import { getDevelopment, type IndicatorSeries } from "@/lib/db/queries/development";
 import { getPartyProfile } from "@/lib/db/queries/party";
-import { getPersonBySlug } from "@/lib/db/queries/person";
+import { getPersonBySlug, personSlug } from "@/lib/db/queries/person";
 import { getStateArticle } from "@/lib/db/queries/state";
 import { db } from "@/lib/db";
 import { formatTenure } from "@/lib/insights";
+import {
+  buildPartyStateRows,
+  type PartyStateCell as PartyStateCellData,
+  type PartyStateRow,
+} from "@/lib/party-compare";
+import { mergedDays } from "@/lib/tenure";
 import { formatNumber, yearOf } from "@/lib/format";
 
 export function ModeTabs({ active }: { active: string }) {
@@ -101,9 +107,16 @@ export async function PartyPanel({ partyId }: { partyId: string }) {
   const profile = await getPartyProfile(partyId);
   if (!profile) return <PanelShell title="Not found">Unknown party.</PanelShell>;
   const { party, governments, electionHistory } = profile;
-  const governedDays = governments
-    .filter((g) => g.kind === "cm" || g.kind === "pm")
-    .reduce((a, g) => a + days(g.startDate, g.endDate), 0);
+  // Union, not sum: a party can hold several offices at once (a chief
+  // ministership while holding the prime ministership, or two states
+  // simultaneously), and summing terms would report more time in office than
+  // has actually elapsed.
+  const governedDays = mergedDays(
+    governments
+      .filter((g) => g.kind === "cm" || g.kind === "pm")
+      .map((g) => ({ start: g.startDate, end: g.endDate })),
+    new Date().toISOString().slice(0, 10),
+  );
   const statesGoverned = [...new Set(governments.filter((g) => g.kind === "cm").map((g) => g.stateName))];
   const bestResult = electionHistory.slice().sort((a, b) => b.seatsWon - a.seatsWon)[0];
   return (
@@ -141,6 +154,183 @@ export async function PartyPanel({ partyId }: { partyId: string }) {
         </div>
       </dl>
     </PanelShell>
+  );
+}
+
+/**
+ * Two parties, state by state: where each held the government, for how long,
+ * and how it polled there. Rows both parties governed come first, because
+ * those are the only genuinely like-for-like comparisons.
+ *
+ * Development indicators are deliberately absent. Putting a state's infant
+ * mortality or literacy beside whoever governed it would read as a scorecard
+ * attributing those outcomes to a party; the archive does not do that. The
+ * state name links out to that state's Development Lens instead, where the
+ * indicators keep their own timeline and sources.
+ */
+export async function PartyStateCompare({ a, b }: { a: string; b: string }) {
+  const [left, right, stateRows] = await Promise.all([
+    getPartyProfile(a),
+    getPartyProfile(b),
+    db.query.states.findMany({
+      columns: { id: true, name: true, formedOn: true, dissolvedOn: true },
+    }),
+  ]);
+  if (!left || !right) return null;
+
+  const asOf = new Date().toISOString().slice(0, 10);
+  const rows = buildPartyStateRows(left, right, stateRows, asOf);
+  if (rows.length === 0) return null;
+
+  const shared = rows.filter((r) => r.shared);
+  const separate = rows.filter((r) => !r.shared);
+
+  return (
+    <section className="pb-8">
+      <h2 className="section-label">State by state</h2>
+      <p className="mt-1 max-w-3xl text-[0.8rem] text-ink-faint">
+        Every state where either party formed the government, with each party&apos;s recorded
+        record in that state. States both parties have governed are listed first.
+      </p>
+
+      <div className="mt-5 overflow-x-auto">
+        <div className="plate">
+          <table className="min-w-[760px] text-[0.85rem]">
+            <thead>
+              <tr>
+                <th className="w-[22%] px-3 py-2">State</th>
+                <th className="w-[39%] px-3 py-2">{left.party.name}</th>
+                <th className="w-[39%] px-3 py-2">{right.party.name}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {shared.length > 0 && (
+                <Fragment>
+                  <tr>
+                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                      Both parties have governed
+                    </th>
+                  </tr>
+                  {shared.map((r) => (
+                    <StateRecordRow key={r.stateId} row={r} />
+                  ))}
+                </Fragment>
+              )}
+              {separate.length > 0 && (
+                <Fragment>
+                  <tr>
+                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                      {shared.length > 0 ? "Governed by one of the two" : "No state in common"}
+                    </th>
+                  </tr>
+                  {separate.map((r) => (
+                    <StateRecordRow key={r.stateId} row={r} />
+                  ))}
+                </Fragment>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="mt-3 max-w-3xl space-y-1 text-[0.72rem] text-ink-faint">
+        <p>
+          <span className="font-mono uppercase tracking-[0.08em]">Method.</span> A party counts
+          as governing a state only where it held the chief ministership (the prime ministership
+          for the Union). Coalition partners without the top office are not counted here. Time in
+          office is the union of that party&apos;s terms, so simultaneous offices are never
+          counted twice and President&apos;s Rule gaps are excluded. The share is measured
+          against the state&apos;s own existence since its formation, so a state created later is
+          not made to look worse than an older one.
+        </p>
+        <p>
+          Predecessor parties that governed under an earlier name are separate records in the
+          archive and are not merged into their successors. All figures reflect what has been
+          recorded and approved here, not necessarily the full historical record.
+        </p>
+        <p>
+          Development indicators are not shown against parties anywhere on this page. Open a
+          state to read its indicators on their own timeline, with their sources.
+        </p>
+      </div>
+    </section>
+  );
+}
+
+function StateRecordRow({ row }: { row: PartyStateRow }) {
+  return (
+    <tr>
+      <td className="px-3 py-2.5">
+        <Link
+          href={row.isUnion ? "/union" : `/state/${row.stateId}`}
+          className="text-ink underline-offset-2 hover:text-accent hover:underline"
+        >
+          {row.stateName}
+        </Link>
+        <span className="block text-[0.72rem] text-ink-faint">
+          {row.formedOn
+            ? row.dissolvedOn
+              ? `${yearOf(row.formedOn)} to ${yearOf(row.dissolvedOn)}`
+              : `since ${yearOf(row.formedOn)}`
+            : "formation date not recorded"}
+        </span>
+      </td>
+      <PartyStateCell cell={row.left} row={row} />
+      <PartyStateCell cell={row.right} row={row} />
+    </tr>
+  );
+}
+
+function PartyStateCell({ cell, row }: { cell: PartyStateCellData | null; row: PartyStateRow }) {
+  if (!cell) {
+    return <td className="px-3 py-2.5 text-ink-faint">No recorded government</td>;
+  }
+  const officeLabel = row.isUnion ? "Prime Ministers" : "Chief Ministers";
+  return (
+    <td className="px-3 py-2.5">
+      <p className="text-ink">
+        <span className="tabular-nums font-medium">{cell.terms}</span> term
+        {cell.terms === 1 ? "" : "s"}
+        <span className="text-ink-faint"> · </span>
+        <span className="tabular-nums">{formatTenure(cell.days)}</span>
+        {cell.ongoing && <span className="text-ink-faint"> to date</span>}
+      </p>
+      {cell.sharePercent !== null && (
+        <p className="tabular-nums text-[0.72rem] text-ink-faint">
+          {cell.sharePercent}% of the state&apos;s recorded existence
+        </p>
+      )}
+      {cell.headsOfGovernment.length > 0 && (
+        <p className="mt-1 text-[0.75rem] text-ink-muted">
+          {officeLabel}:{" "}
+          {cell.headsOfGovernment.map((name, i) => (
+            <Fragment key={name}>
+              {i > 0 && ", "}
+              <Link
+                href={`/person/${personSlug(name)}`}
+                className="underline-offset-2 hover:text-accent hover:underline"
+              >
+                {name}
+              </Link>
+            </Fragment>
+          ))}
+        </p>
+      )}
+      <p className="mt-1 text-[0.72rem] text-ink-faint">
+        {cell.elections} election{cell.elections === 1 ? "" : "s"} recorded
+        {cell.best && (
+          <>
+            {" · best "}
+            <Link
+              href={`/election/${cell.best.electionId}`}
+              className="text-accent underline-offset-2 hover:underline"
+            >
+              {cell.best.seats} seats ({cell.best.year})
+            </Link>
+          </>
+        )}
+      </p>
+    </td>
   );
 }
 

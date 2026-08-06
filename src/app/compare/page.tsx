@@ -6,6 +6,7 @@ import {
   LeaderPanel,
   ModeTabs,
   PartyPanel,
+  PartyStateCompare,
   StateIndicatorCompare,
   StatePanel,
 } from "@/app/compare/extras";
@@ -244,6 +245,7 @@ async function ComparisonExtras({
               </>
             )}
           </div>
+          {mode === "parties" && <PartyStateCompare a={a!} b={b!} />}
           {mode === "states" && <StateIndicatorCompare a={a!} b={b!} />}
         </>
       )}

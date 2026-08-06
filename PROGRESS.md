@@ -71,6 +71,17 @@ additive payload fields never false-conflict old snapshots.
 ## 3. Tricky decisions — do not re-litigate
 
 - **No fabricated real facts, ever** (user hard rule). Seed/demo data must be obviously fake.
+- **Development indicators are NEVER shown against a party.** The party-vs-party compare shows a
+  state-by-state political record only (terms, time in office, heads of government, recorded
+  election results). Putting a state's IMR or literacy beside whoever governed it would make the
+  page a scorecard attributing outcomes to parties, which the archive refuses to be. Indicators
+  stay on state/indicator pages with their own timeline and sources. Do not "helpfully" add them.
+- **Time in office is a UNION of intervals, never a sum** (`src/lib/tenure.ts`). Parties hold
+  several offices at once (CM in two states, or a CM while holding the PM's chair); summing term
+  lengths reports more time in office than has elapsed. This was a live bug in PartyPanel.
+- **State-wise shares are measured against the state's own existence** (`formed_on` → today), so
+  Telangana (2014) is not made to look worse than West Bengal (1950). Rows never sort by tenure
+  length: that turns a record into a league table. Shared states sort first.
 - **Wikipedia/Wikidata never source of truth**: imports become *pending* revisions from Import
   Bot (`origin='import'`), verified by a moderator; `amendRevisionSourcesAction` lets the
   reviewer attach the authoritative (ECI) source before approving.
