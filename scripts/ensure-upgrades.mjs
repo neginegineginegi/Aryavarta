@@ -73,6 +73,13 @@ const STATEMENTS = [
      ON "indicator_values" ("indicator_id", "state_id", "year")`,
   `CREATE INDEX IF NOT EXISTS "indicator_values_state_idx"
      ON "indicator_values" ("state_id")`,
+  // --- upgrade 6: merged UT of Dadra and Nagar Haveli and Daman and Diu -----
+  // The map's geometry predates the 2020 merger ('dn' and 'dd' are dissolved
+  // rows); the merged UT gets a geometry-less row like Ladakh so terms and
+  // events since 2020-01-26 have a home.
+  `INSERT INTO states (id, name, kind, formed_on, dissolved_on, has_geometry)
+   VALUES ('dndd', 'Dadra and Nagar Haveli and Daman and Diu', 'union_territory', '2020-01-26', NULL, false)
+   ON CONFLICT (id) DO NOTHING`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
