@@ -488,6 +488,35 @@ async function main() {
     bump("events");
   }
 
+  // --- party colors (curated display metadata, like /admin/parties) --------
+  // Standing config: applies to matching parties on every run; unknown
+  // parties are reported and picked up automatically once data creates them.
+  const { parties } = await import("../src/lib/db/schema");
+  const { slugifyPartyId } = await import("../src/lib/import/drafts");
+  for (const r of readSheet("party_colors.csv")) {
+    const name = r.party_name?.trim();
+    const hex = r.primary_hex?.trim();
+    if (!name || !hex) continue;
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
+      skip(`party color ${name}: invalid hex "${hex}"`);
+      continue;
+    }
+    const party =
+      (await db.query.parties.findFirst({ where: eq(parties.name, name) })) ??
+      (await db.query.parties.findFirst({ where: eq(parties.id, slugifyPartyId(name)) }));
+    if (!party) {
+      skip(`party color ${name}: party not in the archive yet (row will apply once it exists)`);
+      continue;
+    }
+    const abbr = r.abbreviation?.trim() || party.abbreviation;
+    if (party.color === hex && party.abbreviation === abbr) continue; // already applied
+    await db
+      .update(parties)
+      .set({ color: hex, abbreviation: abbr })
+      .where(eq(parties.id, party.id));
+    bump("party colors");
+  }
+
   // --- development lens (curated; upserts directly with inline sources) -----
   for (const r of readSheet("indicators.csv")) {
     if (!r.id || !r.name || !r.unit || !r.category || !r.methodology) {

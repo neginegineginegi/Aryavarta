@@ -105,3 +105,16 @@ Matches the existing term by state + office + start_date. If the term is
 live, a pending update revision is filed for review; if it is still an
 unpublished imported draft, the draft itself is amended. Optional `sources`
 ids are added to the term's citations; `notes` is appended.
+
+## party_colors.csv (curated display metadata)
+
+```csv
+party_name,abbreviation,primary_hex,secondary_hex,primary_region,notes
+Bharatiya Janata Party,BJP,#FF9933,,National,Standard Saffron
+```
+
+Standing configuration: applied on every deploy to parties matched by name
+(or slug). Sets the map/legend color and the abbreviation. Rows for parties
+not yet in the archive wait harmlessly and apply once data creates them.
+Only `party_name` and `primary_hex` are used by the pipeline today;
+`secondary_hex`, `primary_region`, and `notes` are documentation columns.
