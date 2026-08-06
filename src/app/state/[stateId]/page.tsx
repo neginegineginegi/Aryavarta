@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { YearFocus } from "@/components/state/YearFocus";
 import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { DevelopmentSection } from "@/components/state/DevelopmentSection";
 import { getDevelopment } from "@/lib/db/queries/development";
@@ -118,6 +119,25 @@ export default async function StatePage({
         </p>
         <TimelineBand terms={terms} maxYear={maxYear} />
       </header>
+
+      {/* Year-in-focus strip: appears when the reader arrives with ?y= from
+          the map, keeping the selected year's context on the full page. */}
+      <YearFocus
+        stateId={state.id}
+        terms={terms.map((t) => ({
+          startDate: t.startDate,
+          endDate: t.endDate,
+          kind: t.kind,
+          cmName: t.cmName,
+          partyName: t.partyName,
+          partyAbbreviation: t.partyAbbreviation,
+          partyColor: t.partyColor,
+        }))}
+        elections={elections.map((e) => ({ id: e.id, electionDate: e.electionDate }))}
+        eventYears={events.map((ev) => ev.year)}
+        formedYear={state.formedOn ? yearOf(state.formedOn) : null}
+        dissolvedYear={state.dissolvedOn ? yearOf(state.dissolvedOn) : null}
+      />
 
       {/* Chief Ministers */}
       <section className="border-b border-rule py-8">

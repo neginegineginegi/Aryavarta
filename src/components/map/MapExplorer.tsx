@@ -176,7 +176,10 @@ export function MapExplorer({ data }: { data: MapData }) {
   }
 
   function open(stateId: string) {
-    router.push(`/state/${stateId}/${year}`);
+    // Straight to the state's home page, carrying the selected year so the
+    // page opens with that year's government in focus. The citable
+    // single-year snapshot stays linked from there.
+    router.push(`/state/${stateId}?y=${year}`);
   }
 
   // Tooltip text derives from current state at render time, so a year change
