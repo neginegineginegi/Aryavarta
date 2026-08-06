@@ -1,18 +1,18 @@
 import type { Metadata } from "next";
-import { EB_Garamond, Space_Mono, Tiro_Devanagari_Sanskrit } from "next/font/google";
+import { Inter_Tight, Space_Mono, Tiro_Devanagari_Sanskrit } from "next/font/google";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 
 import "./globals.css";
 
-// EB Garamond: the open-source relative of Sabon (both are Garamond
-// revivals) — set site-wide for a book-like reading experience.
-// To use licensed Sabon instead: place the purchased .woff2 files under
-// src/fonts/ and swap this for next/font/local — ask Claude to wire it.
-const garamond = EB_Garamond({
-  variable: "--font-garamond",
+// Inter Tight: a grotesque with a slightly narrow set width, used site-wide.
+// Headlines run at light weights and large sizes; body text at 400. Loading
+// the full weight range keeps the 200-weight display headings crisp.
+const sans = Inter_Tight({
+  variable: "--font-sans",
   subsets: ["latin"],
+  weight: ["200", "300", "400", "500", "600"],
 });
 
 // Space Mono carries the technical-manual register: section labels, table
@@ -59,7 +59,7 @@ export default function RootLayout({
     // globals.css is declared there and CSS variables don't resolve upward.
     <html
       lang="en"
-      className={`${garamond.variable} ${spaceMono.variable} ${tiroDevanagari.variable}`}
+      className={`${sans.variable} ${spaceMono.variable} ${tiroDevanagari.variable}`}
     >
       <body className="min-h-screen flex flex-col">
         <Header />

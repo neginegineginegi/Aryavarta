@@ -19,15 +19,24 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6">
-      <section className="py-12">
-        <h1 className="max-w-3xl font-display text-4xl font-semibold leading-tight tracking-tight text-ink sm:text-[3.25rem]">
-          Who governed every Indian state, every year, with sources to prove it.
+      <section className="flex flex-col items-center py-20 text-center sm:py-28">
+        <span className="eyebrow">Indian Political Archive</span>
+        <h1 className="mt-7 max-w-[62rem] font-display text-[2.4rem] leading-[1.1] text-ink sm:text-[3.5rem]">
+          Who governed every Indian state,
+          <br className="hidden sm:inline" /> every year, with sources to prove it.
         </h1>
-        <p className="mt-5 max-w-2xl text-lg leading-relaxed text-ink-muted">
-          Abhilekh is a living atlas of Indian political history. Scrub the timeline and
-          watch governments change across the map. Open any state for its chief ministers,
-          elections, and turning points. Follow any fact back to its citation.
+        <p className="mt-7 max-w-xl text-[1.05rem] leading-relaxed text-ink-muted">
+          A living atlas of Indian political history. Scrub the timeline and watch
+          governments change across the map. Follow any fact back to its citation.
         </p>
+        <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/browse" className="btn btn-primary">
+            Browse the archive
+          </Link>
+          <Link href="/about" className="btn btn-secondary">
+            How it works
+          </Link>
+        </div>
       </section>
 
       <section className="card p-5 sm:p-8">
