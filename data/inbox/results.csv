@@ -79,3 +79,91 @@ Delhi,2020-02-08,Aam Aadmi Party,62,70,53.57,
 Delhi,2020-02-08,Bharatiya Janata Party,8,67,38.51,
 Delhi,2025-02-08,Aam Aadmi Party,45,70,47.00,
 Delhi,2025-02-08,Bharatiya Janata Party,25,70,39.00,
+Andhra Pradesh,1999-09-11,Telugu Desam Party,180,269,43.87,National Democratic Alliance
+Andhra Pradesh,1999-09-11,Indian National Congress,91,293,40.61,
+Andhra Pradesh,1999-09-11,Bharatiya Janata Party,12,24,3.67,National Democratic Alliance
+Andhra Pradesh,2004-04-20,Indian National Congress,185,266,38.56,
+Andhra Pradesh,2004-04-20,Telugu Desam Party,47,267,37.59,National Democratic Alliance
+Andhra Pradesh,2004-04-20,Telangana Rashtra Samithi,26,54,3.78,
+Andhra Pradesh,2009-04-16,Indian National Congress,156,294,36.56,
+Andhra Pradesh,2009-04-16,Telugu Desam Party,92,225,28.12,
+Andhra Pradesh,2009-04-16,Praja Rajyam Party,18,288,16.22,
+Andhra Pradesh,2014-05-07,Telugu Desam Party,102,165,32.53,National Democratic Alliance
+Andhra Pradesh,2014-05-07,YSR Congress Party,67,175,27.88,
+Andhra Pradesh,2019-04-11,YSR Congress Party,151,175,49.95,
+Andhra Pradesh,2019-04-11,Telugu Desam Party,23,175,39.17,
+Andhra Pradesh,2019-04-11,Jana Sena Party,1,137,5.53,
+Andhra Pradesh,2024-05-13,Telugu Desam Party,135,144,45.60,National Democratic Alliance
+Andhra Pradesh,2024-05-13,Jana Sena Party,21,21,6.87,National Democratic Alliance
+Andhra Pradesh,2024-05-13,YSR Congress Party,11,175,39.38,
+Andhra Pradesh,2024-05-13,Bharatiya Janata Party,8,10,2.83,National Democratic Alliance
+Telangana,2014-04-30,Telangana Rashtra Samithi,63,119,34.00,
+Telangana,2014-04-30,Indian National Congress,21,112,25.20,
+Telangana,2014-04-30,Telugu Desam Party,15,72,14.70,
+Telangana,2018-12-07,Telangana Rashtra Samithi,88,119,46.87,
+Telangana,2018-12-07,Indian National Congress,19,100,28.43,
+Telangana,2018-12-07,All India Majlis-e-Ittehadul Muslimeen,7,8,2.70,
+Telangana,2023-11-30,Indian National Congress,64,118,39.40,
+Telangana,2023-11-30,Bharat Rashtra Samithi,39,119,37.35,
+Telangana,2023-11-30,Bharatiya Janata Party,8,111,13.90,National Democratic Alliance
+Telangana,2023-11-30,All India Majlis-e-Ittehadul Muslimeen,7,9,2.92,
+Tamil Nadu,1996-05-02,Dravida Munnetra Kazhagam,173,182,42.07,
+Tamil Nadu,1996-05-02,Tamil Maanila Congress,39,40,9.30,
+Tamil Nadu,1996-05-02,All India Anna Dravida Munnetra Kazhagam,4,214,21.47,
+Tamil Nadu,2001-05-10,All India Anna Dravida Munnetra Kazhagam,132,141,31.44,Secular Democratic Alliance
+Tamil Nadu,2001-05-10,Dravida Munnetra Kazhagam,31,183,30.92,National Democratic Alliance
+Tamil Nadu,2001-05-10,Tamil Maanila Congress,23,32,7.19,Secular Democratic Alliance
+Tamil Nadu,2006-05-08,Dravida Munnetra Kazhagam,96,132,26.50,Democratic Progressive Alliance
+Tamil Nadu,2006-05-08,All India Anna Dravida Munnetra Kazhagam,61,232,32.60,Democratic People's Alliance
+Tamil Nadu,2006-05-08,Indian National Congress,34,48,8.40,Democratic Progressive Alliance
+Tamil Nadu,2011-04-13,All India Anna Dravida Munnetra Kazhagam,150,165,38.40,
+Tamil Nadu,2011-04-13,Desiya Murpokku Dravida Kazhagam,29,41,7.88,
+Tamil Nadu,2011-04-13,Dravida Munnetra Kazhagam,23,119,22.39,
+Tamil Nadu,2016-05-16,All India Anna Dravida Munnetra Kazhagam,136,234,40.88,
+Tamil Nadu,2016-05-16,Dravida Munnetra Kazhagam,89,178,31.39,
+Tamil Nadu,2016-05-16,Indian National Congress,8,41,6.42,
+Tamil Nadu,2021-04-06,Dravida Munnetra Kazhagam,133,188,37.70,Secular Progressive Alliance
+Tamil Nadu,2021-04-06,All India Anna Dravida Munnetra Kazhagam,66,191,33.29,National Democratic Alliance
+Tamil Nadu,2021-04-06,Indian National Congress,18,25,4.27,Secular Progressive Alliance
+Kerala,1996-04-27,Communist Party of India (Marxist),40,73,21.59,Left Democratic Front
+Kerala,1996-04-27,Indian National Congress,37,94,26.88,United Democratic Front
+Kerala,2001-05-10,Indian National Congress,62,88,31.40,United Democratic Front
+Kerala,2001-05-10,Communist Party of India (Marxist),23,73,21.43,Left Democratic Front
+Kerala,2006-04-29,Communist Party of India (Marxist),61,85,30.45,Left Democratic Front
+Kerala,2006-04-29,Indian National Congress,24,77,24.09,United Democratic Front
+Kerala,2011-04-13,Indian National Congress,38,82,26.40,United Democratic Front
+Kerala,2011-04-13,Communist Party of India (Marxist),45,84,28.18,Left Democratic Front
+Kerala,2016-05-16,Communist Party of India (Marxist),58,84,26.52,Left Democratic Front
+Kerala,2016-05-16,Indian National Congress,22,87,23.70,United Democratic Front
+Kerala,2021-04-06,Communist Party of India (Marxist),62,77,25.38,Left Democratic Front
+Kerala,2021-04-06,Indian National Congress,22,93,25.12,United Democratic Front
+Karnataka,1999-09-11,Indian National Congress,132,222,40.84,
+Karnataka,1999-09-11,Bharatiya Janata Party,44,149,20.69,National Democratic Alliance
+Karnataka,1999-09-11,Janata Dal (United),18,112,13.53,National Democratic Alliance
+Karnataka,2004-04-20,Bharatiya Janata Party,79,198,28.33,National Democratic Alliance
+Karnataka,2004-04-20,Indian National Congress,65,224,35.27,
+Karnataka,2004-04-20,Janata Dal (Secular),58,220,20.77,
+Karnataka,2008-05-22,Bharatiya Janata Party,110,224,33.86,National Democratic Alliance
+Karnataka,2008-05-22,Indian National Congress,80,222,34.76,
+Karnataka,2008-05-22,Janata Dal (Secular),28,219,18.96,
+Karnataka,2013-05-05,Indian National Congress,122,223,36.59,
+Karnataka,2013-05-05,Bharatiya Janata Party,40,222,19.95,
+Karnataka,2013-05-05,Janata Dal (Secular),40,222,20.09,
+Karnataka,2018-05-12,Bharatiya Janata Party,104,222,36.35,National Democratic Alliance
+Karnataka,2018-05-12,Indian National Congress,80,222,38.14,
+Karnataka,2018-05-12,Janata Dal (Secular),37,201,18.30,
+Karnataka,2023-05-10,Indian National Congress,135,223,42.88,
+Karnataka,2023-05-10,Bharatiya Janata Party,66,224,36.00,National Democratic Alliance
+Karnataka,2023-05-10,Janata Dal (Secular),19,209,13.29,
+Puducherry,2001-05-10,Indian National Congress,11,21,22.78,
+Puducherry,2001-05-10,Dravida Munnetra Kazhagam,7,13,17.54,
+Puducherry,2006-05-08,Indian National Congress,10,16,29.91,
+Puducherry,2006-05-08,Dravida Munnetra Kazhagam,7,11,12.59,
+Puducherry,2011-04-13,All India N.R. Congress,15,17,31.75,
+Puducherry,2011-04-13,Indian National Congress,7,17,25.06,
+Puducherry,2016-05-16,Indian National Congress,15,21,30.60,United Progressive Alliance
+Puducherry,2016-05-16,All India N.R. Congress,8,30,28.10,
+Puducherry,2021-04-06,All India N.R. Congress,10,16,25.85,AINRC+
+Puducherry,2021-04-06,Bharatiya Janata Party,6,9,13.66,AINRC+
+Puducherry,2021-04-06,Indian National Congress,2,14,15.71,United Progressive Alliance
+Puducherry,2021-04-06,Dravida Munnetra Kazhagam,6,13,18.51,United Progressive Alliance
