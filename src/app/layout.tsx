@@ -1,22 +1,38 @@
 import type { Metadata } from "next";
-import { Inter_Tight, Space_Mono, Tiro_Devanagari_Sanskrit } from "next/font/google";
+import {
+  Inter_Tight,
+  Source_Serif_4,
+  Space_Mono,
+  Tiro_Devanagari_Sanskrit,
+} from "next/font/google";
 
 import { Footer } from "@/components/layout/Footer";
 import { Header } from "@/components/layout/Header";
 
 import "./globals.css";
 
-// Inter Tight: a grotesque with a slightly narrow set width, used site-wide.
-// Headlines run at light weights and large sizes; body text at 400. Loading
-// the full weight range keeps the 200-weight display headings crisp.
+// Three voices, each with a strict job.
+//
+// Source Serif 4 is the EDITORIAL voice: headlines and narrative prose. Drawn
+// for screen reading with real optical sizing, so it holds authority at
+// display sizes without the delicacy of a Garamond revival.
+const serif = Source_Serif_4({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+// Inter Tight is the DATA voice: tables, figures, controls, legends, nav.
+// Neutral and narrow enough to keep dense result tables scannable.
 const sans = Inter_Tight({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["200", "300", "400", "500", "600"],
+  display: "swap",
 });
 
-// Space Mono carries the technical-manual register: section labels, table
-// headers, nav, and numeric readouts. Body prose stays in Garamond.
+// Space Mono is the SYSTEM voice: curatorial eyebrows, column headers, year
+// readouts, axis ticks, citation markers. It marks machine-generated or
+// meta information and is never used decoratively.
 const spaceMono = Space_Mono({
   variable: "--font-space-mono",
   weight: ["400", "700"],
@@ -59,7 +75,7 @@ export default function RootLayout({
     // globals.css is declared there and CSS variables don't resolve upward.
     <html
       lang="en"
-      className={`${sans.variable} ${spaceMono.variable} ${tiroDevanagari.variable}`}
+      className={`${serif.variable} ${sans.variable} ${spaceMono.variable} ${tiroDevanagari.variable}`}
     >
       <body className="min-h-screen flex flex-col">
         <Header />

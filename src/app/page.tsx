@@ -19,13 +19,12 @@ export default async function HomePage() {
 
   return (
     <div className="mx-auto max-w-6xl px-6">
-      <section className="flex flex-col items-center py-20 text-center sm:py-28">
-        <span className="eyebrow">Indian Political Archive</span>
-        <h1 className="mt-7 max-w-[62rem] font-display text-[2.4rem] leading-[1.1] text-ink sm:text-[3.5rem]">
-          Who governed every Indian state,
-          <br className="hidden sm:inline" /> every year, with sources to prove it.
+      <section className="section flex flex-col items-center text-center">
+        <span className="curator-label">The Indian Political Archive</span>
+        <h1 className="display-1 mt-6 max-w-[22ch] text-ink">
+          Who governed every Indian state, every year, with sources to prove it.
         </h1>
-        <p className="mt-7 max-w-xl text-[1.05rem] leading-relaxed text-ink-muted">
+        <p className="standfirst mt-7">
           A living atlas of Indian political history. Scrub the timeline and watch
           governments change across the map. Follow any fact back to its citation.
         </p>

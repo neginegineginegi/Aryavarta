@@ -23,8 +23,12 @@
   --color-nodata: #e9e9e5; /* map fill when no term covers the year */
   --color-pr: #8a8a8a; /* President's Rule */
 
-  --font-display: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
-  --font-body: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
+  /* Three voices with strict jobs. Editorial (serif) carries headlines and
+     narrative; data (sans) carries tables, figures and controls; system
+     (mono) marks machine-generated and meta information. Never mix the job. */
+  --font-display: var(--font-serif), "Iowan Old Style", Georgia, serif;
+  --font-body: var(--font-serif), "Iowan Old Style", Georgia, serif;
+  --font-data: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
   --font-mono: var(--font-space-mono), "Courier New", monospace;
   /* Wordmark only: the अभिलेखः brand mark in header and footer. */
   --font-brand: var(--font-tiro-devanagari), "Noto Serif Devanagari", serif;
@@ -41,17 +45,103 @@ html {
 }
 
 body {
-  font-size: 1rem;
-  line-height: 1.6;
+  /* Source Serif has a generous x-height, so 1.0625rem sets a comfortable
+     reading size with book-like leading. */
+  font-size: 1.0625rem;
+  line-height: 1.65;
 }
 
-/* Large headings run light and tight: the weight carries at display size and
-   would look anaemic below it, so anything under ~1.5rem stays at 400+. */
-h1,
-h2.display,
-.display {
-  font-weight: 200;
-  letter-spacing: -0.02em;
+/* ---------------------------------------------------------------------------
+   Editorial type scale.
+
+   The scale deliberately leaves a wide gap between display sizes and
+   supporting text. Clustering five sizes between 1.1 and 2rem is what makes
+   a page read as assembled rather than composed; one large voice and one
+   quiet voice reads as designed.
+   --------------------------------------------------------------------------- */
+.display-1 {
+  font-family: var(--font-display);
+  font-size: clamp(2.4rem, 5.2vw, 4rem);
+  line-height: 1.08;
+  letter-spacing: -0.022em;
+  font-weight: 400;
+}
+.display-2 {
+  font-family: var(--font-display);
+  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
+  line-height: 1.14;
+  letter-spacing: -0.018em;
+  font-weight: 400;
+}
+.display-3 {
+  font-family: var(--font-display);
+  font-size: clamp(1.35rem, 2vw, 1.6rem);
+  line-height: 1.25;
+  letter-spacing: -0.012em;
+  font-weight: 600;
+}
+
+/* Standfirst: the single quiet line under a display heading. */
+.standfirst {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-ink-muted);
+  max-width: 46ch;
+}
+
+/* Comfortable measures. Prose never runs wider than the eye can track. */
+.measure {
+  max-width: 66ch;
+}
+.measure-tight {
+  max-width: 54ch;
+}
+
+/* Numbers, controls, legends and table bodies take the data voice. */
+.data-voice,
+.tabular-nums,
+input,
+select,
+button {
+  font-family: var(--font-data);
+}
+
+/* ---------------------------------------------------------------------------
+   Section rhythm. One idea per section, with room to breathe between them.
+   --------------------------------------------------------------------------- */
+.section {
+  padding-block: clamp(4rem, 9vw, 7.5rem);
+}
+.section-tight {
+  padding-block: clamp(2.5rem, 5vw, 4rem);
+}
+
+/* Hairline that separates two movements without shouting. */
+.section-rule {
+  border-top: 1px solid var(--color-rule);
+}
+
+/* Curatorial label above a display heading: 'WHAT DEFINED THIS PERIOD'. */
+.curator-label {
+  display: block;
+  font-family: var(--font-mono);
+  font-size: 0.66rem;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-faint);
+}
+
+/* Opening paragraph of a narrative section, set with a drop cap. */
+.lede::first-letter {
+  float: left;
+  font-family: var(--font-display);
+  font-size: 3.6em;
+  line-height: 0.82;
+  padding-right: 0.08em;
+  padding-top: 0.04em;
+  font-weight: 600;
+  color: var(--color-ink);
 }
 
 /* Old-style faces need real tabular figures in data tables and year readouts. */
