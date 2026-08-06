@@ -29,7 +29,7 @@ export function NavLinks() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`border-b-2 pb-0.5 transition-colors ${
+            className={`border-b-2 pb-0.5 pt-1 transition-colors ${
               active
                 ? "border-accent font-medium text-ink"
                 : "border-transparent text-ink-muted hover:border-rule-dark hover:text-ink"
