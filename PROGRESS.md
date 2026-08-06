@@ -97,8 +97,13 @@ additive payload fields never false-conflict old snapshots.
   year Y exists for year Y. Pre-formation states render the n.a. hatch, not a party color.
 - **One `terms` table for all offices** (cm/presidents_rule/pm/president/governor) with check
   constraints; union is pseudo-state `'in'`, Ladakh `'la'` has no map geometry.
-- Imported parties get a deterministic FNV-hash color (`pickPartyColor`); conventional colors
-  set at /admin/parties (auto-assign button exists).
+- Imported parties named in `data/inbox/party_colors.csv` get their conventional color +
+  abbreviation AT CREATION (`canonicalParty()` in src/lib/import/canonical-party-colors.ts;
+  the sheet is traced into server bundles via `outputFileTracingIncludes`). Only uncurated
+  parties fall back to the deterministic FNV-hash color (`pickPartyColor`); fix those at
+  /admin/parties (auto-assign button also prefers the sheet now). Root cause this closes:
+  the user saw Samajwadi Party render BLUE because runtime imports predated the next build,
+  and only builds ran the color sheet. Distinct per-party colors matter a lot to the user.
 
 ## 4. Next step
 

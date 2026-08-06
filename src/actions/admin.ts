@@ -50,10 +50,18 @@ export async function autoColorPartiesAction(): Promise<void> {
   }
 
   const gray = await db.query.parties.findMany({ where: eq(parties.color, PLACEHOLDER_GRAY) });
+  const { canonicalParty } = await import("@/lib/import/canonical-party-colors");
   let changed = 0;
   for (const p of gray) {
     if (p.isPseudo) continue; // Independent/Others stay neutral gray by design
-    await db.update(parties).set({ color: pickPartyColor(p.id) }).where(eq(parties.id, p.id));
+    const canonical = canonicalParty(p.name);
+    await db
+      .update(parties)
+      .set({
+        color: canonical?.color ?? pickPartyColor(p.id),
+        abbreviation: p.abbreviation ?? canonical?.abbreviation ?? null,
+      })
+      .where(eq(parties.id, p.id));
     changed++;
   }
   if (changed > 0) await revalidatePartyVisuals();
