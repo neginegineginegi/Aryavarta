@@ -526,7 +526,10 @@ async function main() {
     await db
       .insert(indicators)
       .values({ id: r.id, name: r.name, unit: r.unit, category: r.category, methodology: r.methodology })
-      .onConflictDoNothing();
+      .onConflictDoUpdate({
+        target: indicators.id,
+        set: { name: r.name, unit: r.unit, category: r.category, methodology: r.methodology },
+      });
     bump("indicators");
   }
   for (const r of readSheet("indicator_values.csv")) {
