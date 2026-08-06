@@ -84,6 +84,8 @@ export async function snapshotElection(
       partyId: r.partyId,
       seats: r.seatsWon,
       voteSharePercent: r.voteSharePercent == null ? null : Number(r.voteSharePercent),
+      seatsContested: r.seatsContested ?? null,
+      allianceName: r.allianceName ?? null,
     })),
     sources: row.sources.map((s) => toSourceSnapshot(s.source)),
   });
@@ -142,7 +144,13 @@ function sortKeysDeep(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(sortKeysDeep);
   const rec = v as Record<string, unknown>;
   const out: Record<string, unknown> = {};
-  for (const k of Object.keys(rec).sort()) out[k] = sortKeysDeep(rec[k]);
+  for (const k of Object.keys(rec).sort()) {
+    // Null and absent are the same statement in canonical payloads. Dropping
+    // nulls here keeps payloads comparable across additive schema growth:
+    // an old snapshot without a field must equal a new one carrying null.
+    if (rec[k] === null || rec[k] === undefined) continue;
+    out[k] = sortKeysDeep(rec[k]);
+  }
   return out;
 }
 

@@ -166,6 +166,9 @@ export const electionResultSchema = z.object({
   partyId: z.string().trim().min(2).max(64),
   seats: z.number().int().min(0).max(1000),
   voteSharePercent: z.number().min(0).max(100).nullish().transform((v) => v ?? null),
+  // Optional richness (additive): older stored payloads simply lack these.
+  seatsContested: z.number().int().min(0).max(1000).nullish().transform((v) => v ?? null),
+  allianceName: z.string().trim().max(120).nullish().transform((v) => (v ? v : null)),
 });
 
 export const electionPayloadSchema = z

@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/ensure-upgrades.mjs && next build",
+    "build": "node scripts/ensure-upgrades.mjs && tsx scripts/load-inbox.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",
@@ -13,7 +13,8 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:seed:demo": "tsx scripts/seed.ts --demo",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "load:inbox": "tsx scripts/load-inbox.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.3",

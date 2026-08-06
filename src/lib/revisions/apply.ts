@@ -201,6 +201,8 @@ export async function approveRevision(input: {
                 partyId: r.partyId,
                 seatsWon: r.seats,
                 voteSharePercent: numericOrNull(r.voteSharePercent),
+                seatsContested: r.seatsContested ?? null,
+                allianceName: r.allianceName ?? null,
               })),
             );
           await replaceElectionSources(tx, rev.entityId, p.sources);
@@ -261,6 +263,8 @@ export async function approveRevision(input: {
                 partyId: r.partyId,
                 seatsWon: r.seats,
                 voteSharePercent: numericOrNull(r.voteSharePercent),
+                seatsContested: r.seatsContested ?? null,
+                allianceName: r.allianceName ?? null,
               })),
             );
           await replaceElectionSources(tx, rev.entityId, p.sources);

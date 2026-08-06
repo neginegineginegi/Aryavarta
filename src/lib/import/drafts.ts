@@ -239,6 +239,8 @@ export async function createElectionDrafts(
         partyId: await ensureParty(r.partyLabel),
         seats: r.seatsWon,
         voteSharePercent: null,
+        seatsContested: null,
+        allianceName: null,
       });
     }
 

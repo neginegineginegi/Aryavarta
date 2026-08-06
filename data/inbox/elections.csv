@@ -1,0 +1,15 @@
+state,scope,election_date,total_seats,turnout_percent,assembly_number,sources
+Gujarat,assembly,1962-02-19,154,,,S1
+Gujarat,assembly,1967-02-15,168,63.70,3,S1
+Gujarat,assembly,1972-03-05,168,58.39,4,S1
+Gujarat,assembly,1975-06-08,182,60.11,5,S1
+Gujarat,assembly,1980-05-28,182,48.27,6,S1
+Gujarat,assembly,1985-03-05,182,48.82,7,S1
+Gujarat,assembly,1990-02-27,182,52.20,8,S1
+Gujarat,assembly,1995-02-20,182,64.39,9,S1
+Gujarat,assembly,1998-02-28,182,59.30,10,S1
+Gujarat,assembly,2002-12-12,182,61.54,11,S1
+Gujarat,assembly,2007-12-11,182,59.77,12,S1
+Gujarat,assembly,2012-12-13,182,72.02,13,S1
+Gujarat,assembly,2017-12-09,182,68.41,14,S1
+Gujarat,assembly,2022-12-01,182,64.84,15,S1

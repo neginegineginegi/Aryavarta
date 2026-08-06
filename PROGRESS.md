@@ -43,6 +43,14 @@ insight groups (average turnout by state, government stability), ARCHITECTURE.md
 Phase 3 live-mode plug-in design: provisional-results flag, feed bot, historical context from
 existing queries), docs/DATA_FORMAT.md (durable CSV spec incl. indicators sheets).
 
+Bulk data pipeline: data/inbox/*.csv is loaded by scripts/load-inbox.ts on EVERY build (after
+ensure-upgrades), creating pending Import Bot drafts with the user's cited sources; idempotent
+via kind-aware dedup, report printed in the build log. First real batch (Gujarat: 29 terms, 14
+elections with results incl. new seatsContested/allianceName payload fields, 7 events) is
+committed in the inbox. Election result payloads now round-trip seats_contested and
+alliance_name (payloads/snapshot/apply all updated); snapshotsEqual treats null == absent so
+additive payload fields never false-conflict old snapshots.
+
 ## 2. Open TODOs (priority order)
 
 1. **Redesign sign-off** — user hasn't reacted to the shipped redesign yet; fix whatever page
