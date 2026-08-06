@@ -447,6 +447,27 @@ async function main() {
   // parties are reported and picked up automatically once data creates them.
   const { parties } = await import("../src/lib/db/schema");
   const { slugifyPartyId } = await import("../src/lib/import/drafts");
+
+  // Match on a normalized name, not an exact string. Archive names arrive from
+  // imports and routinely differ from the sheet in case, punctuation, or "&"
+  // versus "and" ("Jammu & Kashmir National Conference" vs "Jammu and
+  // Kashmir..."). An exact match silently left those parties on an
+  // auto-assigned color, which is exactly how two parties end up looking alike.
+  const normalizeParty = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/&/g, " and ")
+      .replace(/[^a-z0-9()]+/g, " ")
+      .trim();
+
+  const partyRows = await db.select().from(parties);
+  const partyByKey = new Map<string, (typeof partyRows)[number]>();
+  for (const p of partyRows) {
+    partyByKey.set(normalizeParty(p.name), p);
+    partyByKey.set(p.id.toLowerCase(), p);
+  }
+  const colored = new Set<string>();
+
   for (const r of readSheet("party_colors.csv")) {
     const name = r.party_name?.trim();
     const hex = r.primary_hex?.trim();
@@ -456,12 +477,12 @@ async function main() {
       continue;
     }
     const party =
-      (await db.query.parties.findFirst({ where: eq(parties.name, name) })) ??
-      (await db.query.parties.findFirst({ where: eq(parties.id, slugifyPartyId(name)) }));
+      partyByKey.get(normalizeParty(name)) ?? partyByKey.get(slugifyPartyId(name).toLowerCase());
     if (!party) {
       skip(`party color ${name}: party not in the archive yet (row will apply once it exists)`);
       continue;
     }
+    colored.add(party.id);
     const abbr = r.abbreviation?.trim() || party.abbreviation;
     if (party.color === hex && party.abbreviation === abbr) continue; // already applied
     await db
@@ -469,6 +490,16 @@ async function main() {
       .set({ color: hex, abbreviation: abbr })
       .where(eq(parties.id, party.id));
     bump("party colors");
+  }
+
+  // Name every archive party the sheet does not cover. These keep a
+  // hash-assigned color that nobody chose, so they are the ones that show up
+  // wearing a rival's shade. Add a row to party_colors.csv to fix one.
+  for (const p of partyRows) {
+    if (p.isPseudo || colored.has(p.id)) continue;
+    report.warnings.push(
+      `party color: no row for "${p.name}", still on auto-assigned ${p.color}`,
+    );
   }
 
   // --- development lens (curated; upserts directly with inline sources) -----
