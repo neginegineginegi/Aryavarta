@@ -82,6 +82,44 @@ thead th {
   color: var(--color-accent);
 }
 
+/* Ruled statistical plate: a framed table with a hairline inner grid, used
+   wherever charts sit beside figures (Development Lens, indicator pages,
+   compare). Wrap in an overflow-x-auto div; the frame hugs the table width.
+   Cell padding stays in markup. */
+.plate {
+  min-width: fit-content;
+  border: 1px solid var(--color-rule-dark);
+  background: var(--color-paper-raised);
+}
+.plate table {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+}
+.plate th,
+.plate td {
+  border: 1px solid var(--color-rule);
+  vertical-align: top;
+}
+.plate thead th {
+  background: var(--color-paper-sunken);
+  color: var(--color-ink-faint);
+  font-size: 0.68rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+/* Category band spanning the full table width. */
+.plate .plate-band {
+  background: var(--color-paper-sunken);
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--color-accent);
+}
+
 /* Raised panel used for dashboards, summaries, and list entries. */
 .card {
   background: var(--color-paper-raised);

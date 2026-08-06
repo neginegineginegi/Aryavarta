@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 import { PartyTag } from "@/components/ui/PartyTag";
 import { TrendChart } from "@/components/ui/TrendChart";
@@ -214,57 +215,60 @@ export async function StateIndicatorCompare({ a, b }: { a: string; b: string }) 
         Values from named statistical sources, shown as published. Abhilekh does not score,
         rank, or grade governments; the numbers and their sources speak for themselves.
       </p>
-      <div className="mt-4 space-y-6">
-        {[...byCategory.entries()].map(([category, pairs]) => (
-          <div key={category} className="overflow-x-auto">
-            <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ink-muted">
-              {category}
-            </h3>
-            <table className="mt-2 w-full min-w-[560px] text-left text-[0.85rem]">
-              <thead>
-                <tr className="border-b border-rule-dark text-[0.7rem] uppercase tracking-wider text-ink-faint">
-                  <th className="w-[28%] py-1.5 pr-4 font-medium">Indicator</th>
-                  <th className="w-[36%] py-1.5 pr-4 font-medium">{names.get(a) ?? a}</th>
-                  <th className="w-[36%] py-1.5 font-medium">{names.get(b) ?? b}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...pairs.entries()].map(([id, pair]) => {
-                  const def = pair.left ?? pair.right!;
-                  return (
-                    <tr key={id} className="border-b border-rule align-top">
-                      <td className="py-2.5 pr-4">
-                        <Link
-                          href={`/indicator/${id}`}
-                          title={def.methodology}
-                          className="text-ink underline-offset-2 hover:text-accent hover:underline"
-                        >
-                          {def.name}
-                        </Link>
-                        <span className="block text-[0.72rem] text-ink-faint">{def.unit}</span>
-                      </td>
-                      <IndicatorCell series={pair.left} />
-                      <IndicatorCell series={pair.right} last />
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+      <div className="mt-5 overflow-x-auto">
+        <div className="plate">
+          <table className="min-w-[560px] text-[0.85rem]">
+            <thead>
+              <tr>
+                <th className="w-[28%] px-3 py-2">Indicator</th>
+                <th className="w-[36%] px-3 py-2">{names.get(a) ?? a}</th>
+                <th className="w-[36%] px-3 py-2">{names.get(b) ?? b}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...byCategory.entries()].map(([category, pairs]) => (
+                <Fragment key={category}>
+                  <tr>
+                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                      {category}
+                    </th>
+                  </tr>
+                  {[...pairs.entries()].map(([id, pair]) => {
+                    const def = pair.left ?? pair.right!;
+                    return (
+                      <tr key={id}>
+                        <td className="px-3 py-2.5">
+                          <Link
+                            href={`/indicator/${id}`}
+                            title={def.methodology}
+                            className="text-ink underline-offset-2 hover:text-accent hover:underline"
+                          >
+                            {def.name}
+                          </Link>
+                          <span className="block text-[0.72rem] text-ink-faint">{def.unit}</span>
+                        </td>
+                        <IndicatorCell series={pair.left} />
+                        <IndicatorCell series={pair.right} />
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
 }
 
-function IndicatorCell({ series, last }: { series?: IndicatorSeries; last?: boolean }) {
-  const pad = last ? "" : " pr-4";
+function IndicatorCell({ series }: { series?: IndicatorSeries }) {
   if (!series || series.values.length === 0) {
-    return <td className={`py-2.5 text-ink-faint${pad}`}>—</td>;
+    return <td className="px-3 py-2.5 text-ink-faint">—</td>;
   }
   const latest = series.values[series.values.length - 1];
   return (
-    <td className={`py-2.5${pad}`}>
+    <td className="px-3 py-2.5">
       <p className="whitespace-nowrap">
         <span className="tabular-nums font-medium text-ink">{formatNumber(latest.value)}</span>{" "}
         <span className="tabular-nums text-[0.75rem] text-ink-faint">

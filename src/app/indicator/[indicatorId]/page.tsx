@@ -103,32 +103,45 @@ export default async function IndicatorPage({
                     <p className="text-[0.8rem] text-ink-faint">Single data point so far.</p>
                   )}
                 </div>
-                <table className="mt-3 w-full text-left text-[0.8rem]">
-                  <tbody>
-                    {s.values
-                      .slice()
-                      .reverse()
-                      .slice(0, 6)
-                      .map((v) => (
-                        <tr key={v.year} className="border-b border-rule align-baseline">
-                          <td className="py-1 pr-3 font-mono text-[0.7rem] text-ink-muted">
-                            {v.year}
-                          </td>
-                          <td className="py-1 pr-3 tabular-nums text-ink">{formatNumber(v.value)}</td>
-                          <td className="py-1 text-right text-[0.72rem]">
-                            <a
-                              href={v.sourceUrl}
-                              target="_blank"
-                              rel="nofollow noopener noreferrer"
-                              className="text-accent underline-offset-2 hover:underline"
-                            >
-                              {v.sourceTitle}
-                            </a>
-                          </td>
+                <div className="mt-3 overflow-x-auto">
+                  <div className="plate">
+                    <table className="text-[0.8rem]">
+                      <thead>
+                        <tr>
+                          <th className="px-2.5 py-1.5">Year</th>
+                          <th className="px-2.5 py-1.5">Value</th>
+                          <th className="px-2.5 py-1.5">Source</th>
                         </tr>
-                      ))}
-                  </tbody>
-                </table>
+                      </thead>
+                      <tbody>
+                        {s.values
+                          .slice()
+                          .reverse()
+                          .slice(0, 6)
+                          .map((v) => (
+                            <tr key={v.year}>
+                              <td className="whitespace-nowrap px-2.5 py-1.5 font-mono text-[0.7rem] text-ink-muted">
+                                {v.year}
+                              </td>
+                              <td className="whitespace-nowrap px-2.5 py-1.5 tabular-nums text-ink">
+                                {formatNumber(v.value)}
+                              </td>
+                              <td className="px-2.5 py-1.5 text-[0.72rem]">
+                                <a
+                                  href={v.sourceUrl}
+                                  target="_blank"
+                                  rel="nofollow noopener noreferrer"
+                                  className="text-accent underline-offset-2 hover:underline"
+                                >
+                                  {v.sourceTitle}
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 {(latest.reportingOrg || latest.notes) && (
                   <p className="mt-2 text-[0.72rem] text-ink-faint">
                     {latest.reportingOrg ? `Reported by ${latest.reportingOrg}. ` : ""}

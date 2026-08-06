@@ -19,7 +19,7 @@ import { formatDate, formatNumber } from "@/lib/format";
 export function DevelopmentSection({ grouped }: { grouped: Array<[string, IndicatorSeries[]]> }) {
   if (grouped.length === 0) return null;
 
-  const cell = "border border-rule px-3 align-top";
+  const cell = "px-3 align-top";
 
   return (
     <section className="border-b border-rule py-8">
@@ -31,25 +31,21 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
       </p>
 
       <div className="mt-5 overflow-x-auto">
-        <div className="min-w-fit border border-rule-dark bg-paper-raised">
-          <table className="w-full border-collapse text-left text-[0.85rem]">
+        <div className="plate">
+          <table className="text-[0.85rem]">
             <thead>
-              <tr className="bg-paper-sunken text-[0.68rem] uppercase tracking-wider text-ink-faint">
-                <th className={`${cell} py-2 font-medium`}>Indicator</th>
-                <th className={`${cell} py-2 font-medium`}>Latest</th>
-                <th className={`${cell} hidden py-2 font-medium md:table-cell`}>Trend</th>
-                <th className={`${cell} py-2 font-medium`}>Source</th>
+              <tr>
+                <th className={`${cell} py-2`}>Indicator</th>
+                <th className={`${cell} py-2`}>Latest</th>
+                <th className={`${cell} hidden py-2 md:table-cell`}>Trend</th>
+                <th className={`${cell} py-2`}>Source</th>
               </tr>
             </thead>
             <tbody>
               {grouped.map(([category, series]) => (
                 <Fragment key={category}>
                   <tr>
-                    <th
-                      colSpan={4}
-                      scope="colgroup"
-                      className="border border-rule bg-paper-sunken px-3 py-1.5 text-left font-mono text-[0.62rem] font-bold uppercase tracking-[0.12em] text-accent"
-                    >
+                    <th colSpan={4} scope="colgroup" className="plate-band px-3 py-1.5">
                       {category}
                     </th>
                   </tr>
