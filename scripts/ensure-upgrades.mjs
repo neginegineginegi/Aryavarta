@@ -80,6 +80,9 @@ const STATEMENTS = [
   `INSERT INTO states (id, name, kind, formed_on, dissolved_on, has_geometry)
    VALUES ('dndd', 'Dadra and Nagar Haveli and Daman and Diu', 'union_territory', '2020-01-26', NULL, false)
    ON CONFLICT (id) DO NOTHING`,
+  // --- upgrade 7: indicator values gain reporting org + notes ---------------
+  `ALTER TABLE "indicator_values" ADD COLUMN IF NOT EXISTS "reporting_org" text`,
+  `ALTER TABLE "indicator_values" ADD COLUMN IF NOT EXISTS "notes" text`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

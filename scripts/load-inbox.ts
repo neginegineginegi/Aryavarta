@@ -519,6 +519,8 @@ async function main() {
         sourceTitle: r.source_title,
         sourceUrl: r.source_url,
         reportingPeriod: r.reporting_period || null,
+        reportingOrg: r.reporting_org || null,
+        notes: r.notes || null,
         verifiedOn: r.verified_on,
       })
       .onConflictDoNothing();

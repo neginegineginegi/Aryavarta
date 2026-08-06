@@ -1,4 +1,7 @@
+import Link from "next/link";
+
 import type { IndicatorSeries } from "@/lib/db/queries/development";
+import { TrendChart } from "@/components/ui/TrendChart";
 import { formatDate, formatNumber } from "@/lib/format";
 
 /**
@@ -30,20 +33,23 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                 <tr className="border-b border-rule-dark text-[0.7rem] uppercase tracking-wider text-ink-faint">
                   <th className="py-1.5 pr-4 font-medium">Indicator</th>
                   <th className="py-1.5 pr-4 font-medium">Latest</th>
-                  <th className="hidden py-1.5 pr-4 font-medium sm:table-cell">Earlier</th>
+                  <th className="hidden py-1.5 pr-4 font-medium md:table-cell">Trend</th>
                   <th className="py-1.5 font-medium">Source</th>
                 </tr>
               </thead>
               <tbody>
                 {series.map((s) => {
                   const latest = s.values[s.values.length - 1];
-                  const earlier = s.values.slice(0, -1).slice(-3);
                   return (
                     <tr key={s.id} className="border-b border-rule align-baseline">
                       <td className="py-2 pr-4">
-                        <span className="text-ink" title={s.methodology}>
+                        <Link
+                          href={`/indicator/${s.id}`}
+                          title={s.methodology}
+                          className="text-ink underline-offset-2 hover:text-accent hover:underline"
+                        >
                           {s.name}
-                        </span>
+                        </Link>
                         <span className="block text-[0.72rem] text-ink-faint">{s.unit}</span>
                       </td>
                       <td className="py-2 pr-4 whitespace-nowrap">
@@ -54,13 +60,14 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                           ({latest.reportingPeriod ?? latest.year})
                         </span>
                       </td>
-                      <td className="hidden py-2 pr-4 sm:table-cell">
-                        {earlier.length > 0 ? (
-                          <span className="tabular-nums text-[0.78rem] text-ink-muted">
-                            {earlier
-                              .map((v) => `${v.year}: ${formatNumber(v.value)}`)
-                              .join(" · ")}
-                          </span>
+                      <td className="hidden py-2 pr-4 md:table-cell">
+                        {s.values.length >= 2 ? (
+                          <TrendChart
+                            points={s.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+                            width={180}
+                            height={44}
+                            ariaLabel={`${s.name}, ${s.values[0].year} to ${latest.year}`}
+                          />
                         ) : (
                           <span className="text-ink-faint">—</span>
                         )}
@@ -75,7 +82,8 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                           {latest.sourceTitle}
                         </a>
                         <span className="block text-[0.7rem] text-ink-faint">
-                          verified {formatDate(latest.verifiedOn)}
+                          {latest.reportingOrg ? `${latest.reportingOrg} · ` : ""}verified{" "}
+                          {formatDate(latest.verifiedOn)}
                         </span>
                       </td>
                     </tr>

@@ -50,6 +50,28 @@ are pinned to `sin1` beside the database (`vercel.json`).
   actions revalidate with `updateTag`. New cached queries must join that
   scheme or they will serve stale data after approvals.
 
+## The layer model (the "historical operating system" direction)
+
+The multi-layer vision (political, demographic, economic, education, health,
+infrastructure, agriculture, environment, law & order) maps onto what exists:
+
+- **Political layer** = the revision-managed tables (terms/elections/events).
+- **Every other layer** = the Development Lens. A "layer" is just an
+  `indicators.category` value; adding the Demographic or Law & Order layer is
+  a data operation (new indicator rows), not a schema change.
+- **National vs state** needs no model change: national series are values on
+  the 'in' union row. **District and rural/urban splits** are planned as
+  additive nullable dimension columns on `indicator_values` (`district_id`,
+  `segment`), extending the unique index; do NOT model them as fake states.
+- **Visualization primitive**: `src/components/ui/TrendChart.tsx`, a
+  server-rendered SVG line chart over (year, value) points. Every future
+  chart of a yearly series should reuse or extend it (choropleth-by-year is
+  the next primitive, reusing the map's fill machinery).
+- **Indicator pages** (`/indicator/[id]`) are the discovery hubs: one metric
+  across all states, national series first. Cross-links between indicators,
+  schemes (events), and governments belong there.
+- The no-scoring principle is absolute across all layers.
+
 ## Development Lens (Phase: data)
 
 `indicators` (definition: unit, category, methodology) and `indicator_values`

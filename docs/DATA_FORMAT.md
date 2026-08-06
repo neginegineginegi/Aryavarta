@@ -76,9 +76,12 @@ state-gdp,Gross State Domestic Product,₹ crore,Economy,"GSDP at current prices
 ## indicator_values.csv (Development Lens data)
 
 ```csv
-indicator,state,year,value,source_title,source_url,reporting_period,verified_on
-literacy-rate,Kerala,2011,94.0,Census of India 2011,https://censusindia.gov.in/example,Census 2011,2026-08-06
+indicator,state,year,value,source_title,source_url,reporting_period,reporting_org,notes,verified_on
+literacy-rate,Kerala,2011,94.0,Census of India 2011,https://censusindia.gov.in/example,Census 2011,Office of the Registrar General,,2026-08-06
 ```
+
+`reporting_org` (the organisation that published the number) and `notes`
+(caveats: series breaks, definition changes) are optional.
 
 - `indicator` references indicators.csv by id; `state` accepts names or codes.
 - One row per indicator + state + year. Every row carries its own source and

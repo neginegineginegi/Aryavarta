@@ -160,6 +160,8 @@ export const indicatorValues = pgTable(
     sourceTitle: text("source_title").notNull(),
     sourceUrl: text("source_url").notNull(),
     reportingPeriod: text("reporting_period"), // e.g. 'FY 2021-22', 'Census 2011'
+    reportingOrg: text("reporting_org"), // e.g. 'NSO', 'RBI', 'NCRB'
+    notes: text("notes"), // caveats: series breaks, definition changes
     verifiedOn: date("verified_on").notNull(), // when an admin last checked it
   },
   (t) => [
