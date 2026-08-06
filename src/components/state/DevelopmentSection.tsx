@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Fragment } from "react";
 
 import type { IndicatorSeries } from "@/lib/db/queries/development";
 import { TrendChart } from "@/components/ui/TrendChart";
@@ -9,9 +10,16 @@ import { formatDate, formatNumber } from "@/lib/format";
  * category. Presentation is strictly neutral. No scores, no rankings, no
  * verdicts; every value names its source and reporting period, and readers
  * draw their own conclusions.
+ *
+ * Layout is ONE ruled table for all categories, statistical-annex style: a
+ * heavier outer frame, hairline inner grid, category bands as spanning rows.
+ * A single table means a single column grid, so Latest/Trend/Source align
+ * from the first category to the last.
  */
 export function DevelopmentSection({ grouped }: { grouped: Array<[string, IndicatorSeries[]]> }) {
   if (grouped.length === 0) return null;
+
+  const cell = "border border-rule px-3 align-top";
 
   return (
     <section className="border-b border-rule py-8">
@@ -22,77 +30,85 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
         themselves.
       </p>
 
-      <div className="mt-4 space-y-6">
-        {grouped.map(([category, series]) => (
-          <div key={category}>
-            <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ink-muted">
-              {category}
-            </h3>
-            <table className="mt-2 w-full text-left text-[0.85rem]">
-              <thead>
-                <tr className="border-b border-rule-dark text-[0.7rem] uppercase tracking-wider text-ink-faint">
-                  <th className="py-1.5 pr-4 font-medium">Indicator</th>
-                  <th className="py-1.5 pr-4 font-medium">Latest</th>
-                  <th className="hidden py-1.5 pr-4 font-medium md:table-cell">Trend</th>
-                  <th className="py-1.5 font-medium">Source</th>
-                </tr>
-              </thead>
-              <tbody>
-                {series.map((s) => {
-                  const latest = s.values[s.values.length - 1];
-                  return (
-                    <tr key={s.id} className="border-b border-rule align-baseline">
-                      <td className="py-2 pr-4">
-                        <Link
-                          href={`/indicator/${s.id}`}
-                          title={s.methodology}
-                          className="text-ink underline-offset-2 hover:text-accent hover:underline"
-                        >
-                          {s.name}
-                        </Link>
-                        <span className="block text-[0.72rem] text-ink-faint">{s.unit}</span>
-                      </td>
-                      <td className="py-2 pr-4 whitespace-nowrap">
-                        <span className="tabular-nums font-medium text-ink">
-                          {formatNumber(latest.value)}
-                        </span>{" "}
-                        <span className="tabular-nums text-[0.75rem] text-ink-faint">
-                          ({latest.reportingPeriod ?? latest.year})
-                        </span>
-                      </td>
-                      <td className="hidden py-2 pr-4 md:table-cell">
-                        {s.values.length >= 2 ? (
-                          <TrendChart
-                            points={s.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
-                            width={180}
-                            height={44}
-                            ariaLabel={`${s.name}, ${s.values[0].year} to ${latest.year}`}
-                          />
-                        ) : (
-                          <span className="text-ink-faint">—</span>
-                        )}
-                      </td>
-                      <td className="py-2 text-[0.78rem]">
-                        <a
-                          href={latest.sourceUrl}
-                          target="_blank"
-                          rel="nofollow noopener noreferrer"
-                          className="text-accent underline-offset-2 hover:underline"
-                        >
-                          {latest.sourceTitle}
-                        </a>
-                        <span className="block text-[0.7rem] text-ink-faint">
-                          {latest.reportingOrg ? `${latest.reportingOrg} · ` : ""}verified{" "}
-                          {formatDate(latest.verifiedOn)}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ))}
+      <div className="mt-5 overflow-x-auto">
+        <div className="min-w-fit border border-rule-dark bg-paper-raised">
+          <table className="w-full border-collapse text-left text-[0.85rem]">
+            <thead>
+              <tr className="bg-paper-sunken text-[0.68rem] uppercase tracking-wider text-ink-faint">
+                <th className={`${cell} py-2 font-medium`}>Indicator</th>
+                <th className={`${cell} py-2 font-medium`}>Latest</th>
+                <th className={`${cell} hidden py-2 font-medium md:table-cell`}>Trend</th>
+                <th className={`${cell} py-2 font-medium`}>Source</th>
+              </tr>
+            </thead>
+            <tbody>
+              {grouped.map(([category, series]) => (
+                <Fragment key={category}>
+                  <tr>
+                    <th
+                      colSpan={4}
+                      scope="colgroup"
+                      className="border border-rule bg-paper-sunken px-3 py-1.5 text-left font-mono text-[0.62rem] font-bold uppercase tracking-[0.12em] text-accent"
+                    >
+                      {category}
+                    </th>
+                  </tr>
+                  {series.map((s) => {
+                    const latest = s.values[s.values.length - 1];
+                    return (
+                      <tr key={s.id}>
+                        <td className={`${cell} py-2.5`}>
+                          <Link
+                            href={`/indicator/${s.id}`}
+                            title={s.methodology}
+                            className="text-ink underline-offset-2 hover:text-accent hover:underline"
+                          >
+                            {s.name}
+                          </Link>
+                          <span className="block text-[0.72rem] text-ink-faint">{s.unit}</span>
+                        </td>
+                        <td className={`${cell} py-2.5 whitespace-nowrap`}>
+                          <span className="tabular-nums font-medium text-ink">
+                            {formatNumber(latest.value)}
+                          </span>{" "}
+                          <span className="tabular-nums text-[0.75rem] text-ink-faint">
+                            ({latest.reportingPeriod ?? latest.year})
+                          </span>
+                        </td>
+                        <td className={`${cell} hidden py-2.5 md:table-cell`}>
+                          {s.values.length >= 2 ? (
+                            <TrendChart
+                              points={s.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+                              width={180}
+                              height={44}
+                              ariaLabel={`${s.name}, ${s.values[0].year} to ${latest.year}`}
+                            />
+                          ) : (
+                            <span className="text-ink-faint">—</span>
+                          )}
+                        </td>
+                        <td className={`${cell} py-2.5 text-[0.78rem]`}>
+                          <a
+                            href={latest.sourceUrl}
+                            target="_blank"
+                            rel="nofollow noopener noreferrer"
+                            className="text-accent underline-offset-2 hover:underline"
+                          >
+                            {latest.sourceTitle}
+                          </a>
+                          <span className="block text-[0.7rem] text-ink-faint">
+                            {latest.reportingOrg ? `${latest.reportingOrg} · ` : ""}verified{" "}
+                            {formatDate(latest.verifiedOn)}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </section>
   );
