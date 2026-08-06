@@ -93,7 +93,9 @@ export function getDevelopment(stateId: string) {
       return [...grouped.entries()];
     },
     ["development", stateId],
-    { tags: [tags.state(stateId)] },
+    // Curated data loads at build time (no updateTag possible), so this
+    // cache must also expire on a clock, not only on approval events.
+    { tags: [tags.state(stateId)], revalidate: 3600 },
   )(stateId);
 }
 
