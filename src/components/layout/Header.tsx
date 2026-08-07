@@ -2,6 +2,7 @@ import Link from "next/link";
 
 import { AuthNav } from "@/components/layout/AuthNav";
 import { NavLinks } from "@/components/layout/HeaderNav";
+import { MastheadShell } from "@/components/layout/MastheadShell";
 
 /**
  * Masthead. Three zones on one centerline: brand at the left edge, primary
@@ -12,7 +13,7 @@ import { NavLinks } from "@/components/layout/HeaderNav";
  */
 export function Header() {
   return (
-    <header className="masthead-rule sticky top-0 z-40 bg-paper/95 backdrop-blur-sm">
+    <MastheadShell>
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         <Link href="/" className="flex items-baseline gap-3 justify-self-start">
           <span lang="sa" className="font-brand text-[1.6rem] leading-none text-ink">
@@ -31,6 +32,6 @@ export function Header() {
           <AuthNav />
         </div>
       </div>
-    </header>
+    </MastheadShell>
   );
 }

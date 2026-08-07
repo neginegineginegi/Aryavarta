@@ -278,25 +278,8 @@ thead th {
   transform: translateY(-1px);
 }
 
-/* Masthead rule: solid hairline over a dotted tape band, after the
-   blueprint-manual dividers. */
-.masthead-rule {
-  border-bottom: 1px solid var(--color-rule-dark);
-  position: relative;
-}
-.masthead-rule::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -6px;
-  height: 3px;
-  background-image: repeating-linear-gradient(
-    90deg,
-    var(--color-rule-dark) 0 3px,
-    transparent 3px 9px
-  );
-}
+/* The masthead's own divider lives in MastheadShell: nothing at rest, a
+   hairline once content scrolls beneath it. */
 
 /* Footnote-style superscript citation markers. */
 .cite-ref {
