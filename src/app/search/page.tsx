@@ -153,7 +153,7 @@ export default async function SearchPage({
           {results.states.length === 0 && results.hits.length === 0 ? (
             <p className="py-8 text-center text-[0.9rem] text-ink-muted">
               No results for “{query}”. Try a chief minister&rsquo;s name, a party, or an event
-              keyword like “paper leak”.
+              keyword like “reorganisation”.
             </p>
           ) : (
             <div className="space-y-8">

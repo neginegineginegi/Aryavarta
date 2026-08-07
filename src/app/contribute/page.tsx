@@ -54,8 +54,8 @@ export default async function ContributePage({
         >
           <h2 className="font-display text-lg font-semibold text-ink">Governance event</h2>
           <p className="mt-1 text-[0.82rem] text-ink-muted">
-            Paper leaks, corruption cases, policy failures, communal incidents, infrastructure
-            failures…
+            Legislation, constitutional amendments, court judgments, corruption cases, communal
+            incidents, and other turning points.
           </p>
         </Link>
         <Link

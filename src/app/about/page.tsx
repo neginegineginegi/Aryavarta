@@ -22,9 +22,9 @@ export default function AboutPage() {
         <p className="mt-3">
           Abhilekh is a public, crowdsourced reference for the political history of every Indian
           state and union territory: who governed, when, under which party, what elections
-          decided it, and what happened along the way. Paper leaks, corruption cases, policy
-          failures, communal incidents, collapsing bridges: the events that shaped how each
-          state was actually run.
+          decided it, and what happened along the way. Landmark legislation, constitutional
+          amendments, court judgments, corruption cases, communal incidents: the events that
+          shaped how each state was actually governed.
         </p>
         <p>
           It exists because this record is scattered across news archives, gazettes, and memory.
