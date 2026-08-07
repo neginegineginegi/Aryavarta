@@ -41,6 +41,13 @@ function normalizeDate(raw: string): { date: string | null; note: string | null 
 
 const num = (s: string): number | null => (s === "" ? null : Number(s));
 
+/** Split rows into batches so one statement covers many rows. */
+function chunked<T>(rows: T[], size: number): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < rows.length; i += size) out.push(rows.slice(i, i + size));
+  return out;
+}
+
 async function main() {
   if (!process.env.DATABASE_URL) {
     console.log("[load-inbox] DATABASE_URL not set — skipping.");
@@ -120,6 +127,38 @@ async function main() {
     "Imported from a bulk data sheet. Verify names, dates and figures against the cited sources before approving.";
 
   // --- terms ----------------------------------------------------------------
+  // Dedup keys are fetched once and checked in memory. Two queries per row
+  // against a remote database was the other half of this script's build cost.
+  const termKey = (stateId: string, kind: string, start: string) => `${stateId}|${kind}|${start}`;
+  const liveTermKeys = new Set(
+    (
+      await db
+        .select({ stateId: terms.stateId, kind: terms.kind, startDate: terms.startDate })
+        .from(terms)
+        .where(sql`${terms.deletedAt} IS NULL`)
+    ).map((t) => termKey(t.stateId, t.kind, t.startDate)),
+  );
+  const pendingTermKeys = new Set(
+    (
+      await db
+        .select({ stateId: revisions.stateId, afterData: revisions.afterData })
+        .from(revisions)
+        .where(
+          and(
+            eq(revisions.entityType, "term"),
+            eq(revisions.status, "pending"),
+            eq(revisions.origin, "import"),
+          ),
+        )
+    )
+      .map((r) => {
+        const a = r.afterData as { kind?: string; startDate?: string } | null;
+        return a?.kind && a?.startDate && r.stateId
+          ? termKey(r.stateId, a.kind, a.startDate)
+          : null;
+      })
+      .filter((k): k is string => k !== null),
+  );
   for (const r of readSheet("terms.csv")) {
     const label = `term: ${r.person || "President's Rule"} (${r.state} ${r.start_date})`;
     const st = resolveState(r.state ?? "");
@@ -136,26 +175,17 @@ async function main() {
       continue;
     }
 
-    const dup = await db.query.terms.findFirst({
-      where: and(
-        eq(terms.stateId, st.id),
-        eq(terms.kind, office as "cm"),
-        eq(terms.startDate, start.date),
-        sql`${terms.deletedAt} IS NULL`,
-      ),
-    });
-    if (dup) { skip(`${label}: a live ${office} term already starts on this date`); continue; }
-    const pend = await db.query.revisions.findFirst({
-      where: and(
-        eq(revisions.stateId, st.id),
-        eq(revisions.entityType, "term"),
-        eq(revisions.status, "pending"),
-        eq(revisions.origin, "import"),
-        sql`${revisions.afterData} ->> 'startDate' = ${start.date}`,
-        sql`${revisions.afterData} ->> 'kind' = ${office}`,
-      ),
-    });
-    if (pend) { skip(`${label}: an imported ${office} draft already pending for this start date`); continue; }
+    const key = termKey(st.id, office, start.date);
+    if (liveTermKeys.has(key)) {
+      skip(`${label}: a live ${office} term already starts on this date`);
+      continue;
+    }
+    if (pendingTermKeys.has(key)) {
+      skip(`${label}: an imported ${office} draft already pending for this start date`);
+      continue;
+    }
+    // Claim the key so a repeated row in the same sheet cannot double-file.
+    pendingTermKeys.add(key);
 
     const precision = [start.note, end.note].filter(Boolean).join("; ");
     const notes = [r.notes || null, precision ? `Imported: ${precision}.` : null]
@@ -503,19 +533,44 @@ async function main() {
   }
 
   // --- development lens (curated; upserts directly with inline sources) -----
+  const indicatorRows: Array<{
+    id: string;
+    name: string;
+    unit: string;
+    category: string;
+    methodology: string;
+  }> = [];
+  const valueRows: Array<typeof indicatorValues.$inferInsert> = [];
   for (const r of readSheet("indicators.csv")) {
     if (!r.id || !r.name || !r.unit || !r.category || !r.methodology) {
       skip(`indicator "${r.id || r.name}": all of id/name/unit/category/methodology are required`);
       continue;
     }
+    indicatorRows.push({
+      id: r.id,
+      name: r.name,
+      unit: r.unit,
+      category: r.category,
+      methodology: r.methodology,
+    });
+  }
+  // One statement per chunk instead of one per row: this script runs on every
+  // deploy against a remote database, and a round trip per row was costing
+  // minutes of build time to rewrite data that had not changed.
+  for (const chunk of chunked(indicatorRows, 200)) {
     await db
       .insert(indicators)
-      .values({ id: r.id, name: r.name, unit: r.unit, category: r.category, methodology: r.methodology })
+      .values(chunk)
       .onConflictDoUpdate({
         target: indicators.id,
-        set: { name: r.name, unit: r.unit, category: r.category, methodology: r.methodology },
+        set: {
+          name: sql`excluded.name`,
+          unit: sql`excluded.unit`,
+          category: sql`excluded.category`,
+          methodology: sql`excluded.methodology`,
+        },
       });
-    bump("indicators");
+    report.created["indicators"] = (report.created["indicators"] ?? 0) + chunk.length;
   }
   for (const r of readSheet("indicator_values.csv")) {
     const label = `indicator value: ${r.indicator} ${r.state} ${r.year}`;
@@ -525,23 +580,24 @@ async function main() {
       skip(`${label}: indicator, value, source_title, source_url and verified_on are required`);
       continue;
     }
-    await db
-      .insert(indicatorValues)
-      .values({
-        id: uuidv7(),
-        indicatorId: r.indicator,
-        stateId: st.id,
-        year: Number(r.year),
-        value: r.value,
-        sourceTitle: r.source_title,
-        sourceUrl: r.source_url,
-        reportingPeriod: r.reporting_period || null,
-        reportingOrg: r.reporting_org || null,
-        notes: r.notes || null,
-        verifiedOn: r.verified_on,
-      })
-      .onConflictDoNothing();
-    bump("indicator values");
+    valueRows.push({
+      id: uuidv7(),
+      indicatorId: r.indicator,
+      stateId: st.id,
+      year: Number(r.year),
+      value: r.value,
+      sourceTitle: r.source_title,
+      sourceUrl: r.source_url,
+      reportingPeriod: r.reporting_period || null,
+      reportingOrg: r.reporting_org || null,
+      notes: r.notes || null,
+      verifiedOn: r.verified_on,
+    });
+  }
+  for (const chunk of chunked(valueRows, 500)) {
+    await db.insert(indicatorValues).values(chunk).onConflictDoNothing();
+    report.created["indicator values"] =
+      (report.created["indicator values"] ?? 0) + chunk.length;
   }
 
   // --- report ---------------------------------------------------------------
