@@ -60,7 +60,7 @@ async function main() {
 
   // App modules (transitively need tsconfig path resolution, which tsx provides).
   const { db } = await import("../src/lib/db");
-  const { states, revisions, terms, elections, events, indicators, indicatorValues } =
+  const { states, revisions, terms, elections, events, indicators, indicatorValues, documents } =
     await import("../src/lib/db/schema");
   const {
     termPayloadSchema,
@@ -520,6 +520,68 @@ async function main() {
       .set({ color: hex, abbreviation: abbr })
       .where(eq(parties.id, party.id));
     bump("party colors");
+  }
+
+  // --- media archive documents (curated metadata, like parties) ------------
+  // Metadata about a file carries little editorial judgment, so documents load
+  // directly rather than through the review queue. The methodology page states
+  // this publicly. Redistribution defaults to link-only until someone checks.
+  const docRows: Array<typeof documents.$inferInsert> = [];
+  const DOC_TYPES = new Set([
+    "manifesto", "press_conference", "party_advertisement", "campaign_speech",
+    "debate_transcript", "election_symbol", "candidate_affidavit", "press_release",
+    "government_notification", "gazette", "cag_report", "assembly_debate",
+    "parliamentary_debate", "court_judgment", "eci_order", "delimitation_report",
+    "coalition_agreement", "white_paper", "budget_speech", "economic_survey",
+    "five_year_plan", "committee_report", "other",
+  ]);
+  for (const r of readSheet("documents.csv")) {
+    const label = `document: ${r.title || "(untitled)"}`;
+    const type = (r.type ?? "").trim().toLowerCase();
+    if (!r.title || !type) { skip(`${label}: title and type are required`); continue; }
+    if (!DOC_TYPES.has(type)) { skip(`${label}: unknown type "${r.type}"`); continue; }
+    if (!r.official_url && !r.archive_url) {
+      skip(`${label}: needs an official_url or an archive_url`);
+      continue;
+    }
+    const st = r.state ? resolveState(r.state) : null;
+    if (r.state && !st) { skip(`${label}: unknown state "${r.state}"`); continue; }
+    const published = normalizeDate(r.published_on ?? "");
+    const redistribution = (r.redistribution ?? "").trim().toLowerCase();
+    docRows.push({
+      id: uuidv7(),
+      type: type as "manifesto",
+      title: r.title,
+      publisher: r.publisher || null,
+      publishedOn: published.date,
+      datePrecision: published.note ? (published.note.includes("year") ? "year" : "month") : "day",
+      language: r.language || "en",
+      officialUrl: r.official_url || null,
+      archiveUrl: r.archive_url || null,
+      redistribution:
+        redistribution === "permitted" || redistribution === "link_only"
+          ? (redistribution as "permitted")
+          : "unknown",
+      pageCount: r.page_count ? Number(r.page_count) : null,
+      notes: r.notes || null,
+      stateId: st?.id ?? null,
+      partyId: r.party ? await ensureParty(r.party) : null,
+    });
+  }
+  if (docRows.length > 0) {
+    // Dedup on the issuer's URL: re-running a sheet must not double-file.
+    const existing = new Set(
+      (await db.select({ u: documents.officialUrl }).from(documents))
+        .map((d) => d.u)
+        .filter((u): u is string => !!u),
+    );
+    const fresh = docRows.filter((d) => !d.officialUrl || !existing.has(d.officialUrl));
+    for (const chunk of chunked(fresh, 200)) {
+      await db.insert(documents).values(chunk);
+      report.created["documents"] = (report.created["documents"] ?? 0) + chunk.length;
+    }
+    const dupes = docRows.length - fresh.length;
+    if (dupes > 0) skip(`documents: ${dupes} row(s) already in the archive by official_url`);
   }
 
   // Name every archive party the sheet does not cover. These keep a

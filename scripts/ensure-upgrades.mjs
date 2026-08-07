@@ -83,6 +83,96 @@ const STATEMENTS = [
   // --- upgrade 7: indicator values gain reporting org + notes ---------------
   `ALTER TABLE "indicator_values" ADD COLUMN IF NOT EXISTS "reporting_org" text`,
   `ALTER TABLE "indicator_values" ADD COLUMN IF NOT EXISTS "notes" text`,
+  // --- upgrade 8: accountability layer phase 1, polymorphic citations -------
+  // Sources were joined per entity (term_sources, election_sources,
+  // event_sources), so every new citable entity meant another near-identical
+  // table. One citations table replaces them. The three originals are left in
+  // place for a release so nothing breaks mid-deploy.
+  `DO $$ BEGIN
+     CREATE TYPE "public"."citation_subject" AS ENUM(
+       'term', 'election', 'event', 'indicator_value', 'document',
+       'manifesto_promise', 'promise_status_claim', 'promise_timeline_step',
+       'entity_link'
+     );
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."source_kind" AS ENUM(
+       'gazette', 'eci_report', 'cag_report', 'court_judgment',
+       'assembly_record', 'budget_document', 'ministry_report',
+       'press_release', 'manifesto', 'news', 'research', 'rti_response', 'other'
+     );
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `ALTER TABLE "sources" ADD COLUMN IF NOT EXISTS "kind" "source_kind"`,
+  `ALTER TABLE "sources" ADD COLUMN IF NOT EXISTS "is_official" boolean`,
+  `ALTER TABLE "sources" ADD COLUMN IF NOT EXISTS "is_primary" boolean`,
+  `CREATE TABLE IF NOT EXISTS "citations" (
+     "subject_type" "citation_subject" NOT NULL,
+     "subject_id" text NOT NULL,
+     "source_id" uuid NOT NULL REFERENCES "sources"("id"),
+     "note" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+     CONSTRAINT "citations_pkey" PRIMARY KEY ("subject_type", "subject_id", "source_id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "citations_subject_idx" ON "citations" ("subject_type", "subject_id")`,
+  `CREATE INDEX IF NOT EXISTS "citations_source_idx" ON "citations" ("source_id")`,
+  // Backfill: idempotent, so it is safe on every build.
+  `INSERT INTO citations (subject_type, subject_id, source_id)
+   SELECT 'term', term_id::text, source_id FROM term_sources
+   ON CONFLICT DO NOTHING`,
+  `INSERT INTO citations (subject_type, subject_id, source_id)
+   SELECT 'election', election_id::text, source_id FROM election_sources
+   ON CONFLICT DO NOTHING`,
+  `INSERT INTO citations (subject_type, subject_id, source_id)
+   SELECT 'event', event_id::text, source_id FROM event_sources
+   ON CONFLICT DO NOTHING`,
+  // --- upgrade 9: accountability layer phase 2, the media archive ----------
+  `DO $$ BEGIN
+     CREATE TYPE "public"."document_type" AS ENUM(
+       'manifesto', 'press_conference', 'party_advertisement', 'campaign_speech',
+       'debate_transcript', 'election_symbol', 'candidate_affidavit',
+       'press_release', 'government_notification', 'gazette', 'cag_report',
+       'assembly_debate', 'parliamentary_debate', 'court_judgment', 'eci_order',
+       'delimitation_report', 'coalition_agreement', 'white_paper',
+       'budget_speech', 'economic_survey', 'five_year_plan', 'committee_report',
+       'other'
+     );
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."redistribution" AS ENUM('permitted', 'link_only', 'unknown');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."ocr_status" AS ENUM('none', 'pending', 'done', 'failed');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE TABLE IF NOT EXISTS "documents" (
+     "id" uuid PRIMARY KEY,
+     "type" "document_type" NOT NULL,
+     "title" text NOT NULL,
+     "publisher" text,
+     "published_on" date,
+     "date_precision" text,
+     "language" text DEFAULT 'en' NOT NULL,
+     "official_url" text,
+     "archive_url" text,
+     "redistribution" "redistribution" DEFAULT 'unknown' NOT NULL,
+     "checksum" text,
+     "page_count" integer,
+     "ocr_status" "ocr_status" DEFAULT 'none' NOT NULL,
+     "full_text" text,
+     "notes" text,
+     "state_id" text REFERENCES "states"("id"),
+     "election_id" uuid REFERENCES "elections"("id"),
+     "party_id" text REFERENCES "parties"("id"),
+     "search_tsv" tsvector GENERATED ALWAYS AS (
+       to_tsvector('english', coalesce(title, '') || ' ' || coalesce(publisher, '') || ' ' || coalesce(full_text, ''))
+     ) STORED,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS "documents_search_idx" ON "documents" USING gin ("search_tsv")`,
+  `CREATE INDEX IF NOT EXISTS "documents_type_idx" ON "documents" ("type")`,
+  `CREATE INDEX IF NOT EXISTS "documents_state_idx" ON "documents" ("state_id")`,
+  `CREATE INDEX IF NOT EXISTS "documents_party_idx" ON "documents" ("party_id")`,
+  `CREATE INDEX IF NOT EXISTS "documents_election_idx" ON "documents" ("election_id")`,
+  `CREATE INDEX IF NOT EXISTS "documents_published_idx" ON "documents" ("published_on")`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

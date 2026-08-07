@@ -71,3 +71,35 @@ export function formatNumber(n: number | string | null | undefined): string {
   if (n === null || n === undefined) return "—";
   return Number(n).toLocaleString("en-IN");
 }
+
+
+/**
+ * Human labels for the media archive's document types. Keys mirror the
+ * document_type enum; a missing key falls back to the raw value so a new enum
+ * member never renders blank.
+ */
+export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
+  manifesto: "Manifesto",
+  press_conference: "Press conference",
+  party_advertisement: "Advertisement",
+  campaign_speech: "Campaign speech",
+  debate_transcript: "Debate transcript",
+  election_symbol: "Election symbol",
+  candidate_affidavit: "Candidate affidavit",
+  press_release: "Press release",
+  government_notification: "Notification",
+  gazette: "Gazette",
+  cag_report: "CAG report",
+  assembly_debate: "Assembly debate",
+  parliamentary_debate: "Parliamentary debate",
+  court_judgment: "Court judgment",
+  eci_order: "ECI order",
+  delimitation_report: "Delimitation report",
+  coalition_agreement: "Coalition agreement",
+  white_paper: "White paper",
+  budget_speech: "Budget speech",
+  economic_survey: "Economic Survey",
+  five_year_plan: "Five-Year Plan",
+  committee_report: "Committee report",
+  other: "Document",
+};

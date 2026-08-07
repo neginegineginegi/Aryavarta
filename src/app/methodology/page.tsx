@@ -128,6 +128,34 @@ export default function MethodologyPage() {
           .
         </p>
       </section>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">
+          What is reviewed, and what is curated
+        </h2>
+        <p className="mt-3">
+          Not everything on Abhilekh passes through the moderation queue, and it would be
+          misleading to imply otherwise.
+        </p>
+        <p>
+          <strong>Reviewed:</strong> every claim about who governed, what an election decided,
+          and what happened. Terms, elections and events are proposals until a moderator has
+          checked them against their sources, and the proposal and its decision stay in the
+          public record permanently.
+        </p>
+        <p>
+          <strong>Curated:</strong> reference metadata maintained directly by moderators.
+          Party names and colours, indicator definitions, and the media archive&rsquo;s
+          document records (a title, publisher, date and link) carry little editorial
+          judgment, and routing them through the queue would bury the contested claims that
+          genuinely need review. Curated changes are still attributable, and any factual
+          error in them can be reported like anything else.
+        </p>
+        <p>
+          Where Abhilekh keeps its own copy of a document, it is because that document may be
+          redistributed. Where it may not, the archive records the metadata and links to the
+          issuer instead.
+        </p>
+      </section>
     </article>
   );
 }

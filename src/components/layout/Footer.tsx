@@ -2,6 +2,7 @@ import Link from "next/link";
 
 const EXPLORE_LINKS = [
   { href: "/", label: "Map" },
+  { href: "/archive", label: "Documents" },
   { href: "/union", label: "Union" },
   { href: "/browse", label: "Browse" },
   { href: "/insights", label: "Insights" },

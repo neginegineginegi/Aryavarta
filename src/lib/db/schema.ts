@@ -93,6 +93,82 @@ export const revisionOriginEnum = pgEnum("revision_origin", ["community", "impor
 
 export const electionScopeEnum = pgEnum("election_scope", ["state_assembly", "lok_sabha"]);
 
+// --- Accountability layer, phase 2: the media archive ----------------------
+
+// Every artefact class the archive stores. A manifesto is a document with a
+// type, not a table of its own, so the whole corpus shares one search index,
+// one browse surface and one citation path.
+export const documentTypeEnum = pgEnum("document_type", [
+  "manifesto",
+  "press_conference",
+  "party_advertisement",
+  "campaign_speech",
+  "debate_transcript",
+  "election_symbol",
+  "candidate_affidavit",
+  "press_release",
+  "government_notification",
+  "gazette",
+  "cag_report",
+  "assembly_debate",
+  "parliamentary_debate",
+  "court_judgment",
+  "eci_order",
+  "delimitation_report",
+  "coalition_agreement",
+  "white_paper",
+  "budget_speech",
+  "economic_survey",
+  "five_year_plan",
+  "committee_report",
+  "other",
+]);
+
+// Whether the archive may serve its own copy. Official URLs rot, so a copy is
+// how a document survives; but not everything is ours to redistribute, so the
+// default is to link out until someone has checked.
+export const redistributionEnum = pgEnum("redistribution", [
+  "permitted",
+  "link_only",
+  "unknown",
+]);
+
+export const ocrStatusEnum = pgEnum("ocr_status", ["none", "pending", "done", "failed"]);
+
+// --- Accountability layer, phase 1 -----------------------------------------
+
+// What a citation can point at. Every citable entity is listed here, so a new
+// one costs an enum value rather than a new join table.
+export const citationSubjectEnum = pgEnum("citation_subject", [
+  "term",
+  "election",
+  "event",
+  "indicator_value",
+  "document",
+  "manifesto_promise",
+  "promise_status_claim",
+  "promise_timeline_step",
+  "entity_link",
+]);
+
+// What kind of artefact a source is. Factual classification, not a quality
+// rating: the archive does not score its sources.
+export const sourceKindEnum = pgEnum("source_kind", [
+  "gazette",
+  "eci_report",
+  "cag_report",
+  "court_judgment",
+  "assembly_record",
+  "budget_document",
+  "ministry_report",
+  "press_release",
+  "manifesto",
+  "news",
+  "research",
+  "rti_response",
+  "other",
+]);
+
 // ---------------------------------------------------------------------------
 // Reference data
 // ---------------------------------------------------------------------------
@@ -282,6 +358,57 @@ export const events = pgTable(
 // Source rows are never deleted: revision history references them.
 // ---------------------------------------------------------------------------
 
+/**
+ * The media archive: manifestos, gazettes, judgments, audit reports, budget
+ * speeches, affidavits, debate transcripts, everything.
+ *
+ * Metadata is moderator-curated rather than revision-reviewed, like parties
+ * and indicators: a title, publisher and date carry little editorial judgment,
+ * and routing them through the queue would bury the contested claims that
+ * genuinely need it. The archive states this publicly in its methodology.
+ *
+ * `fullText` holds extracted text where the file has a text layer; scans stay
+ * at ocrStatus 'none' and are searchable by metadata only, which the UI says
+ * plainly rather than implying full coverage.
+ */
+export const documents = pgTable(
+  "documents",
+  {
+    id: uuid("id").primaryKey(),
+    type: documentTypeEnum("type").notNull(),
+    title: text("title").notNull(),
+    publisher: text("publisher"), // party, ministry, ECI, court
+    publishedOn: date("published_on"),
+    datePrecision: text("date_precision"), // 'day' | 'month' | 'year'
+    language: text("language").notNull().default("en"), // ISO 639-1
+    officialUrl: text("official_url"), // the issuer's own copy
+    archiveUrl: text("archive_url"), // our stored copy, when redistribution allows
+    redistribution: redistributionEnum("redistribution").notNull().default("unknown"),
+    checksum: text("checksum"), // integrity of the archived copy
+    pageCount: integer("page_count"),
+    ocrStatus: ocrStatusEnum("ocr_status").notNull().default("none"),
+    fullText: text("full_text"),
+    notes: text("notes"),
+    // Optional anchors: a document may belong to a state, an election, a party,
+    // any combination, or none (a national gazette belongs to nothing here).
+    stateId: text("state_id").references(() => states.id),
+    electionId: uuid("election_id").references(() => elections.id),
+    partyId: text("party_id").references(() => parties.id),
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`to_tsvector('english', coalesce(title, '') || ' ' || coalesce(publisher, '') || ' ' || coalesce(full_text, ''))`,
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("documents_search_idx").using("gin", t.searchTsv),
+    index("documents_type_idx").on(t.type),
+    index("documents_state_idx").on(t.stateId),
+    index("documents_party_idx").on(t.partyId),
+    index("documents_election_idx").on(t.electionId),
+    index("documents_published_idx").on(t.publishedOn),
+  ],
+);
+
 export const sources = pgTable("sources", {
   id: uuid("id").primaryKey(),
   title: text("title").notNull(),
@@ -289,8 +416,44 @@ export const sources = pgTable("sources", {
   publisher: text("publisher"),
   publishedOn: date("published_on"),
   accessedOn: date("accessed_on"),
+  // Classification, not scoring. The archive records verifiable facts about a
+  // source (who issued it, and whether it is the artefact or reporting about
+  // the artefact) and never rates its reliability, which would be an editorial
+  // judgment the reader should make.
+  kind: sourceKindEnum("kind"),
+  isOfficial: boolean("is_official"), // issued by a government body
+  isPrimary: boolean("is_primary"), // the document itself, not coverage of it
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Polymorphic citations.
+ *
+ * Replaces the per-entity join tables (term_sources, election_sources,
+ * event_sources), which required a new table for every citable entity. Those
+ * three remain for one release so old code keeps working; new code reads and
+ * writes here.
+ *
+ * `note` records where in the source the claim sits: a page, a clause, a table
+ * number. Without it a 400-page CAG report is not really a citation.
+ */
+export const citations = pgTable(
+  "citations",
+  {
+    subjectType: citationSubjectEnum("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(), // text: most ids are uuid, party/state ids are slugs
+    sourceId: uuid("source_id")
+      .notNull()
+      .references(() => sources.id),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.subjectType, t.subjectId, t.sourceId] }),
+    index("citations_subject_idx").on(t.subjectType, t.subjectId),
+    index("citations_source_idx").on(t.sourceId),
+  ],
+);
 
 export const termSources = pgTable(
   "term_sources",
@@ -467,6 +630,16 @@ export const statesRelations = relations(states, ({ many }) => ({
   terms: many(terms),
   elections: many(elections),
   events: many(events),
+}));
+
+export const documentsRelations = relations(documents, ({ one }) => ({
+  state: one(states, { fields: [documents.stateId], references: [states.id] }),
+  party: one(parties, { fields: [documents.partyId], references: [parties.id] }),
+  election: one(elections, { fields: [documents.electionId], references: [elections.id] }),
+}));
+
+export const citationsRelations = relations(citations, ({ one }) => ({
+  source: one(sources, { fields: [citations.sourceId], references: [sources.id] }),
 }));
 
 export const partiesRelations = relations(parties, ({ many }) => ({

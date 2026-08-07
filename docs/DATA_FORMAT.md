@@ -106,6 +106,33 @@ live, a pending update revision is filed for review; if it is still an
 unpublished imported draft, the draft itself is amended. Optional `sources`
 ids are added to the term's citations; `notes` is appended.
 
+## documents.csv (media archive, curated metadata)
+
+```csv
+type,title,publisher,published_on,language,official_url,archive_url,redistribution,page_count,state,party,notes
+manifesto,Sankalp Patra 2024 (Lok Sabha),Bharatiya Janata Party,2024-04-14,en,https://example.org/manifesto.pdf,,permitted,,,Bharatiya Janata Party,
+```
+
+Loads directly rather than through the review queue: a title, publisher and
+link carry little editorial judgment, and the methodology page states this
+publicly. Deduplicated on `official_url`, so a sheet is safe to re-run.
+
+- `type` is one of: `manifesto`, `press_conference`, `party_advertisement`,
+  `campaign_speech`, `debate_transcript`, `election_symbol`,
+  `candidate_affidavit`, `press_release`, `government_notification`,
+  `gazette`, `cag_report`, `assembly_debate`, `parliamentary_debate`,
+  `court_judgment`, `eci_order`, `delimitation_report`,
+  `coalition_agreement`, `white_paper`, `budget_speech`, `economic_survey`,
+  `five_year_plan`, `committee_report`, `other`.
+- One of `official_url` or `archive_url` is required.
+- `redistribution` is `permitted`, `link_only`, or blank for `unknown`. The
+  archive serves its own copy only where redistribution is `permitted` AND an
+  `archive_url` exists; otherwise it links to the issuer.
+- `state` and `party` are optional anchors and accept the same names the other
+  sheets do. A national gazette needs neither.
+- `language` is an ISO 639-1 code, defaulting to `en`. Many documents are not
+  in English and recording that matters for search.
+
 ## party_colors.csv (curated display metadata)
 
 ```csv

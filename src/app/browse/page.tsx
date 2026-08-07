@@ -46,6 +46,11 @@ export default async function BrowsePage() {
           Everything here interlinks: states to years, years to elections, elections to
           parties and people. Pick any thread and follow it.
         </p>
+        <div className="mt-5 flex flex-wrap gap-2">
+          <Link href="/archive" className="btn btn-secondary btn-sm">
+            The media archive →
+          </Link>
+        </div>
       </header>
 
       <section className="section-card px-6 py-9 sm:px-10">
