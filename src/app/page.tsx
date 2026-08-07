@@ -95,7 +95,7 @@ export default async function HomePage() {
 
         <div className="relative flex justify-end px-6 pt-7 sm:px-9">
           <p className="text-right font-mono text-[10px] uppercase leading-[1.7] tracking-[0.12em] text-ink-meta">
-            // the record
+            {"// the record"}
             <br />
             every state &gt; every year
             <br />
@@ -103,7 +103,7 @@ export default async function HomePage() {
             <br />
             every change &gt; reviewed
             <br />
-            // since {FIRST_YEAR}
+            {`// since ${FIRST_YEAR}`}
           </p>
         </div>
 

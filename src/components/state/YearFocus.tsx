@@ -44,10 +44,15 @@ export function YearFocus({
 }) {
   const [year, setYear] = useState<number | null>(null);
 
+  // The cascading render this causes is the point, and the alternatives are
+  // worse: a lazy initial state would read window during SSR and mismatch on
+  // hydration, and useSearchParams would opt the whole state page out of
+  // static rendering to save one render of a component that starts empty.
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("y");
     if (raw && /^\d{4}$/.test(raw)) {
       const y = Number(raw);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (y >= MIN_YEAR && y <= new Date().getFullYear()) setYear(y);
     }
   }, []);

@@ -31,7 +31,6 @@ describe("normalizeSourceUrl", () => {
   });
 
   it("rejects unsafe or non-absolute URLs", () => {
-    // eslint-disable-next-line no-script-url
     expect(() => normalizeSourceUrl("javascript:alert(1)")).toThrow();
     expect(() => normalizeSourceUrl("data:text/html,hi")).toThrow();
     expect(() => normalizeSourceUrl("ftp://example.org/x")).toThrow();

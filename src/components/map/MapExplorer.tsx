@@ -397,7 +397,10 @@ export function MapExplorer({ data }: { data: MapData }) {
           <h2 className="section-label">In power, end of {year}</h2>
           <ul className="mt-2.5 space-y-1.5 border-t border-rule pt-2.5">
             {view.legend.map((l) => (
-              <li key={l.label} className="flex items-center gap-2 text-[0.85rem]">
+              <li
+                key={l.label}
+                className="row-hover flex items-center gap-2 rounded-sm px-1 text-[0.85rem]"
+              >
                 <span
                   aria-hidden
                   className="h-3 w-3 shrink-0 rounded-[2px] border border-black/10"

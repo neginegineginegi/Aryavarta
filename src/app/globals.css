@@ -242,6 +242,9 @@ thead th {
   padding: 10px 0;
   border-bottom: 1px solid var(--color-rule-light);
   vertical-align: top;
+  /* Row-level timing from the motion system, so tracking your place down a
+     long table feels the same here as in the legend and the source list. */
+  transition: background-color var(--dur-row) ease;
 }
 .rec-table tbody tr:last-child td {
   border-bottom: 0;
@@ -624,41 +627,6 @@ thead th {
   background: linear-gradient(90deg, #eceae6, #f3f2ef, #eceae6);
 }
 
-/* One switch for the whole system. Anything that moves must be reachable from
-   here: transitions collapse to instant, animations run once to their end
-   state, and the decorative prism stops entirely. */
-@media (prefers-reduced-motion: reduce) {
-  .prism-wide {
-    animation: none;
-  }
-  .press,
-  .btn,
-  .row-hover,
-  .reveal,
-  .card-hover,
-  .map-state {
-    transition: none;
-  }
-  .press:hover,
-  .press:active,
-  .btn:hover,
-  .btn:active,
-  .row-hover:hover,
-  .card-hover:hover {
-    transform: none;
-  }
-  .reveal {
-    opacity: 1;
-    transform: none;
-  }
-  .anim-soft-down,
-  .anim-rise-in,
-  .anim-drawer-in,
-  .anim-scrim-in,
-  .map-reveal {
-    animation: none;
-  }
-}
 
 /* Big Newsreader statistic over a mono label. */
 .stat-value {
@@ -806,4 +774,48 @@ input[type="range"].year-slider::-moz-range-thumb {
   font-size: 15px;
   line-height: 1.4;
   color: var(--color-ink-faint);
+}
+
+/* ---------------------------------------------------------------------------
+   One switch for the whole system. Anything that moves must be reachable from
+   here: transitions collapse to instant, animations run once to their end
+   state, and the decorative prism stops entirely.
+
+   This block is pinned to the END of the file deliberately. Its selectors are
+   the same specificity as the rules they override, so a later declaration wins
+   on source order alone. Sitting mid-file, `.map-state { transition: ... }`
+   below it silently kept its 600ms fill and the setting did nothing.
+   --------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .prism-wide {
+    animation: none;
+  }
+  .press,
+  .btn,
+  .row-hover,
+  .reveal,
+  .card-hover,
+  .map-state,
+  .rec-table tbody td {
+    transition: none;
+  }
+  .press:hover,
+  .press:active,
+  .btn:hover,
+  .btn:active,
+  .row-hover:hover,
+  .card-hover:hover {
+    transform: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .anim-soft-down,
+  .anim-rise-in,
+  .anim-drawer-in,
+  .anim-scrim-in,
+  .map-reveal {
+    animation: none;
+  }
 }

@@ -164,6 +164,7 @@ export type UnionTerm = {
 
 export type UnionMapData = {
   terms: UnionTerm[];
+  markers: MapMarker[];
   minYear: number;
   maxYear: number;
 };
@@ -174,7 +175,7 @@ export type UnionMapData = {
  * Same maxYear-outside-the-cache rule as getMapData.
  */
 const getCachedUnionMapData = unstable_cache(
-  async (): Promise<Omit<UnionMapData, "maxYear">> => {
+  async (): Promise<Omit<UnionMapData, "maxYear" | "markers">> => {
     const termRows = await db
       .select({
         kind: terms.kind,
@@ -211,6 +212,11 @@ const getCachedUnionMapData = unstable_cache(
 );
 
 export async function getUnionMapData(): Promise<UnionMapData> {
-  const cached = await getCachedUnionMapData();
-  return { ...cached, maxYear: new Date().getFullYear() };
+  // The same marker set the state map uses: union-scope events are national
+  // by definition, so they belong on both scrubbers.
+  const [cached, markers] = await Promise.all([
+    getCachedUnionMapData(),
+    getCachedMapMarkers(),
+  ]);
+  return { ...cached, markers, maxYear: new Date().getFullYear() };
 }

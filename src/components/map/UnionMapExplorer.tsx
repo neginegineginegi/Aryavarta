@@ -3,10 +3,12 @@
 import india from "@svg-maps/india";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { UnionMapData, UnionTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
+import { YearScrubber } from "@/components/map/YearScrubber";
+import { useYearPlayback } from "@/lib/use-year-playback";
 
 // Mirror of personSlug in lib/db/queries/person.ts, which cannot be imported
 // here: that module pulls in the server-only db client.
@@ -89,25 +91,73 @@ function OfficeRow({ label, term }: { label: string; term: UnionTerm | null }) {
 export function UnionMapExplorer({ data }: { data: UnionMapData }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [year, setYearState] = useState(data.maxYear);
-  const [tip, setTip] = useState<{ x: number; y: number } | null>(null);
+  const tipRef = useRef<HTMLDivElement>(null);
+  const [tipOn, setTipOn] = useState(false);
+
+  const syncUrl = useCallback(
+    (y: number) => {
+      const url = new URL(window.location.href);
+      if (y === data.maxYear) url.searchParams.delete("y");
+      else url.searchParams.set("y", String(y));
+      window.history.replaceState(null, "", url.toString());
+    },
+    [data.maxYear],
+  );
+
+  // The same playback the state map uses. Union mode is where a replay reads
+  // most clearly: the whole country changes colour at once, so a run from 1947
+  // is a flipbook of general elections.
+  const playback = useYearPlayback({
+    min: data.minYear,
+    max: data.maxYear,
+    initial: data.maxYear,
+    onYearChange: syncUrl,
+  });
+  const { year, setYear, stop } = playback;
 
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("y");
-    if (raw && /^\d{4}$/.test(raw)) {
-      const y = Math.min(Math.max(Number(raw), data.minYear), data.maxYear);
-      setYearState(y);
-    }
+    if (raw && /^\d{4}$/.test(raw)) setYear(Number(raw));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  function setYear(y: number) {
-    setYearState(y);
-    const url = new URL(window.location.href);
-    if (y === data.maxYear) url.searchParams.delete("y");
-    else url.searchParams.set("y", String(y));
-    window.history.replaceState(null, "", url.toString());
-  }
+  // Tooltip position is written to the node rather than held in state, so a
+  // pointermove does not re-render the map. Same approach as the state map,
+  // minus the trail: this tip is pinned above the cursor, not chasing it.
+  const pending = useRef({ x: 0, y: 0 });
+  const place = useCallback((x: number, y: number) => {
+    pending.current = { x, y };
+    const el = tipRef.current;
+    const box = containerRef.current;
+    if (!el || !box) return;
+    el.style.transform = `translate3d(${Math.max(
+      0,
+      Math.min(x + 14, box.clientWidth - 260),
+    )}px, ${Math.max(0, y - 84)}px, 0)`;
+  }, []);
+
+  // The first pointermove of a hover happens before the tip exists, so place()
+  // has no node to write to and the tip would render at the top-left corner
+  // until the pointer moved again. Position it as soon as it mounts.
+  useEffect(() => {
+    if (tipOn) place(pending.current.x, pending.current.y);
+  }, [tipOn, place]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target !== document.body) return;
+      if (e.key === "ArrowRight") setYear(year + 1);
+      else if (e.key === "ArrowLeft") setYear(year - 1);
+      else if (e.key === " ") {
+        e.preventDefault();
+        playback.toggle();
+        return;
+      } else return;
+      stop();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [year, setYear, stop, playback]);
 
   const pm = useMemo(() => governingAt(data.terms, "pm", year), [data.terms, year]);
   const president = useMemo(
@@ -131,29 +181,12 @@ export function UnionMapExplorer({ data }: { data: UnionMapData }) {
         <ModeSwitch />
       </div>
 
-      {/* Year scrubber */}
-      <div className="mb-5 flex items-center gap-5">
-        <div className="w-24 shrink-0 text-right">
-          <span className="font-mono text-[2.1rem] font-bold leading-none text-ink">{year}</span>
-        </div>
-        <div className="flex-1">
-          <input
-            type="range"
-            className="year-slider"
-            min={data.minYear}
-            max={data.maxYear}
-            step={1}
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            aria-label="Select year"
-            aria-valuetext={String(year)}
-          />
-          <div className="mt-1 flex justify-between font-mono text-[0.66rem] text-ink-faint">
-            <span>{data.minYear}</span>
-            <span>{data.maxYear}</span>
-          </div>
-        </div>
-      </div>
+      <YearScrubber
+        playback={playback}
+        min={data.minYear}
+        max={data.maxYear}
+        markers={data.markers}
+      />
 
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Map: one interactive surface; every path shares the Union fill */}
@@ -174,24 +207,29 @@ export function UnionMapExplorer({ data }: { data: UnionMapData }) {
             onPointerMove={(e) => {
               const rect = containerRef.current?.getBoundingClientRect();
               if (!rect) return;
-              setTip({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+              place(e.clientX - rect.left, e.clientY - rect.top);
+              if (!tipOn) setTipOn(true);
             }}
-            onPointerLeave={() => setTip(null)}
+            onPointerLeave={() => setTipOn(false)}
           >
-            {india.locations.map((loc) => (
-              <path key={loc.id} d={loc.path} className="map-state" fill={fill} aria-hidden />
+            {india.locations.map((loc, i) => (
+              <path
+                key={loc.id}
+                d={loc.path}
+                className="map-state map-reveal"
+                style={{ animationDelay: `${i * 14}ms` }}
+                fill={fill}
+                aria-hidden
+              />
             ))}
             {/* Lakshadweep's real islands are sub-pixel at this scale; the
                 marker keeps the territory visible. */}
             <circle cx={98} cy={627} r={7} className="map-state" fill={fill} aria-hidden />
           </svg>
-          {tip && (
+          {tipOn && (
             <div
-              className="pointer-events-none absolute z-10 w-64 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
-              style={{
-                left: Math.max(0, Math.min(tip.x + 14, (containerRef.current?.clientWidth ?? 320) - 260)),
-                top: Math.max(0, tip.y - 84),
-              }}
+              ref={tipRef}
+              className="pointer-events-none absolute left-0 top-0 z-10 w-64 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
             >
               <p className="font-semibold text-ink">Union of India</p>
               <p className="text-ink-muted">{pmLine}</p>
