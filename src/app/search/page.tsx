@@ -94,31 +94,41 @@ export default async function SearchPage({
     : [null, null];
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Search</h1>
-        <form action="/search" method="get" className="mt-4 flex max-w-xl gap-2">
+    <div className="mx-auto max-w-[900px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <span lang="hi" className="deva-eyebrow">
+          खोज
+        </span>
+        <h1 className="mt-1 font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
+          Ask the archive
+        </h1>
+        <form action="/search" method="get" className="mt-6 flex gap-2">
           <input
             type="search"
             name="q"
             defaultValue={query}
-            placeholder="States, chief ministers, parties, events…"
-            className="flex-1 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.9rem] outline-none focus:border-accent"
+            placeholder="Who governed Bihar in 1990?"
+            className="flex-1 rounded-[14px] border border-rule bg-paper-sunken px-4 py-3 text-[16px] outline-none transition-colors focus:border-ink focus:bg-paper-raised"
             autoFocus
           />
-          <button
-            type="submit"
-            className="rounded-sm bg-ink px-5 py-2 text-[0.88rem] font-medium text-paper hover:opacity-85"
-          >
+          <button type="submit" className="btn btn-primary">
             Search
           </button>
         </form>
+        <p className="mt-3 text-[12.5px] text-ink-faint">
+          Try a chief minister, a party, a state and a year, or a question the archive can
+          answer from its own records.
+        </p>
       </header>
 
       {answer && (
-        <div className="mt-6 rounded-sm border border-rule-dark bg-paper-raised p-5">
-          <p className="section-label">Answer</p>
-          <h2 className="mt-1 font-display text-xl font-semibold text-ink">{answer.restated}</h2>
+        <div className="section-card px-6 py-8 sm:px-10">
+          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-verify">
+            Structured answer
+          </p>
+          <h2 className="mt-3 font-display text-[30px] font-light leading-[1.2] text-ink">
+            {answer.restated}
+          </h2>
           <ul className="mt-3 space-y-1.5">
             {answer.lines.map((l, i) => (
               <li key={i} className="text-[0.92rem] text-ink">
@@ -142,14 +152,17 @@ export default async function SearchPage({
               </Link>
             </p>
           )}
-          <p className="mt-3 border-t border-rule pt-2 text-[0.72rem] text-ink-faint">
-            How this was answered: {answer.method}
+          <p className="mt-5 border-t border-rule pt-3 text-[0.74rem] leading-relaxed text-ink-faint">
+            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+              Method
+            </span>{" "}
+            {answer.method}
           </p>
         </div>
       )}
 
       {results && (
-        <div className="py-6">
+        <div className="section-card px-6 py-8 sm:px-10">
           {results.states.length === 0 && results.hits.length === 0 ? (
             <p className="py-8 text-center text-[0.9rem] text-ink-muted">
               No results for “{query}”. Try a chief minister&rsquo;s name, a party, or an event
@@ -159,7 +172,7 @@ export default async function SearchPage({
             <div className="space-y-8">
               {results.states.length > 0 && (
                 <section>
-                  <h2 className="section-label">States &amp; Union Territories</h2>
+                  <h2 className="font-display text-[24px] font-light leading-tight text-ink">States &amp; Union Territories</h2>
                   <ul className="mt-2 flex flex-wrap gap-2">
                     {results.states.map((s) => (
                       <li key={s.id}>
@@ -176,7 +189,7 @@ export default async function SearchPage({
               )}
               {results.hits.length > 0 && (
                 <section>
-                  <h2 className="section-label">Archive entries</h2>
+                  <h2 className="font-display text-[24px] font-light leading-tight text-ink">Archive entries</h2>
                   <ul className="mt-1 divide-y divide-rule">
                     {results.hits.map((h) => (
                       <HitRow key={`${h.kind}-${h.id}`} hit={h} />
@@ -190,7 +203,7 @@ export default async function SearchPage({
       )}
 
       {!results && (
-        <div className="py-8 text-[0.88rem] text-ink-muted">
+        <div className="section-card px-6 py-8 text-[0.88rem] text-ink-muted sm:px-10">
           <p>
             Search covers state names, chief ministers, parties, and the full text of published
             governance events. You can also ask a question directly:

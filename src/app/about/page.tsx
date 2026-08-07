@@ -9,16 +9,35 @@ export const metadata: Metadata = {
 
 export default function AboutPage() {
   return (
-    <article className="prose-article mx-auto max-w-3xl px-6 pb-12 text-[0.97rem] text-ink">
-      <header className="border-b border-rule py-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight">About Abhilekh</h1>
-        <p className="mt-3 text-ink-muted">
-          <em>Abhilekh</em> (अभिलेख): an official record or inscription.
-        </p>
+    <article className="mx-auto max-w-[900px] px-4 pb-4 text-[0.97rem] text-ink">
+      {/* The one interior page allowed the tinted ground and a prism streak:
+          it is prose, not data. */}
+      <header className="section-card section-tint tricolor-strip relative px-6 py-16 sm:px-10">
+        <div aria-hidden className="prism prism-soft" />
+        <div className="relative mx-auto max-w-[560px]">
+          <span lang="hi" className="deva-eyebrow">
+            परिचय
+          </span>
+          <h1 className="mt-1 font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05]">
+            About Abhilekh
+          </h1>
+          <p className="mt-4 text-ink-muted">
+            <em>Abhilekh</em> (अभिलेख): an official record or inscription.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-2.5">
+            <Link href="/" className="btn btn-primary">
+              Explore the map
+            </Link>
+            <Link href="/contribute" className="btn btn-secondary">
+              Contribute
+            </Link>
+          </div>
+        </div>
       </header>
+      <div className="prose-article section-card mt-4 px-6 py-10 sm:px-10">
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">What this is</h2>
+      <section className="border-b border-rule py-7 first:pt-0 last:border-0">
+        <h2 className="font-display text-[26px] font-light leading-tight text-ink">What this is</h2>
         <p className="mt-3">
           Abhilekh is a public, crowdsourced reference for the political history of every Indian
           state and union territory: who governed, when, under which party, what elections
@@ -33,8 +52,8 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">How it stays trustworthy</h2>
+      <section className="border-b border-rule py-7 first:pt-0 last:border-0">
+        <h2 className="font-display text-[26px] font-light leading-tight text-ink">How it stays trustworthy</h2>
         <p className="mt-3">
           Three rules, enforced by the software rather than by promise:
         </p>
@@ -68,8 +87,8 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Licensing</h2>
+      <section className="border-b border-rule py-7 first:pt-0 last:border-0">
+        <h2 className="font-display text-[26px] font-light leading-tight text-ink">Licensing</h2>
         <p className="mt-3">
           All text content on Abhilekh is available under the{" "}
           <a
@@ -96,8 +115,8 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">Corrections &amp; grievances</h2>
+      <section className="py-7 last:border-0">
+        <h2 className="font-display text-[26px] font-light leading-tight text-ink">Corrections &amp; grievances</h2>
         <p className="mt-3">
           If an entry about you or your organisation is wrong, use the{" "}
           <em>Report an issue</em> button on that entry. No account is required. A moderator
@@ -105,6 +124,7 @@ export default function AboutPage() {
           dispute are visibly flagged while review is in progress.
         </p>
       </section>
+      </div>
     </article>
   );
 }
