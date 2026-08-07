@@ -163,9 +163,9 @@ async function ComparisonExtras({
   const NOUN = { leaders: "leader", parties: "party", states: "state" }[mode];
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-12">
-      <header className="border-b border-rule py-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Compare
         </h1>
         <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
@@ -290,9 +290,9 @@ export default async function ComparePage({
   const sameEntity = left && right && left.election.stateId === right.election.stateId;
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-12">
-      <header className="border-b border-rule py-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Compare
         </h1>
         <p className="mt-3 max-w-2xl text-[0.95rem] text-ink-muted">
@@ -315,9 +315,7 @@ export default async function ComparePage({
           </div>
 
           <section>
-            <h2 className="section-label">
-              Seat changes: {electionTitle(left.election)} to {electionTitle(right.election)}
-            </h2>
+            <h2 className="font-display text-[28px] font-light leading-tight text-ink">Seat changes: {electionTitle(left.election)} to {electionTitle(right.election)}</h2>
             {!sameEntity && (
               <p className="mt-1 text-[0.8rem] text-disputed">
                 ⚠ These elections are from different bodies, so seat “changes” across them are

@@ -26,14 +26,14 @@ export default async function ReportsQueuePage({
   });
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/review" className="hover:text-ink">Review queue</Link>
           <span className="mx-1.5">/</span>
           <span>Reports</span>
         </nav>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Reports &amp; disputes
         </h1>
         <p className="mt-2 text-[0.88rem] text-ink-muted">

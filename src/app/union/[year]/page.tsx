@@ -65,15 +65,15 @@ export default async function UnionYearPage({
   ]);
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <article className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/union" className="hover:text-ink">Union Government</Link>
           <span className="mx-1.5">/</span>
           <span className="tabular-nums">{year}</span>
         </nav>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+          <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
             Union Government, <span className="tabular-nums">{year}</span>
           </h1>
           <div className="flex items-center gap-2 text-[0.85rem] tabular-nums">
@@ -92,8 +92,8 @@ export default async function UnionYearPage({
         </div>
       </header>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Prime Minister in {year}</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Prime Minister in {year}</h2>
         {pmsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">No Prime Minister term recorded.</p>
         ) : (
@@ -112,8 +112,8 @@ export default async function UnionYearPage({
         )}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">President in {year}</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">President in {year}</h2>
         {presidentsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">No President term recorded.</p>
         ) : (
@@ -132,8 +132,8 @@ export default async function UnionYearPage({
       </section>
 
       {electionsInYear.length > 0 && (
-        <section className="border-b border-rule py-8">
-          <h2 className="section-label">Lok Sabha elections in {year}</h2>
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[28px] font-light leading-tight text-ink">Lok Sabha elections in {year}</h2>
           <ul className="mt-4 space-y-3">
             {electionsInYear.map((e) => (
               <li key={e.id} className="text-[0.9rem]">
@@ -151,8 +151,8 @@ export default async function UnionYearPage({
         </section>
       )}
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">National events, {year}</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">National events, {year}</h2>
         {eventsInYear.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No national governance events recorded for {year}.{" "}
@@ -183,8 +183,8 @@ export default async function UnionYearPage({
         )}
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">References</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">References</h2>
         {citations.ordered.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">No sources cited for this year yet.</p>
         ) : (

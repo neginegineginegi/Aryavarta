@@ -177,15 +177,13 @@ export default async function ElectionPage({
       {/* Gains & losses */}
       {previous && deltas.length > 0 && (
         <section className="section-card px-6 py-9 sm:px-10">
-          <h2 className="section-label">
-            Change vs{" "}
+          <h2 className="font-display text-[28px] font-light leading-tight text-ink">Change vs{" "}
             <Link
               href={`/election/${previous.id}`}
               className="normal-case text-accent underline-offset-2 hover:underline"
             >
               the {yearOf(previous.electionDate)} election
-            </Link>
-          </h2>
+            </Link></h2>
           <div className="mt-3">
             <SeatDeltaTable deltas={deltas} />
           </div>

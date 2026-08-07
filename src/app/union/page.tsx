@@ -124,15 +124,15 @@ export default async function UnionPage() {
   }
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-10">
+    <article className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
           <span>Union Government</span>
         </nav>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-[2.75rem] font-semibold leading-tight tracking-tight text-ink">
+          <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
             Union Government of India
           </h1>
           <Link
@@ -149,15 +149,15 @@ export default async function UnionPage() {
         {pmTerms.length > 0 && <TimelineBand terms={pmTerms} maxYear={maxYear} />}
       </header>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">The Union, year by year</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">The Union, year by year</h2>
         <div className="mt-4">
           <UnionMapExplorer data={unionMap} />
         </div>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Prime Ministers</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Prime Ministers</h2>
         {pmTerms.length === 0 ? (
           <EmptyNote what="Prime Minister terms" />
         ) : (
@@ -165,8 +165,8 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Presidents</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Presidents</h2>
         {presidentTerms.length === 0 ? (
           <EmptyNote what="President terms" />
         ) : (
@@ -179,8 +179,8 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Lok Sabha Elections</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Lok Sabha Elections</h2>
         {elections.length === 0 ? (
           <EmptyNote what="Lok Sabha elections" />
         ) : (
@@ -210,8 +210,8 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">National Governance Record</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">National Governance Record</h2>
         {events.length === 0 ? (
           <EmptyNote what="national events" />
         ) : (
@@ -254,8 +254,8 @@ export default async function UnionPage() {
         )}
       </section>
 
-      <section className="py-7">
-        <h2 className="section-label">References</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">References</h2>
         {citations.ordered.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">
             No sources yet: this page has no published claims.

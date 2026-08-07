@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 
 export default function MethodologyPage() {
   return (
-    <article className="prose-article mx-auto max-w-3xl px-6 pb-12 text-[0.97rem] text-ink">
-      <header className="border-b border-rule py-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight">Methodology</h1>
+    <article className="prose-article mx-auto max-w-[1100px] px-4 pb-4 text-[0.97rem] text-ink">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05]">Methodology</h1>
         <p className="mt-3 text-ink-muted">
           The editorial standard every entry in this archive is held to.
         </p>
       </header>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">What counts as a sourced claim</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">What counts as a sourced claim</h2>
         <p className="mt-3">
           Every entry must cite at least one source with a title, a working link, and dates
           (publication and access). Acceptable sources, roughly in order of weight:
@@ -35,8 +35,8 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Writing standard</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Writing standard</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5">
           <li>
             <strong>Neutral, descriptive tone.</strong> Entries describe what happened per the
@@ -58,8 +58,8 @@ export default function MethodologyPage() {
         </ul>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Review standard</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Review standard</h2>
         <p className="mt-3">
           Moderators approve a submission only when: the cited sources actually support each
           stated fact; the tone rules above are met; and the entry is categorised correctly.
@@ -70,8 +70,8 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Disputes &amp; corrections</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Disputes &amp; corrections</h2>
         <p className="mt-3">
           Anyone, with or without an account, can report an entry via its{" "}
           <em>Report an issue</em> button. Factual disputes flag the entry publicly while under
@@ -81,8 +81,8 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Licensing</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Licensing</h2>
         <p className="mt-3">
           Text content:{" "}
           <a
@@ -97,8 +97,8 @@ export default function MethodologyPage() {
         </p>
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">Known limitations</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Known limitations</h2>
         <ul className="mt-3 list-disc space-y-1.5 pl-5">
           <li>
             <strong>Map boundaries are pre-2019.</strong> Jammu &amp; Kashmir appears undivided

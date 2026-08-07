@@ -21,8 +21,8 @@ export default async function ElectionHistoryPage({
   const rows = await getEntityHistory("election", electionId);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href={`/state/${detail.election.stateId}`} className="hover:text-ink">
             {detail.election.stateName}
@@ -38,7 +38,7 @@ export default async function ElectionHistoryPage({
           Revision history: {electionTitle(detail.election)}
         </h1>
       </header>
-      <section className="py-6">
+      <section className="section-card px-6 py-9 sm:px-10">
         <HistoryList rows={rows} />
       </section>
     </div>

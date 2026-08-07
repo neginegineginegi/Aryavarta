@@ -23,13 +23,13 @@ export default async function EventReportPage({
 
   return (
     <div className="mx-auto max-w-2xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href={`/event/${event.id}`} className="hover:text-ink">Event</Link>
           <span className="mx-1.5">/</span>
           <span>Report</span>
         </nav>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Report an issue or dispute
         </h1>
         <p className="mt-2 text-[0.85rem] text-ink-muted">

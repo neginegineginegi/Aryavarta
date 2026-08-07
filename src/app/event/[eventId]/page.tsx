@@ -64,8 +64,8 @@ export default async function EventPage({
   }
 
   return (
-    <article className="mx-auto max-w-3xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <article className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/" className="hover:text-ink">Map</Link>
           <span className="mx-1.5">/</span>
@@ -81,7 +81,7 @@ export default async function EventPage({
           <Badge variant="type">{EVENT_TYPE_LABELS[event.type as EventType]}</Badge>
           {event.status === "disputed" && <Badge variant="disputed">Disputed</Badge>}
         </div>
-        <h1 className="mt-2 font-display text-3xl font-semibold leading-tight tracking-tight text-ink">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           {event.title}
         </h1>
         <p className="mt-2 text-[0.85rem] text-ink-muted">
@@ -112,8 +112,8 @@ export default async function EventPage({
         ))}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Sources</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Sources</h2>
         <ReferenceList sources={event.sources} />
       </section>
 

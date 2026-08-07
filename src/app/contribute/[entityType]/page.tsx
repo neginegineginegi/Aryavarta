@@ -66,14 +66,14 @@ export default async function ContributeEntityPage({
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/contribute" className="hover:text-ink">Contribute</Link>
           <span className="mx-1.5">/</span>
           <span>{entityType}</span>
         </nav>
-        <h1 className="mt-2 font-display text-3xl font-semibold tracking-tight text-ink">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           {edit ? EDIT_TITLES[entityType] : TITLES[entityType]}
         </h1>
         <p className="mt-2 max-w-2xl text-[0.85rem] text-ink-muted">

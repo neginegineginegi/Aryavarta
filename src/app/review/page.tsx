@@ -30,9 +30,9 @@ export default async function ReviewQueuePage({
   ]);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Review queue
         </h1>
         <p className="mt-2 text-[0.88rem] text-ink-muted">

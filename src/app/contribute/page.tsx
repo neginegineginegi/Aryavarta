@@ -35,9 +35,9 @@ export default async function ContributePage({
   const stateQS = state ? `?state=${encodeURIComponent(state)}` : "";
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
-        <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Contribute to the archive
         </h1>
         <p className="mt-2 max-w-2xl text-[0.9rem] text-ink-muted">
@@ -78,8 +78,8 @@ export default async function ContributePage({
         </Link>
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">Your submissions</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Your submissions</h2>
         {mine.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">Nothing submitted yet.</p>
         ) : (

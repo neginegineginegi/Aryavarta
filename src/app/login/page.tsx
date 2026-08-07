@@ -28,7 +28,7 @@ export default async function LoginPage({
 
   return (
     <div className="mx-auto max-w-md px-5 py-16">
-      <h1 className="font-display text-3xl font-semibold tracking-tight text-ink">Sign in</h1>
+      <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">Sign in</h1>
       <p className="mt-2 text-[0.9rem] text-ink-muted">
         An account lets you propose additions and corrections to the archive. Browsing never
         requires one.

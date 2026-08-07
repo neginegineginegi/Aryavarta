@@ -37,9 +37,9 @@ export default async function BrowsePage() {
   const recentElections = electionIndex.slice(-12).reverse();
 
   return (
-    <div className="mx-auto max-w-6xl px-6 pb-12">
-      <header className="border-b border-rule py-10">
-        <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
+        <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Browse the archive
         </h1>
         <p className="mt-3 max-w-2xl text-[0.95rem] text-ink-muted">
@@ -48,8 +48,8 @@ export default async function BrowsePage() {
         </p>
       </header>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Union</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Union</h2>
         <p className="mt-2">
           <Link href="/union" className="text-accent underline-offset-2 hover:underline">
             Union Government of India →
@@ -60,8 +60,8 @@ export default async function BrowsePage() {
         </p>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">States &amp; Union Territories</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">States &amp; Union Territories</h2>
         <ul className="mt-3 grid grid-cols-2 gap-x-6 gap-y-1.5 text-[0.9rem] sm:grid-cols-3 md:grid-cols-4">
           {realStates.map((s) => (
             <li key={s.id}>
@@ -76,8 +76,8 @@ export default async function BrowsePage() {
         </ul>
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Parties</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Parties</h2>
         {parties.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">No parties recorded yet.</p>
         ) : (
@@ -102,7 +102,7 @@ export default async function BrowsePage() {
       </section>
 
       <section id="indicators" className="border-b border-rule py-8">
-        <h2 className="section-label">Development indicators</h2>
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Development indicators</h2>
         <p className="mt-1 max-w-2xl text-[0.8rem] text-ink-faint">
           Statistical series from named official sources, shown as published, year by year,
           for every state and the nation. Abhilekh does not score, rank, or grade governments.
@@ -140,8 +140,8 @@ export default async function BrowsePage() {
         )}
       </section>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">By year</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">By year</h2>
         <p className="mt-1 text-[0.8rem] text-ink-faint">
           Opens the map at that year. Scrub onward from there.
         </p>
@@ -159,8 +159,8 @@ export default async function BrowsePage() {
         </ul>
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">Recent elections in the archive</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Recent elections in the archive</h2>
         {recentElections.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No elections recorded yet. They appear here as they are approved.

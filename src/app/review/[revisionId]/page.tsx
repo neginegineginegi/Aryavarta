@@ -72,8 +72,8 @@ export default async function ReviewRevisionPage({
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="text-[0.8rem] text-ink-faint">
           <Link href="/review" className="hover:text-ink">Review queue</Link>
           <span className="mx-1.5">/</span>
@@ -133,7 +133,7 @@ export default async function ReviewRevisionPage({
 
         {rev.status === "pending" && rev.afterData ? (
           <div className="rounded-sm border border-rule bg-paper-sunken/50 p-4">
-            <h2 className="section-label">Strengthen sources before approving</h2>
+            <h2 className="font-display text-[28px] font-light leading-tight text-ink">Strengthen sources before approving</h2>
             <p className="mt-1 text-[0.8rem] text-ink-muted">
               Imported drafts cite their machine origin (Wikidata/Wikipedia). Verify the facts
               against an authoritative source and add it here; the published record should cite
@@ -189,7 +189,7 @@ export default async function ReviewRevisionPage({
           <div className="grid gap-6 border-t border-rule pt-6 sm:grid-cols-2">
             <form action={approveRevisionAction} className="space-y-3">
               <input type="hidden" name="revisionId" value={rev.id} />
-              <h2 className="section-label">Approve &amp; publish</h2>
+              <h2 className="font-display text-[28px] font-light leading-tight text-ink">Approve &amp; publish</h2>
               <textarea
                 name="reviewNote"
                 placeholder="Optional note (visible publicly in the revision log)"
@@ -213,7 +213,7 @@ export default async function ReviewRevisionPage({
 
             <form action={rejectRevisionAction} className="space-y-3">
               <input type="hidden" name="revisionId" value={rev.id} />
-              <h2 className="section-label">Reject</h2>
+              <h2 className="font-display text-[28px] font-light leading-tight text-ink">Reject</h2>
               <textarea
                 name="reviewNote"
                 required

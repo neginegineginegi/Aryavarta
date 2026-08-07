@@ -40,8 +40,8 @@ export default async function PartyPage({
   const { party, governments, electionHistory } = profile;
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <article className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <p className="section-label">Political party</p>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <span
@@ -49,7 +49,7 @@ export default async function PartyPage({
             className="h-6 w-6 rounded-sm border border-black/10"
             style={{ backgroundColor: party.color }}
           />
-          <h1 className="font-display text-4xl font-semibold tracking-tight text-ink">
+          <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
             {party.name}
           </h1>
           {party.abbreviation && (
@@ -59,8 +59,8 @@ export default async function PartyPage({
         </div>
       </header>
 
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Governments held</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Governments held</h2>
         {governments.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No recorded terms in office under this party yet.
@@ -109,8 +109,8 @@ export default async function PartyPage({
         )}
       </section>
 
-      <section className="py-8">
-        <h2 className="section-label">Election performance</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[28px] font-light leading-tight text-ink">Election performance</h2>
         {electionHistory.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No recorded election results for this party yet.

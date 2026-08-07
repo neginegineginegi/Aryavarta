@@ -35,8 +35,8 @@ export default async function PublicRevisionPage({
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-9">
+    <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <p className="section-label">Revision record</p>
         <h1 className="mt-1 font-display text-2xl font-semibold tracking-tight text-ink">
           {rev.title}
