@@ -46,44 +46,23 @@ export default async function ElectionPage({
   const voteShareRows = election.results.filter((r) => r.voteSharePercent != null);
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pb-12">
-      <header className="border-b border-rule py-10">
-        <nav className="text-[0.8rem] text-ink-faint">
-          <Link href="/" className="hover:text-ink">Map</Link>
+    <article className="mx-auto max-w-[1200px] px-4 pb-4">
+      <header className="section-card px-6 py-9 sm:px-10">
+        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+          <Link href="/browse" className="hover:text-ink">Browse</Link>
           <span className="mx-1.5">/</span>
           <Link href={`/state/${election.stateId}`} className="hover:text-ink">
             {election.stateName}
           </Link>
           <span className="mx-1.5">/</span>
-          <span>Election {yearOf(election.electionDate)}</span>
+          <span className="text-ink-muted">Elections</span>
         </nav>
-        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-            {electionTitle(election)}
-          </h1>
-          <span className="flex gap-2">
-            <Link
-              href={`/election/${election.id}/history`}
-              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink-muted transition-colors hover:border-ink hover:text-ink"
-            >
-              History
-            </Link>
-            <Link
-              href={`/contribute/election?edit=${election.id}`}
-              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink transition-colors hover:border-ink"
-            >
-              Suggest an edit
-            </Link>
-            <span className="self-center">
-              <AdminRemoveButton
-                entityType="election"
-                entityId={election.id}
-                label={electionTitle(election)}
-              />
-            </span>
-          </span>
-        </div>
-        <p className="mt-2 text-[0.85rem] text-ink-muted">
+        {/* Breadcrumb, title and meta line run uninterrupted; the actions sit
+            below them so nothing breaks that sequence when the title wraps. */}
+        <h1 className="mt-3 font-display text-[clamp(32px,4.2vw,48px)] font-light leading-[1.05] text-ink">
+          {electionTitle(election)}
+        </h1>
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
           Polled {formatDate(election.electionDate)}
           {election.assemblyNumber ? (
             <>
@@ -94,12 +73,28 @@ export default async function ElectionPage({
           {election.totalSeats ? <> · {formatNumber(election.totalSeats)} seats</> : null}
           {election.turnoutPercent ? <> · {election.turnoutPercent}% turnout</> : null}
         </p>
+        <div className="mt-5 flex flex-wrap items-center gap-2">
+          <Link href={`/election/${election.id}/history`} className="btn btn-secondary btn-sm">
+            History
+          </Link>
+          <Link
+            href={`/contribute/election?edit=${election.id}`}
+            className="btn btn-primary btn-sm"
+          >
+            Suggest an edit
+          </Link>
+          <AdminRemoveButton
+            entityType="election"
+            entityId={election.id}
+            label={electionTitle(election)}
+          />
+        </div>
       </header>
 
       {/* Auto-generated factual overview */}
       {overview.length > 0 && (
-        <section className="border-b border-rule py-6">
-          <h2 className="section-label">Overview</h2>
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[30px] font-light leading-tight text-ink">Overview</h2>
           <p className="prose-article mt-2 max-w-2xl text-[0.95rem] leading-relaxed text-ink">
             {overview.join(" ")}
           </p>
@@ -111,8 +106,8 @@ export default async function ElectionPage({
       )}
 
       {/* Seat distribution */}
-      <section className="border-b border-rule py-6">
-        <h2 className="section-label">Seats won</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">Seats won</h2>
         <div className="mt-4">
           {election.results.length === 0 ? (
             <p className="text-[0.85rem] text-ink-muted">
@@ -132,8 +127,8 @@ export default async function ElectionPage({
 
       {/* Alliances */}
       {alliances.length > 0 && (
-        <section className="border-b border-rule py-6">
-          <h2 className="section-label">Alliances</h2>
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[30px] font-light leading-tight text-ink">Alliances</h2>
           <ul className="mt-3 space-y-2">
             {alliances.map((a) => (
               <li key={a.name} className="text-[0.88rem]">
@@ -150,8 +145,8 @@ export default async function ElectionPage({
 
       {/* Vote share */}
       {voteShareRows.length > 0 && (
-        <section className="border-b border-rule py-6">
-          <h2 className="section-label">Vote share</h2>
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[30px] font-light leading-tight text-ink">Vote share</h2>
           <div className="mt-3 max-w-xl space-y-1.5">
             {voteShareRows.map((r) => (
               <div key={r.partyId} className="flex items-center gap-2 text-[0.82rem]">
@@ -178,7 +173,7 @@ export default async function ElectionPage({
 
       {/* Gains & losses */}
       {previous && deltas.length > 0 && (
-        <section className="border-b border-rule py-6">
+        <section className="section-card px-6 py-9 sm:px-10">
           <h2 className="section-label">
             Change vs{" "}
             <Link
@@ -195,8 +190,8 @@ export default async function ElectionPage({
       )}
 
       {/* Government formed */}
-      <section className="border-b border-rule py-6">
-        <h2 className="section-label">Government formed</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">Government formed</h2>
         {formedTerm ? (
           <p className="mt-3 text-[0.95rem] text-ink">
             <span className="font-display text-lg font-semibold">{formedTerm.cmName}</span>
@@ -222,8 +217,8 @@ export default async function ElectionPage({
       </section>
 
       {/* References */}
-      <section className="py-6">
-        <h2 className="section-label">References</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">References</h2>
         {sources.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">No sources recorded.</p>
         ) : (

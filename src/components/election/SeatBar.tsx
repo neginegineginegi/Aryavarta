@@ -19,7 +19,7 @@ export function SeatBar({
   return (
     <figure>
       <div className="relative">
-        <div className="flex h-7 w-full overflow-hidden rounded-sm border border-rule-dark bg-paper-sunken">
+        <div className="flex h-[34px] w-full overflow-hidden rounded-lg bg-paper-badge">
           {results.map((r) =>
             r.seatsWon > 0 ? (
               <div
@@ -28,6 +28,7 @@ export function SeatBar({
                   width: `${(r.seatsWon / denominator) * 100}%`,
                   backgroundColor: r.partyColor,
                 }}
+                className="transition-opacity hover:opacity-75"
                 title={`${r.partyName}: ${r.seatsWon} seats`}
               />
             ) : null,
@@ -36,30 +37,38 @@ export function SeatBar({
         {mark != null && (
           <div
             aria-hidden
-            className="absolute -top-1.5 bottom-[-6px] w-0 border-l-2 border-dashed border-ink"
+            className="absolute inset-y-0 w-px bg-ink"
             style={{ left: `${(mark / denominator) * 100}%` }}
             title={`Majority: ${mark} seats`}
           />
         )}
       </div>
+      {mark != null && (
+        <p
+          aria-hidden
+          className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta"
+          style={{ marginLeft: `${Math.min(88, (mark / denominator) * 100)}%` }}
+        >
+          Majority {mark}
+        </p>
+      )}
       <figcaption className="mt-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[0.8rem] text-ink-muted">
         {results.slice(0, 6).map((r) => (
           <span key={r.partyId} className="inline-flex items-center gap-1.5">
             <span
               aria-hidden
-              className="h-2.5 w-2.5 rounded-[2px] border border-black/10"
+              className="swatch"
               style={{ backgroundColor: r.partyColor }}
             />
             {r.partyAbbreviation ?? r.partyName}{" "}
             <strong className="tabular-nums text-ink">{r.seatsWon}</strong>
           </span>
         ))}
-        {mark != null && (
-          <span className="text-ink-faint">
-            ┊ majority <strong className="tabular-nums">{mark}</strong>
-            {totalSeats ? ` of ${totalSeats}` : ""}
+        {totalSeats ? (
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-meta">
+            {totalSeats} seats
           </span>
-        )}
+        ) : null}
       </figcaption>
     </figure>
   );
