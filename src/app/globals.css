@@ -1,41 +1,51 @@
 @import "tailwindcss";
 
 @theme {
-  /* Technical-manual palette (after Dan Hollick's "Making Software"):
-     cool near-white ground, near-black ink, one vivid electric blue for
-     everything interactive, hairline neutral rules. Party colors are data
-     colors only: they appear on the map, legend, and seat bars, never as
-     interface chrome. */
-  --color-paper: #f7f7f4;
-  --color-paper-raised: #ffffff;
-  --color-paper-sunken: #ededea;
-  --color-ink: #17171a;
-  --color-ink-muted: #53535a;
-  --color-ink-faint: #6e6e75; /* AA on paper for normal text */
-  --color-rule: #e3e3df;
-  --color-rule-dark: #c8c8c3;
-  --color-accent: #2743ee; /* links, active states, interactive chrome */
-  --color-accent-dark: #1b2fd4;
-  --color-accent-wash: #e9edfe; /* quiet tinted ground behind active chips */
+  /* Palette from the Abhilekh landing design handoff. Warm neutral ground,
+     white cards, near-black ink. The tricolor (saffron and green) appears
+     only in the blurred hero streaks; it is never interface color. Party
+     colors remain data colors on the map, legend and seat bars. */
+  --color-paper: #efefec; /* page ground behind the cards */
+  --color-paper-raised: #ffffff; /* section cards */
+  --color-paper-sunken: #f6f6f4; /* inner cards */
+  --color-paper-badge: #f1f1ee; /* pills and badges */
+  --color-ink: #1a1a18;
+  --color-ink-body: #2a2a27;
+  --color-ink-muted: #52524e;
+  --color-ink-soft: #71716c;
+  --color-ink-faint: #8a8a84;
+  --color-ink-meta: #9c9c96;
+  --color-ink-ghost: #b0b0aa;
+  --color-rule: #e0e0dc;
+  --color-rule-light: #f1f1ee;
+  --color-rule-dark: #d5d5d0;
+  --color-accent: #c2410c; /* links on hover, Coverage card */
+  --color-accent-dark: #9a330a;
+  --color-accent-wash: #fdf0e8;
+  --color-verify: #0369a1; /* Verification card, audit log statuses */
+  --color-saffron: #ff9933;
+  --color-india-green: #138808;
   --color-disputed: #b45309;
   --color-danger: #991b1b;
   --color-approved: #166534;
-  --color-nodata: #e9e9e5; /* map fill when no term covers the year */
-  --color-pr: #8a8a8a; /* President's Rule */
+  --color-nodata: #e9e9e5;
+  --color-pr: #8a8a8a;
 
-  /* Three voices with strict jobs. Editorial (serif) carries headlines and
-     narrative; data (sans) carries tables, figures and controls; system
-     (mono) marks machine-generated and meta information. Never mix the job. */
+  /* Four voices, each with one job. */
   --font-display: var(--font-serif), "Iowan Old Style", Georgia, serif;
-  --font-body: var(--font-serif), "Iowan Old Style", Georgia, serif;
+  --font-body: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
   --font-data: var(--font-sans), "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-space-mono), "Courier New", monospace;
-  /* Wordmark only: the अभिलेखः brand mark in header and footer. */
+  --font-mono: var(--font-mono-ui), "IBM Plex Mono", "Courier New", monospace;
   --font-brand: var(--font-tiro-devanagari), "Noto Serif Devanagari", serif;
 
-  --shadow-card: 0 1px 2px rgb(23 23 26 / 0.04), 0 6px 20px -12px rgb(23 23 26 / 0.14);
-  --shadow-card-hover: 0 1px 3px rgb(23 23 26 / 0.06), 0 10px 28px -12px rgb(23 23 26 / 0.2);
+  --radius-section: 24px;
+  --radius-card: 20px;
+  --radius-panel: 14px;
+
+  --shadow-card: 0 1px 3px rgb(0 0 0 / 0.08);
+  --shadow-card-hover: 0 2px 10px rgb(0 0 0 / 0.1);
 }
+
 
 html {
   background: var(--color-paper);
@@ -45,10 +55,13 @@ html {
 }
 
 body {
-  /* Source Serif has a generous x-height, so 1.0625rem sets a comfortable
-     reading size with book-like leading. */
-  font-size: 1.0625rem;
-  line-height: 1.65;
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+/* Global link hover, per the handoff. */
+a:hover {
+  color: var(--color-accent);
 }
 
 /* ---------------------------------------------------------------------------
@@ -61,26 +74,24 @@ body {
    --------------------------------------------------------------------------- */
 .display-1 {
   font-family: var(--font-display);
-  font-size: clamp(2.4rem, 5.2vw, 4rem);
-  line-height: 1.08;
-  letter-spacing: -0.022em;
-  font-weight: 400;
+  font-size: clamp(44px, 6.5vw, 88px);
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  font-weight: 300;
+  text-wrap: balance;
 }
 .display-2 {
   font-family: var(--font-display);
-  font-size: clamp(1.9rem, 3.4vw, 2.75rem);
-  line-height: 1.14;
-  letter-spacing: -0.018em;
-  font-weight: 400;
+  font-size: clamp(34px, 4vw, 52px);
+  line-height: 1.1;
+  font-weight: 300;
 }
 .display-3 {
   font-family: var(--font-display);
-  font-size: clamp(1.35rem, 2vw, 1.6rem);
-  line-height: 1.25;
-  letter-spacing: -0.012em;
-  font-weight: 600;
+  font-size: clamp(36px, 4.5vw, 56px);
+  line-height: 1.1;
+  font-weight: 300;
 }
-
 /* Standfirst: the single quiet line under a display heading. */
 .standfirst {
   font-size: 1.1rem;
@@ -136,11 +147,10 @@ button {
 .lede::first-letter {
   float: left;
   font-family: var(--font-display);
-  font-size: 3.6em;
-  line-height: 0.82;
-  padding-right: 0.08em;
-  padding-top: 0.04em;
-  font-weight: 600;
+  font-weight: 300;
+  font-size: 86px;
+  line-height: 0.75;
+  padding: 10px 10px 0 0;
   color: var(--color-ink);
 }
 
@@ -150,7 +160,7 @@ button {
 }
 
 ::selection {
-  background: #d5dcfc;
+  background: #f6dcc9;
 }
 
 a,
@@ -221,7 +231,7 @@ thead th {
 .card {
   background: var(--color-paper-raised);
   border: 1px solid var(--color-rule);
-  border-radius: 1rem;
+  border-radius: var(--radius-card);
   box-shadow: var(--shadow-card);
 }
 
@@ -231,43 +241,176 @@ thead th {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
-  border-radius: 9999px;
-  padding: 0.6rem 1.15rem;
-  font-family: var(--font-mono);
-  font-size: 0.78rem;
+  border-radius: 999px;
+  padding: 12px 22px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1;
   white-space: nowrap;
-  transition: background-color 150ms ease, border-color 150ms ease, color 150ms ease;
+  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+}
+.btn-primary,
+.btn-primary:hover {
+  color: #fff;
 }
 .btn-primary {
   background: var(--color-ink);
-  color: var(--color-paper-raised);
-  border: 1px solid var(--color-ink);
 }
 .btn-primary:hover {
-  background: #000;
+  background: #333330;
 }
 .btn-secondary {
   background: var(--color-paper-raised);
   color: var(--color-ink);
-  border: 1px solid var(--color-rule-dark);
+  box-shadow: var(--shadow-card);
 }
 .btn-secondary:hover {
-  border-color: var(--color-ink);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-card-hover);
+}
+/* Smaller pill used inside cards. */
+.btn-sm {
+  padding: 10px 18px;
+  font-size: 13px;
 }
 
 /* Centred mono eyebrow above a display heading. */
 .eyebrow {
   display: inline-block;
-  border-radius: 9999px;
-  background: var(--color-paper-sunken);
-  padding: 0.3rem 0.75rem;
+  border-radius: 999px;
+  background: var(--color-paper-badge);
+  padding: 6px 12px;
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-size: 10px;
+  letter-spacing: 0.18em;
   text-transform: uppercase;
-  color: var(--color-ink-muted);
+  color: var(--color-ink-soft);
+}
+
+/* ---------------------------------------------------------------------------
+   Landing-page furniture from the design handoff.
+   --------------------------------------------------------------------------- */
+
+/* Every landing section is a rounded card floating on the page ground. */
+.section-card {
+  border-radius: var(--radius-section);
+  background: var(--color-paper-raised);
+  overflow: hidden;
+}
+.section-card + .section-card,
+.section-card + .section-shell,
+.section-shell + .section-card {
+  margin-top: 16px;
+}
+/* Grey-gradient variant used by hero, about and the closing call to action. */
+.section-tint {
+  background: linear-gradient(180deg, #e9eaec 0%, #f3f3f4 55%, #e8e9ea 100%);
+}
+.section-tint-hero {
+  background: linear-gradient(180deg, #e8e9ec 0%, #f2f3f4 45%, #e6e7e9 100%);
+}
+
+/* The signature: a blurred tricolor band drifting behind the type. Saffron
+   to green, never used as interface color, and purely decorative. */
+.prism {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  pointer-events: none;
+}
+.prism-wide {
+  top: 44%;
+  height: 220px;
+  filter: blur(42px);
+  opacity: 0.65;
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ffb066 20%,
+    #fdf6ec 42%,
+    #ffffff 50%,
+    #f0f7ee 58%,
+    #4d9e5f 80%,
+    #138808 100%
+  );
+  animation: prismDrift 14s ease-in-out infinite;
+}
+.prism-sharp {
+  left: -5%;
+  right: -5%;
+  top: 52%;
+  height: 26px;
+  filter: blur(6px);
+  opacity: 0.7;
+  transform: rotate(-3.5deg);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ff9933 18%,
+    #ffd9b3 38%,
+    #ffffff 50%,
+    #cfe8d2 62%,
+    #138808 82%,
+    transparent
+  );
+}
+.prism-soft {
+  top: 30%;
+  height: 140px;
+  filter: blur(36px);
+  opacity: 0.5;
+  transform: rotate(-3deg);
+  background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+}
+.prism-reverse {
+  top: 46%;
+  height: 120px;
+  filter: blur(30px);
+  opacity: 0.65;
+  transform: rotate(-3deg);
+  background: linear-gradient(90deg, #138808, #cfe8d2 30%, #ffffff 50%, #ffd9b3 70%, #ff9933 100%);
+}
+@keyframes prismDrift {
+  0% {
+    transform: translateX(-3%) rotate(-4deg);
+  }
+  50% {
+    transform: translateX(3%) rotate(-3.2deg);
+  }
+  100% {
+    transform: translateX(-3%) rotate(-4deg);
+  }
+}
+/* Decorative motion only: stillness costs nothing here. */
+@media (prefers-reduced-motion: reduce) {
+  .prism-wide {
+    animation: none;
+  }
+}
+
+/* Big Newsreader statistic over a mono label. */
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 300;
+  font-size: 52px;
+  line-height: 1;
+}
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-ink-meta);
+  margin-top: 12px;
+}
+
+/* Micro-label used for the audit log, decade ticks and footer meta. */
+.mono-micro {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--color-ink-meta);
 }
 .card-hover {
   transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;

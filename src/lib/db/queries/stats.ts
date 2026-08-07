@@ -2,7 +2,7 @@ import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { events, states, terms } from "@/lib/db/schema";
+import { elections, events, states, terms } from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 
 export type ArchiveStats = {
@@ -10,11 +10,12 @@ export type ArchiveStats = {
   terms: number;
   events: number;
   sources: number;
+  elections: number;
 };
 
 export const getArchiveStats = unstable_cache(
   async (): Promise<ArchiveStats> => {
-    const [[s], [t], [e], cited] = await Promise.all([
+    const [[s], [t], [e], cited, [el]] = await Promise.all([
       db.select({ n: count() }).from(states),
       db.select({ n: count() }).from(terms).where(isNull(terms.deletedAt)),
       db
@@ -29,12 +30,14 @@ export const getArchiveStats = unstable_cache(
           UNION ALL SELECT source_id FROM event_sources
         ) cited
       `),
+      db.select({ n: count() }).from(elections).where(isNull(elections.deletedAt)),
     ]);
     return {
       states: s.n,
       terms: t.n,
       events: e.n,
       sources: Number((cited.rows[0] as { n: number }).n),
+      elections: el.n,
     };
   },
   ["archive-stats"],

@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import {
-  Inter_Tight,
-  Source_Serif_4,
-  Space_Mono,
-  Tiro_Devanagari_Sanskrit,
+  IBM_Plex_Mono,
+  Instrument_Sans,
+  Newsreader,
+  Tiro_Devanagari_Hindi,
 } from "next/font/google";
 
 import { Footer } from "@/components/layout/Footer";
@@ -11,40 +11,39 @@ import { Header } from "@/components/layout/Header";
 
 import "./globals.css";
 
-// Three voices, each with a strict job.
+// Four voices, each with a strict job.
 //
-// Source Serif 4 is the EDITORIAL voice: headlines and narrative prose. Drawn
-// for screen reading with real optical sizing, so it holds authority at
-// display sizes without the delicacy of a Garamond revival.
-const serif = Source_Serif_4({
+// Newsreader is the EDITORIAL voice: headlines, the big statistics, card
+// titles and the About drop cap. Set light (300) at display sizes.
+const newsreader = Newsreader({
   variable: "--font-serif",
   subsets: ["latin"],
   display: "swap",
 });
 
-// Inter Tight is the DATA voice: tables, figures, controls, legends, nav.
-// Neutral and narrow enough to keep dense result tables scannable.
-const sans = Inter_Tight({
+// Instrument Sans is the BODY voice: prose, controls, tables and legends.
+const instrument = Instrument_Sans({
   variable: "--font-sans",
   subsets: ["latin"],
   display: "swap",
 });
 
-// Space Mono is the SYSTEM voice: curatorial eyebrows, column headers, year
-// readouts, axis ticks, citation markers. It marks machine-generated or
-// meta information and is never used decoratively.
-const spaceMono = Space_Mono({
-  variable: "--font-space-mono",
-  weight: ["400", "700"],
+// IBM Plex Mono is the SYSTEM voice: badges, micro-labels, the audit log,
+// year readouts and footer meta. Always small and widely letterspaced, and
+// never used decoratively.
+const plexMono = IBM_Plex_Mono({
+  variable: "--font-mono-ui",
+  weight: ["400", "500"],
   subsets: ["latin"],
+  display: "swap",
 });
 
-// Tiro Devanagari Sanskrit: used only for the अभिलेखः wordmark. A scholarly
-// Devanagari serif drawn for Sanskrit, so the visarga and matras sit right.
-const tiroDevanagari = Tiro_Devanagari_Sanskrit({
+// Tiro Devanagari Hindi: the अभिलेखः wordmark only.
+const tiroDevanagari = Tiro_Devanagari_Hindi({
   variable: "--font-tiro-devanagari",
   weight: "400",
   subsets: ["devanagari", "latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -75,7 +74,7 @@ export default function RootLayout({
     // globals.css is declared there and CSS variables don't resolve upward.
     <html
       lang="en"
-      className={`${serif.variable} ${sans.variable} ${spaceMono.variable} ${tiroDevanagari.variable}`}
+      className={`${newsreader.variable} ${instrument.variable} ${plexMono.variable} ${tiroDevanagari.variable}`}
     >
       <body className="min-h-screen flex flex-col">
         <Header />
