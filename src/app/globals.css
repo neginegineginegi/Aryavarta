@@ -48,7 +48,19 @@
 
 
 html {
-  background: var(--color-paper);
+  /* The ground carries a fixed tricolor wash: saffron at top-left fading
+     through neutral to green at bottom-right. Fixed attachment so it reads as
+     the surface the cards sit on rather than something that scrolls with
+     them. White cards are unchanged on top of it. */
+  background: linear-gradient(
+    160deg,
+    #f8ede0 0%,
+    #f1efe9 28%,
+    #efefec 50%,
+    #ecefe9 72%,
+    #e3efe2 100%
+  );
+  background-attachment: fixed;
   color: var(--color-ink);
   font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
@@ -564,4 +576,39 @@ input[type="range"].year-slider::-moz-range-thumb {
   border: 3px solid var(--color-paper-raised);
   box-shadow: 0 0 0 1px var(--color-rule-dark), 0 1px 4px rgb(23 23 26 / 0.25);
   cursor: ew-resize;
+}
+
+/* ---------------------------------------------------------------------------
+   Interior page furniture (shared shell revision).
+   --------------------------------------------------------------------------- */
+
+/* A 6px tricolor strip pinned to the top edge of a page's FIRST card only.
+   One per page, never on later cards, never behind data. */
+.tricolor-strip {
+  position: relative;
+  overflow: hidden;
+}
+.tricolor-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 6px;
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ffb066 32%,
+    #f2efe6 50%,
+    #7fba8a 68%,
+    #138808 100%
+  );
+}
+
+/* Devanagari eyebrow above a page title. A header layer only: body copy,
+   tables and controls stay English. */
+.deva-eyebrow {
+  display: block;
+  font-family: var(--font-brand);
+  font-size: 15px;
+  line-height: 1.4;
+  color: var(--color-ink-faint);
 }

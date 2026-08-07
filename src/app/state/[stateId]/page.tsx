@@ -84,7 +84,7 @@ export default async function StatePage({
     <article className="mx-auto max-w-[1200px] px-4 pb-4">
       {/* Page title block: breadcrumb, title, mono meta line, then the
           government timeline strip, all inside the first section card. */}
-      <header className="section-card px-6 py-9 sm:px-10">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
           <Link href="/browse" className="hover:text-ink">Browse</Link>
           <span className="mx-1.5">/</span>
@@ -92,7 +92,10 @@ export default async function StatePage({
           <span className="mx-1.5">/</span>
           <span className="text-ink-muted">{state.name}</span>
         </nav>
-        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-4">
+        <span lang="hi" className="deva-eyebrow mt-4">
+          राज्य का अभिलेख
+        </span>
+        <div className="mt-1 flex flex-wrap items-baseline justify-between gap-4">
           <h1 className="font-display text-[clamp(38px,5vw,52px)] font-light leading-[1.05] text-ink">
             {state.name}
           </h1>

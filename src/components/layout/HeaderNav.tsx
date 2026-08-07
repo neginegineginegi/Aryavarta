@@ -9,7 +9,6 @@ const NAV_LINKS = [
   { href: "/insights", label: "Insights" },
   { href: "/compare", label: "Compare" },
   { href: "/search", label: "Search" },
-  { href: "/contribute", label: "Contribute" },
 ];
 
 function isActive(pathname: string, href: string): boolean {
@@ -18,9 +17,9 @@ function isActive(pathname: string, href: string): boolean {
 }
 
 /**
- * Primary nav. Each link is an evenly padded pill so the row reads as one
- * set of equal-weight destinations; the current section is a tinted chip
- * rather than a detached underline, matching the ModeSwitch below it.
+ * Primary nav, per the shared-shell revision: Newsreader at 16.5px so the
+ * navigation speaks in the same editorial voice as the page titles, with a
+ * 2px rule under the current section.
  */
 export function NavLinks() {
   const pathname = usePathname();
@@ -33,10 +32,10 @@ export function NavLinks() {
             key={l.href}
             href={l.href}
             aria-current={active ? "page" : undefined}
-            className={`rounded-full px-3 py-1.5 transition-colors ${
+            className={`border-b-2 pb-0.5 font-display text-[16.5px] font-medium transition-colors ${
               active
-                ? "bg-accent-wash font-medium text-accent-dark"
-                : "text-ink-muted hover:bg-paper-sunken hover:text-ink"
+                ? "border-ink text-ink"
+                : "border-transparent text-ink-muted hover:text-ink"
             }`}
           >
             {l.label}

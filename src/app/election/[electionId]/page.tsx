@@ -47,7 +47,7 @@ export default async function ElectionPage({
 
   return (
     <article className="mx-auto max-w-[1200px] px-4 pb-4">
-      <header className="section-card px-6 py-9 sm:px-10">
+      <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
         <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
           <Link href="/browse" className="hover:text-ink">Browse</Link>
           <span className="mx-1.5">/</span>
@@ -59,7 +59,10 @@ export default async function ElectionPage({
         </nav>
         {/* Breadcrumb, title and meta line run uninterrupted; the actions sit
             below them so nothing breaks that sequence when the title wraps. */}
-        <h1 className="mt-3 font-display text-[clamp(32px,4.2vw,48px)] font-light leading-[1.05] text-ink">
+        <span lang="hi" className="deva-eyebrow mt-4">
+          चुनाव परिणाम
+        </span>
+        <h1 className="mt-1 font-display text-[clamp(32px,4.2vw,48px)] font-light leading-[1.05] text-ink">
           {electionTitle(election)}
         </h1>
         <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
