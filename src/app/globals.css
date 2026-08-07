@@ -627,6 +627,63 @@ thead th {
   background: linear-gradient(90deg, #eceae6, #f3f2ef, #eceae6);
 }
 
+/* Segmented control with a gliding indicator.
+
+   The handoff is specific about this one: "the segmented control is a gliding
+   indicator, never two swapping buttons". The distinction matters because the
+   glide is what tells you the two options are one surface with a position on
+   it, rather than two separate things you pressed. Used where the switch
+   genuinely changes a view in place; a control that navigates stays a link. */
+.seg {
+  position: relative;
+  display: inline-flex;
+  border-radius: 999px;
+  background: var(--color-paper-badge);
+  padding: 3px;
+}
+.seg-ind {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 0;
+  width: 0;
+  border-radius: 999px;
+  background: var(--color-ink);
+  transition:
+    left var(--dur-panel) var(--ease-spring),
+    width var(--dur-panel) var(--ease-spring);
+}
+.seg button {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  cursor: pointer;
+  background: transparent;
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  transition: color var(--dur-card) ease;
+}
+.seg button.on {
+  color: var(--color-paper-raised);
+}
+
+/* View crossfade: the outgoing view falls away, then the incoming one rises.
+   Sequential rather than simultaneous, so the two never overlap mid-swap. */
+.view-swap {
+  transition:
+    opacity var(--dur-card) ease,
+    transform var(--dur-panel) var(--ease-glide);
+}
+.view-hidden {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
 
 /* Big Newsreader statistic over a mono label. */
 .stat-value {

@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 import { FaqAccordion, type Faq } from "@/components/home/FaqAccordion";
-import { MapExplorer } from "@/components/map/MapExplorer";
+import { MapPanel } from "@/components/map/MapPanel";
 import { db } from "@/lib/db";
-import { getMapData } from "@/lib/db/queries/map";
+import { getMapData, getUnionMapData } from "@/lib/db/queries/map";
 import { getArchiveStats } from "@/lib/db/queries/stats";
 import { revisions } from "@/lib/db/schema";
 import { formatNumber } from "@/lib/format";
@@ -65,7 +65,14 @@ async function recentAudit() {
 export default async function HomePage() {
   // Note: the ?y= year param is read client-side inside MapExplorer so this
   // page stays fully static/cached.
-  const [data, stats, audit] = await Promise.all([getMapData(), getArchiveStats(), recentAudit()]);
+  // Both map payloads: each is small and separately cached, and holding both
+  // is what lets States/Union swap in place instead of navigating.
+  const [data, unionData, stats, audit] = await Promise.all([
+    getMapData(),
+    getUnionMapData(),
+    getArchiveStats(),
+    recentAudit(),
+  ]);
   const years = new Date().getFullYear() - FIRST_YEAR;
 
   const statItems = [
@@ -153,10 +160,11 @@ export default async function HomePage() {
           </h2>
           <p className="m-0 text-[15px] leading-[1.6] text-ink-soft">
             Drag the year and watch the map change. Each state takes the colour of the party in
-            office on 31 December of that year. Open any state for its full record.
+            office on 31 December of that year. Switch to Union for the government at the centre.
+            Open any state for its full record.
           </p>
         </div>
-        <MapExplorer data={data} />
+        <MapPanel states={data} union={unionData} />
       </section>
 
       {/* ------------------------------------------------------------ FEATURES */}

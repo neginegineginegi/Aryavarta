@@ -88,7 +88,14 @@ function OfficeRow({ label, term }: { label: string; term: UnionTerm | null }) {
  * party in office at the end of the selected year. Same year-in-URL behavior
  * as the state map (?y=, written via replaceState so the page stays static).
  */
-export function UnionMapExplorer({ data }: { data: UnionMapData }) {
+export function UnionMapExplorer({
+  data,
+  // Hidden when the explorer sits inside MapPanel, which owns the switch.
+  showModeSwitch = true,
+}: {
+  data: UnionMapData;
+  showModeSwitch?: boolean;
+}) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -176,10 +183,11 @@ export function UnionMapExplorer({ data }: { data: UnionMapData }) {
 
   return (
     <div>
-      {/* The map's own mode control: which government layer is shown. */}
-      <div className="mb-4">
-        <ModeSwitch />
-      </div>
+      {showModeSwitch && (
+        <div className="mb-4">
+          <ModeSwitch />
+        </div>
+      )}
 
       <YearScrubber
         playback={playback}

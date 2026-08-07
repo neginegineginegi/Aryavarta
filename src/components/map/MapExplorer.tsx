@@ -52,7 +52,14 @@ function describeTerm(term: MapTerm | null): string {
   return `${term.cmName} · ${term.partyName}`;
 }
 
-export function MapExplorer({ data }: { data: MapData }) {
+export function MapExplorer({
+  data,
+  // Hidden when the explorer sits inside MapPanel, which owns the switch.
+  showModeSwitch = true,
+}: {
+  data: MapData;
+  showModeSwitch?: boolean;
+}) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const tipRef = useRef<HTMLDivElement>(null);
@@ -283,10 +290,11 @@ export function MapExplorer({ data }: { data: MapData }) {
 
   return (
     <div>
-      {/* The map's own mode control: which government layer is shown. */}
-      <div className="mb-4">
-        <ModeSwitch />
-      </div>
+      {showModeSwitch && (
+        <div className="mb-4">
+          <ModeSwitch />
+        </div>
+      )}
 
       <YearScrubber
         playback={playback}
