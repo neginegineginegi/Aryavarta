@@ -4,7 +4,7 @@ import { and, count, eq, inArray } from "drizzle-orm";
 import { v7 as uuidv7 } from "uuid";
 
 import { db } from "@/lib/db";
-import { events, parties, revisions, states } from "@/lib/db/schema";
+import { documents, events, parties, revisions, states } from "@/lib/db/schema";
 import { AuthzError, requireRole } from "@/lib/authz";
 import {
   canonicalizeFor,
@@ -13,10 +13,14 @@ import {
   type ElectionPayload,
   type EntityType,
   type EventPayload,
+  type PromisePayload,
   type TermPayload,
 } from "@/lib/revisions/payloads";
 import { snapshotEntity, snapshotsEqual } from "@/lib/revisions/snapshot";
 import { yearOf } from "@/lib/format";
+
+/** The union pseudo-state; national records hang off it. */
+const UNION_STATE_ID = "in";
 
 const MAX_PENDING_PER_USER = 25;
 
@@ -47,6 +51,11 @@ function deriveTitle(entityType: EntityType, payload: AnyPayload, stateName: str
       const p = payload as ElectionPayload;
       return `Assembly election, ${stateName}, ${yearOf(p.electionDate)}`;
     }
+    case "manifesto_promise": {
+      const p = payload as PromisePayload;
+      const quoted = p.officialText.length > 80 ? `${p.officialText.slice(0, 77)}…` : p.officialText;
+      return `Promise: ${quoted}`;
+    }
   }
 }
 
@@ -59,7 +68,7 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
   }
 
   // --- basic shape ---------------------------------------------------------
-  if (!["term", "election", "event"].includes(input.entityType))
+  if (!["term", "election", "event", "manifesto_promise"].includes(input.entityType))
     return { ok: false, error: "Unknown entity type." };
   if (!["create", "update"].includes(input.action))
     return { ok: false, error: "Unsupported action." };
@@ -81,7 +90,11 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
   const payload = canonicalizeFor[input.entityType](parsed.data as any) as AnyPayload;
 
   // --- referential checks --------------------------------------------------
-  const state = await db.query.states.findFirst({ where: eq(states.id, payload.stateId) });
+  // A national promise has no state; revisions require one, so it rides the
+  // union pseudo-state 'in', the same convention Lok Sabha elections and PM
+  // terms already use.
+  const stateId = payload.stateId ?? UNION_STATE_ID;
+  const state = await db.query.states.findFirst({ where: eq(states.id, stateId) });
   if (!state) return { ok: false, error: "Unknown state." };
 
   const partyIds = new Set<string>();
@@ -90,6 +103,21 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
     if (p.partyId) partyIds.add(p.partyId);
   } else if (input.entityType === "election") {
     for (const r of (payload as ElectionPayload).results) partyIds.add(r.partyId);
+  } else if (input.entityType === "manifesto_promise") {
+    const p = payload as PromisePayload;
+    if (p.partyId) partyIds.add(p.partyId);
+    // A promise is a quotation, so the document it was quoted from has to be
+    // in the archive first. Without that, there is no page to check it against.
+    const doc = await db.query.documents.findFirst({
+      where: eq(documents.id, p.documentId),
+      columns: { id: true },
+    });
+    if (!doc)
+      return {
+        ok: false,
+        error:
+          "That document is not in the archive yet. Add the document first, then quote promises out of it.",
+      };
   }
   if (partyIds.size > 0) {
     const found = await db
@@ -160,7 +188,7 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
       id: revisionId,
       entityType: input.entityType,
       entityId,
-      stateId: payload.stateId,
+      stateId,
       action: input.action,
       schemaVersion: 1,
       beforeData,

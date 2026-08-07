@@ -13,8 +13,10 @@ import { RevisionDiff } from "@/components/diff/RevisionDiff";
 import { RevisionMeta } from "@/components/diff/RevisionMeta";
 import { requireRole } from "@/lib/authz";
 import { db } from "@/lib/db";
+import { eq } from "drizzle-orm";
 import { getRevisionDetail } from "@/lib/db/queries/revisions";
-import type { AnyPayload } from "@/lib/revisions/payloads";
+import { documents } from "@/lib/db/schema";
+import type { AnyPayload, PromisePayload } from "@/lib/revisions/payloads";
 import { snapshotEntity, snapshotsEqual } from "@/lib/revisions/snapshot";
 
 export const metadata: Metadata = { title: "Review revision" };
@@ -63,6 +65,16 @@ export default async function ReviewRevisionPage({
     stateNames: Object.fromEntries(stateRows.map((s) => [s.id, s.name])),
     partyNames: Object.fromEntries(partyRows.map((p) => [p.id, p.name])),
   };
+
+  // A promise is checked against its document, so the moderator gets a direct
+  // route to the pages the quotation claims to come from.
+  const promiseDoc =
+    rev.entityType === "manifesto_promise" && rev.afterData
+      ? await db.query.documents.findFirst({
+          where: eq(documents.id, (rev.afterData as PromisePayload).documentId),
+          columns: { id: true, title: true, officialUrl: true, archiveUrl: true },
+        })
+      : null;
 
   // Live conflict check, surfaced before the moderator acts.
   let conflict = false;
@@ -129,6 +141,35 @@ export default async function ReviewRevisionPage({
               entity history
             </Link>
           </p>
+        )}
+
+        {promiseDoc && (
+          <div className="rounded-sm border border-rule bg-paper-sunken/50 p-4">
+            <h2 className="font-display text-[28px] font-light leading-tight text-ink">
+              Check the quotation against the document
+            </h2>
+            <p className="mt-1 text-[0.82rem] text-ink-muted">
+              This entry claims to quote{" "}
+              <Link href={`/archive/${promiseDoc.id}`} className="text-accent hover:underline">
+                {promiseDoc.title}
+              </Link>
+              . Open it at the page reference given below and confirm the wording matches
+              character for character. A restatement in the quoted field is a rejection: the
+              plain-terms box exists for that.
+            </p>
+            {(promiseDoc.archiveUrl || promiseDoc.officialUrl) && (
+              <p className="mt-2 text-[0.82rem]">
+                <a
+                  href={promiseDoc.archiveUrl ?? promiseDoc.officialUrl ?? "#"}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-accent underline-offset-2 hover:underline"
+                >
+                  Open the document →
+                </a>
+              </p>
+            )}
+          </div>
         )}
 
         {rev.status === "pending" && rev.afterData ? (

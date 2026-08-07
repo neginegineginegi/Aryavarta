@@ -1,13 +1,16 @@
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import type { Db, Tx } from "@/lib/db";
+import { citations, sources } from "@/lib/db/schema";
 import {
   canonicalizeElection,
   canonicalizeEvent,
+  canonicalizePromise,
   canonicalizeTerm,
   type ElectionPayload,
   type EntityType,
   type EventPayload,
+  type PromisePayload,
   type SourceSnapshot,
   type TermPayload,
 } from "@/lib/revisions/payloads";
@@ -108,11 +111,43 @@ export async function snapshotEvent(db: DbLike, eventId: string): Promise<EventP
   });
 }
 
+/**
+ * A live promise as a payload. Citations come from the polymorphic table
+ * rather than a per-entity join, which is why phase 1 came first.
+ */
+async function snapshotPromise(db: DbLike, id: string): Promise<PromisePayload | null> {
+  const row = await db.query.manifestoPromises.findFirst({
+    where: (p, { and, eq, isNull }) => and(eq(p.id, id), isNull(p.deletedAt)),
+  });
+  if (!row) return null;
+  const cited = await db
+    .select({ source: sources })
+    .from(citations)
+    .innerJoin(sources, eq(citations.sourceId, sources.id))
+    .where(and(eq(citations.subjectType, "manifesto_promise"), eq(citations.subjectId, id)));
+  return canonicalizePromise({
+    documentId: row.documentId,
+    partyId: row.partyId,
+    electionId: row.electionId,
+    stateId: row.stateId,
+    officialText: row.officialText,
+    officialLang: row.officialLang,
+    plainText: row.plainText,
+    category: row.category,
+    scope: row.scope,
+    statedTimeline: row.statedTimeline,
+    statedBudgetInr: row.statedBudgetInr,
+    pageRef: row.pageRef,
+    sortOrder: row.sortOrder,
+    sources: cited.map((c) => toSourceSnapshot(c.source)),
+  });
+}
+
 export function snapshotEntity(
   db: DbLike,
   entityType: EntityType,
   entityId: string,
-): Promise<TermPayload | ElectionPayload | EventPayload | null> {
+): Promise<TermPayload | ElectionPayload | EventPayload | PromisePayload | null> {
   switch (entityType) {
     case "term":
       return snapshotTerm(db, entityId);
@@ -120,6 +155,8 @@ export function snapshotEntity(
       return snapshotElection(db, entityId);
     case "event":
       return snapshotEvent(db, entityId);
+    case "manifesto_promise":
+      return snapshotPromise(db, entityId);
   }
 }
 

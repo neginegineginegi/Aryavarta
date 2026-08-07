@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  canonicalizeFor,
   electionPayloadSchema,
   eventPayloadSchema,
   normalizeSourceUrl,
+  payloadSchemaFor,
+  promisePayloadSchema,
   termPayloadSchema,
 } from "./payloads";
 
@@ -161,5 +164,80 @@ describe("electionPayloadSchema", () => {
       results: [{ partyId: "demo-a", seats: 100, voteSharePercent: null }],
     });
     expect(r.success).toBe(true);
+  });
+});
+
+describe("promisePayloadSchema", () => {
+  const base = {
+    documentId: "0195c1d0-0000-7000-8000-000000000001",
+    partyId: "demo-a",
+    electionId: null,
+    stateId: null,
+    officialText: "We will build one thousand kilometres of rural road.",
+    officialLang: "en",
+    plainText: null,
+    category: "infrastructure" as const,
+    scope: "state" as const,
+    statedTimeline: "within five years",
+    statedBudgetInr: null,
+    pageRef: "p. 14",
+    sortOrder: 3,
+    sources: [validSource],
+  };
+
+  it("accepts a valid payload", () => {
+    expect(promisePayloadSchema.safeParse(base).success).toBe(true);
+  });
+
+  it("enforces the >=1 source hard rule", () => {
+    expect(promisePayloadSchema.safeParse({ ...base, sources: [] }).success).toBe(false);
+  });
+
+  it("requires the quoted wording", () => {
+    expect(promisePayloadSchema.safeParse({ ...base, officialText: "too short" }).success).toBe(
+      false,
+    );
+  });
+
+  it("allows a national promise with no state", () => {
+    const r = promisePayloadSchema.safeParse({ ...base, stateId: null, scope: "national" });
+    expect(r.success).toBe(true);
+  });
+
+  it("defaults category and scope rather than inventing a verdict field", () => {
+    const r = promisePayloadSchema.parse({
+      documentId: base.documentId,
+      officialText: base.officialText,
+      sources: [validSource],
+    });
+    expect(r.category).toBe("other");
+    expect(r.scope).toBe("unspecified");
+    // A promise carries no status: whether it was kept is never the archive's
+    // own claim. Guard the absence so it cannot be added back by accident.
+    expect(r).not.toHaveProperty("status");
+    expect(r).not.toHaveProperty("confidence");
+  });
+
+  it("normalizes source URLs during parsing", () => {
+    const r = promisePayloadSchema.parse({
+      ...base,
+      sources: [{ ...validSource, url: "https://Example.org/x/" }],
+    });
+    expect(r.sources[0].url).toBe("https://example.org/x");
+  });
+});
+
+/**
+ * Every entity type the revision pipeline routes on must have both a schema
+ * and a canonicalizer. A type added to one registry but not the other passes
+ * typecheck through the index signature and fails at approval time.
+ */
+describe("entity registries", () => {
+  it("cover the same entity types", () => {
+    expect(Object.keys(payloadSchemaFor).sort()).toEqual(Object.keys(canonicalizeFor).sort());
+  });
+
+  it("include manifesto_promise", () => {
+    expect(Object.keys(payloadSchemaFor)).toContain("manifesto_promise");
   });
 });

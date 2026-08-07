@@ -3,11 +3,13 @@ import { v7 as uuidv7 } from "uuid";
 
 import { db, type Tx } from "@/lib/db";
 import {
+  citations,
   elections,
   electionResults,
   electionSources,
   events,
   eventSources,
+  manifestoPromises,
   revisions,
   sources,
   terms,
@@ -17,7 +19,9 @@ import {
   payloadSchemaFor,
   type AnyPayload,
   type ElectionPayload,
+  type EntityType,
   type EventPayload,
+  type PromisePayload,
   type SourceSnapshot,
   type TermPayload,
 } from "@/lib/revisions/payloads";
@@ -42,7 +46,7 @@ export class ApplyError extends Error {
 
 export type ApprovedRevision = {
   revisionId: string;
-  entityType: "term" | "election" | "event";
+  entityType: EntityType;
   entityId: string;
   stateId: string;
 };
@@ -104,6 +108,36 @@ async function replaceEventSources(tx: Tx, eventId: string, snaps: SourceSnapsho
     await tx
       .insert(eventSources)
       .values(ids.map((sourceId) => ({ eventId, sourceId })))
+      .onConflictDoNothing();
+}
+
+/**
+ * Promises cite through the polymorphic `citations` table rather than a
+ * dedicated join table, so the same rows can later carry status claims and
+ * timeline steps. The delete is scoped by subject type as well as id: subject
+ * ids are text, and an unscoped delete would be free to touch another kind of
+ * subject that happened to share the id.
+ */
+async function replacePromiseCitations(tx: Tx, promiseId: string, snaps: SourceSnapshot[]) {
+  const ids = await upsertSources(tx, snaps);
+  await tx
+    .delete(citations)
+    .where(
+      and(
+        eq(citations.subjectType, "manifesto_promise"),
+        eq(citations.subjectId, promiseId),
+      ),
+    );
+  if (ids.length)
+    await tx
+      .insert(citations)
+      .values(
+        ids.map((sourceId) => ({
+          subjectType: "manifesto_promise" as const,
+          subjectId: promiseId,
+          sourceId,
+        })),
+      )
       .onConflictDoNothing();
 }
 
@@ -206,6 +240,25 @@ export async function approveRevision(input: {
               })),
             );
           await replaceElectionSources(tx, rev.entityId, p.sources);
+        } else if (rev.entityType === "manifesto_promise") {
+          const p = payload as PromisePayload;
+          await tx.insert(manifestoPromises).values({
+            id: rev.entityId,
+            documentId: p.documentId,
+            partyId: p.partyId,
+            electionId: p.electionId,
+            stateId: p.stateId,
+            officialText: p.officialText,
+            officialLang: p.officialLang,
+            plainText: p.plainText,
+            category: p.category,
+            scope: p.scope,
+            statedTimeline: p.statedTimeline,
+            statedBudgetInr: p.statedBudgetInr,
+            pageRef: p.pageRef,
+            sortOrder: p.sortOrder,
+          });
+          await replacePromiseCitations(tx, rev.entityId, p.sources);
         } else {
           const p = payload as EventPayload;
           await tx
@@ -268,6 +321,29 @@ export async function approveRevision(input: {
               })),
             );
           await replaceElectionSources(tx, rev.entityId, p.sources);
+        } else if (rev.entityType === "manifesto_promise") {
+          const p = payload as PromisePayload;
+          // documentId is deliberately not updatable: a promise belongs to the
+          // document it was quoted from. Moving one to another manifesto is a
+          // delete plus a create, so the citation trail stays honest.
+          await tx
+            .update(manifestoPromises)
+            .set({
+              partyId: p.partyId,
+              electionId: p.electionId,
+              stateId: p.stateId,
+              officialText: p.officialText,
+              officialLang: p.officialLang,
+              plainText: p.plainText,
+              category: p.category,
+              scope: p.scope,
+              statedTimeline: p.statedTimeline,
+              statedBudgetInr: p.statedBudgetInr,
+              pageRef: p.pageRef,
+              sortOrder: p.sortOrder,
+            })
+            .where(eq(manifestoPromises.id, rev.entityId));
+          await replacePromiseCitations(tx, rev.entityId, p.sources);
         } else {
           const p = payload as EventPayload;
           await tx
@@ -297,6 +373,11 @@ export async function approveRevision(input: {
             .update(elections)
             .set({ deletedAt: sql`now()` })
             .where(eq(elections.id, rev.entityId));
+        } else if (rev.entityType === "manifesto_promise") {
+          await tx
+            .update(manifestoPromises)
+            .set({ deletedAt: sql`now()` })
+            .where(eq(manifestoPromises.id, rev.entityId));
         } else {
           await tx
             .update(events)

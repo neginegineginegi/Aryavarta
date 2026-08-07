@@ -30,22 +30,19 @@ function DocRow({ d }: { d: DocumentRow }) {
         <span className="type-badge">{label}</span>
       </td>
       <td className="py-2.5 pr-4 align-top">
-        {href ? (
-          <a
-            href={href}
-            target="_blank"
-            rel="nofollow noopener noreferrer"
-            className="text-ink underline-offset-2 hover:text-accent hover:underline"
-          >
-            {d.title}
-          </a>
-        ) : (
-          <span className="text-ink">{d.title}</span>
-        )}
+        <Link
+          href={`/archive/${d.id}`}
+          className="text-ink underline-offset-2 hover:text-accent hover:underline"
+        >
+          {d.title}
+        </Link>
         <span className="mt-0.5 block text-[12px] text-ink-faint">
           {d.publisher ?? "Publisher not recorded"}
           {d.language !== "en" ? ` · ${d.language.toUpperCase()}` : ""}
           {d.pageCount ? ` · ${d.pageCount} pages` : ""}
+          {d.promises > 0
+            ? ` · ${d.promises} promise${d.promises === 1 ? "" : "s"} extracted`
+            : ""}
           {!d.hasText ? " · metadata only, no text layer" : ""}
         </span>
       </td>
@@ -53,13 +50,20 @@ function DocRow({ d }: { d: DocumentRow }) {
         {d.publishedOn ? formatDate(d.publishedOn) : "—"}
       </td>
       <td className="py-2.5 align-top text-right">
-        {d.redistribution === "permitted" && d.archiveUrl ? (
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-verify">
-            Archived
-          </span>
+        {href ? (
+          <a
+            href={href}
+            target="_blank"
+            rel="nofollow noopener noreferrer"
+            className={`font-mono text-[9px] uppercase tracking-[0.14em] underline-offset-2 hover:underline ${
+              d.redistribution === "permitted" && d.archiveUrl ? "text-verify" : "text-ink-meta"
+            }`}
+          >
+            {d.redistribution === "permitted" && d.archiveUrl ? "Archived" : "Link only"}
+          </a>
         ) : (
           <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
-            Link only
+            No link
           </span>
         )}
       </td>

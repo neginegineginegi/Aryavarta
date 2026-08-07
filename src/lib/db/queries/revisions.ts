@@ -90,6 +90,8 @@ export function revisionEntityHref(rev: {
   switch (rev.entityType) {
     case "event":
       return `/event/${rev.entityId}`;
+    case "manifesto_promise":
+      return `/promise/${rev.entityId}`;
     default:
       // Terms and elections render inside their state page.
       return `/state/${rev.stateId}`;

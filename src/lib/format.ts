@@ -103,3 +103,32 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
   committee_report: "Committee report",
   other: "Document",
 };
+
+/**
+ * Subject headings for manifesto promises. These describe what a promise is
+ * about, nothing more: they are filing labels, not a scoring rubric.
+ */
+export const PROMISE_CATEGORY_LABELS: Record<string, string> = {
+  education: "Education",
+  healthcare: "Healthcare",
+  employment: "Employment",
+  agriculture: "Agriculture",
+  infrastructure: "Infrastructure",
+  women: "Women",
+  youth: "Youth",
+  economy: "Economy",
+  law_and_order: "Law and order",
+  environment: "Environment",
+  digital: "Digital",
+  social_welfare: "Social welfare",
+  other: "Other",
+};
+
+/** How wide a promise reaches, as the manifesto itself states it. */
+export const PROMISE_SCOPE_LABELS: Record<string, string> = {
+  national: "National",
+  state: "State",
+  district: "District",
+  constituency: "Constituency",
+  unspecified: "Scope unstated",
+};

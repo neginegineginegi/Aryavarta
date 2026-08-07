@@ -16,9 +16,13 @@ import type {
   ElectionPayload,
   EntityType,
   EventPayload,
+  PromisePayload,
   TermPayload,
 } from "@/lib/revisions/payloads";
 import { yearOf } from "@/lib/format";
+
+/** The union pseudo-state; national records hang off it. */
+const UNION_STATE_ID = "in";
 
 function deriveTitle(entityType: EntityType, payload: AnyPayload, stateName: string): string {
   switch (entityType) {
@@ -33,6 +37,11 @@ function deriveTitle(entityType: EntityType, payload: AnyPayload, stateName: str
       const p = payload as ElectionPayload;
       const what = p.scope === "lok_sabha" ? "Lok Sabha election" : `Assembly election, ${stateName}`;
       return `${what}, ${yearOf(p.electionDate)}`;
+    }
+    case "manifesto_promise": {
+      const p = payload as PromisePayload;
+      const quoted = p.officialText.length > 80 ? `${p.officialText.slice(0, 77)}…` : p.officialText;
+      return `Promise: ${quoted}`;
     }
   }
 }
@@ -62,26 +71,31 @@ export async function adminRemoveEntryAction(formData: FormData): Promise<void> 
     throw e;
   }
 
-  if (!["term", "election", "event"].includes(entityType) || !entityId) {
+  if (!["term", "election", "event", "manifesto_promise"].includes(entityType) || !entityId) {
     redirect(back("removed=invalid"));
   }
 
   const before = (await snapshotEntity(db, entityType, entityId)) as AnyPayload | null;
   if (!before) redirect(back("removed=gone"));
 
-  const state = await db.query.states.findFirst({ where: eq(states.id, before.stateId) });
+  // A promise may be national, where the three original entity types always
+  // had a state. Revisions require one, so national records ride the union
+  // pseudo-state 'in' — the same convention Lok Sabha elections and PM terms
+  // already use, rather than making an existing column nullable.
+  const stateId = ("stateId" in before ? before.stateId : null) ?? UNION_STATE_ID;
+  const state = await db.query.states.findFirst({ where: eq(states.id, stateId) });
   const revisionId = uuidv7();
 
   await db.insert(revisions).values({
     id: revisionId,
     entityType,
     entityId,
-    stateId: before.stateId,
+    stateId,
     action: "delete",
     schemaVersion: 1,
     beforeData: before,
     afterData: null,
-    title: deriveTitle(entityType, before, state?.name ?? before.stateId),
+    title: deriveTitle(entityType, before, state?.name ?? stateId),
     summary: `[admin removal] ${reason || "Removed from the live record by an administrator."}`,
     status: "pending",
     proposedBy: admin.id,

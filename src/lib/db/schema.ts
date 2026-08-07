@@ -71,7 +71,12 @@ export const eventStatusEnum = pgEnum("event_status", [
 
 export const userRoleEnum = pgEnum("user_role", ["contributor", "moderator", "admin"]);
 
-export const revisionEntityEnum = pgEnum("revision_entity", ["term", "election", "event"]);
+export const revisionEntityEnum = pgEnum("revision_entity", [
+  "term",
+  "election",
+  "event",
+  "manifesto_promise",
+]);
 
 export const revisionActionEnum = pgEnum("revision_action", ["create", "update", "delete"]);
 
@@ -134,6 +139,37 @@ export const redistributionEnum = pgEnum("redistribution", [
 ]);
 
 export const ocrStatusEnum = pgEnum("ocr_status", ["none", "pending", "done", "failed"]);
+
+// --- Accountability layer, phase 3: manifesto promises ---------------------
+
+// The policy areas a promise falls under. Fixed list so promises stay
+// comparable across parties and years; 'other' absorbs the rest rather than
+// letting the list grow per manifesto.
+export const promiseCategoryEnum = pgEnum("promise_category", [
+  "education",
+  "healthcare",
+  "employment",
+  "agriculture",
+  "infrastructure",
+  "women",
+  "youth",
+  "economy",
+  "law_and_order",
+  "environment",
+  "digital",
+  "social_welfare",
+  "other",
+]);
+
+// How far a promise reaches. Recorded as the manifesto states it, never
+// inferred from the party's size or the election's scope.
+export const promiseScopeEnum = pgEnum("promise_scope", [
+  "national",
+  "state",
+  "district",
+  "constituency",
+  "unspecified",
+]);
 
 // --- Accountability layer, phase 1 -----------------------------------------
 
@@ -409,6 +445,56 @@ export const documents = pgTable(
   ],
 );
 
+/**
+ * A single promise extracted from a manifesto.
+ *
+ * Two text fields, deliberately. `officialText` is quoted verbatim in the
+ * source language and is never edited; `plainText` is an editorial
+ * restatement, labelled as such wherever it is shown. Conflating them would
+ * let paraphrase drift into the record with nothing marking where it happened.
+ *
+ * `pageRef` is what makes a promise checkable: a reader can open the manifesto
+ * at that page and see the original wording for themselves.
+ *
+ * There is deliberately NO status column here. Whether a promise was kept is
+ * never Abhilekh's claim; it is a dated, attributed, sourced assertion by
+ * somebody else, and it lives in its own table (phase 4). See
+ * docs/ACCOUNTABILITY_LAYER.md section 2.
+ */
+export const manifestoPromises = pgTable(
+  "manifesto_promises",
+  {
+    id: uuid("id").primaryKey(),
+    documentId: uuid("document_id")
+      .notNull()
+      .references(() => documents.id, { onDelete: "cascade" }),
+    partyId: text("party_id").references(() => parties.id),
+    electionId: uuid("election_id").references(() => elections.id),
+    stateId: text("state_id").references(() => states.id), // null for national promises
+    officialText: text("official_text").notNull(), // verbatim, never edited
+    officialLang: text("official_lang").notNull().default("en"),
+    plainText: text("plain_text"), // editorial restatement, always labelled
+    category: promiseCategoryEnum("category").notNull().default("other"),
+    scope: promiseScopeEnum("scope").notNull().default("unspecified"),
+    statedTimeline: text("stated_timeline"), // as written: "within five years"
+    statedBudgetInr: numeric("stated_budget_inr"), // only when the manifesto states one
+    pageRef: text("page_ref"), // where in the document, so a reader can check
+    sortOrder: integer("sort_order").notNull().default(0),
+    searchTsv: tsvector("search_tsv").generatedAlwaysAs(
+      sql`to_tsvector('english', coalesce(official_text, '') || ' ' || coalesce(plain_text, ''))`,
+    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    deletedAt: timestamp("deleted_at", { withTimezone: true }),
+  },
+  (t) => [
+    index("promises_search_idx").using("gin", t.searchTsv),
+    index("promises_document_idx").on(t.documentId),
+    index("promises_party_idx").on(t.partyId),
+    index("promises_election_idx").on(t.electionId),
+    index("promises_category_idx").on(t.category),
+  ],
+);
+
 export const sources = pgTable("sources", {
   id: uuid("id").primaryKey(),
   title: text("title").notNull(),
@@ -632,7 +718,21 @@ export const statesRelations = relations(states, ({ many }) => ({
   events: many(events),
 }));
 
-export const documentsRelations = relations(documents, ({ one }) => ({
+export const manifestoPromisesRelations = relations(manifestoPromises, ({ one }) => ({
+  document: one(documents, {
+    fields: [manifestoPromises.documentId],
+    references: [documents.id],
+  }),
+  party: one(parties, { fields: [manifestoPromises.partyId], references: [parties.id] }),
+  election: one(elections, {
+    fields: [manifestoPromises.electionId],
+    references: [elections.id],
+  }),
+  state: one(states, { fields: [manifestoPromises.stateId], references: [states.id] }),
+}));
+
+export const documentsRelations = relations(documents, ({ one, many }) => ({
+  promises: many(manifestoPromises),
   state: one(states, { fields: [documents.stateId], references: [states.id] }),
   party: one(parties, { fields: [documents.partyId], references: [parties.id] }),
   election: one(elections, { fields: [documents.electionId], references: [elections.id] }),

@@ -173,6 +173,52 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "documents_party_idx" ON "documents" ("party_id")`,
   `CREATE INDEX IF NOT EXISTS "documents_election_idx" ON "documents" ("election_id")`,
   `CREATE INDEX IF NOT EXISTS "documents_published_idx" ON "documents" ("published_on")`,
+  // --- upgrade 10: accountability layer phase 3, manifesto promises --------
+  // A promise is a quotation with a page reference, not a verdict. There is
+  // deliberately no status column: whether a promise was kept is a dated,
+  // attributed claim by a named party, recorded separately, never the
+  // archive's own assertion.
+  `DO $$ BEGIN
+     CREATE TYPE "public"."promise_category" AS ENUM(
+       'education', 'healthcare', 'employment', 'agriculture', 'infrastructure',
+       'women', 'youth', 'economy', 'law_and_order', 'environment', 'digital',
+       'social_welfare', 'other'
+     );
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."promise_scope" AS ENUM(
+       'national', 'state', 'district', 'constituency', 'unspecified'
+     );
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  // The revision pipeline routes on this enum, so the value must exist before
+  // any promise revision can be proposed. Its own statement, own transaction.
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'manifesto_promise'`,
+  `CREATE TABLE IF NOT EXISTS "manifesto_promises" (
+     "id" uuid PRIMARY KEY,
+     "document_id" uuid NOT NULL REFERENCES "documents"("id") ON DELETE CASCADE,
+     "party_id" text REFERENCES "parties"("id"),
+     "election_id" uuid REFERENCES "elections"("id"),
+     "state_id" text REFERENCES "states"("id"),
+     "official_text" text NOT NULL,
+     "official_lang" text DEFAULT 'en' NOT NULL,
+     "plain_text" text,
+     "category" "promise_category" DEFAULT 'other' NOT NULL,
+     "scope" "promise_scope" DEFAULT 'unspecified' NOT NULL,
+     "stated_timeline" text,
+     "stated_budget_inr" numeric,
+     "page_ref" text,
+     "sort_order" integer DEFAULT 0 NOT NULL,
+     "search_tsv" tsvector GENERATED ALWAYS AS (
+       to_tsvector('english', coalesce(official_text, '') || ' ' || coalesce(plain_text, ''))
+     ) STORED,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+     "deleted_at" timestamp with time zone
+   )`,
+  `CREATE INDEX IF NOT EXISTS "promises_search_idx" ON "manifesto_promises" USING gin ("search_tsv")`,
+  `CREATE INDEX IF NOT EXISTS "promises_document_idx" ON "manifesto_promises" ("document_id")`,
+  `CREATE INDEX IF NOT EXISTS "promises_party_idx" ON "manifesto_promises" ("party_id")`,
+  `CREATE INDEX IF NOT EXISTS "promises_election_idx" ON "manifesto_promises" ("election_id")`,
+  `CREATE INDEX IF NOT EXISTS "promises_category_idx" ON "manifesto_promises" ("category")`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

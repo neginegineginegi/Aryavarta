@@ -4,26 +4,33 @@ import { notFound } from "next/navigation";
 
 import { ElectionForm } from "@/components/forms/ElectionForm";
 import { EventForm } from "@/components/forms/EventForm";
+import { PromiseForm } from "@/components/forms/PromiseForm";
 import { TermForm } from "@/components/forms/TermForm";
 import { requireUserPage } from "@/lib/authz";
 import { db } from "@/lib/db";
 import type {
   ElectionPayload,
+  EntityType,
   EventPayload,
+  PromisePayload,
   TermPayload,
 } from "@/lib/revisions/payloads";
 import { snapshotEntity } from "@/lib/revisions/snapshot";
+
+const ENTITY_TYPES: EntityType[] = ["event", "term", "election", "manifesto_promise"];
 
 const TITLES: Record<string, string> = {
   event: "Add a governance event",
   term: "Add a CM term / President's Rule period",
   election: "Add an assembly election",
+  manifesto_promise: "Quote a promise from a document",
 };
 
 const EDIT_TITLES: Record<string, string> = {
   event: "Propose a correction to this event",
   term: "Propose a correction to this term",
   election: "Propose a correction to this election",
+  manifesto_promise: "Propose a correction to this extraction",
 };
 
 export async function generateMetadata({
@@ -40,11 +47,15 @@ export default async function ContributeEntityPage({
   searchParams,
 }: {
   params: Promise<{ entityType: string }>;
-  searchParams: Promise<{ state?: string; edit?: string }>;
+  searchParams: Promise<{ state?: string; edit?: string; document?: string }>;
 }) {
   const { entityType } = await params;
-  const { state: defaultStateId, edit: editId } = await searchParams;
-  if (!["event", "term", "election"].includes(entityType)) notFound();
+  const {
+    state: defaultStateId,
+    edit: editId,
+    document: defaultDocumentId,
+  } = await searchParams;
+  if (!ENTITY_TYPES.includes(entityType as EntityType)) notFound();
   await requireUserPage(`/contribute/${entityType}`);
 
   const [stateRows, partyRows] = await Promise.all([
@@ -58,9 +69,32 @@ export default async function ContributeEntityPage({
     }),
   ]);
 
+  // Only the promise form needs the document list, and it can be long, so it
+  // is not loaded for the other three.
+  const documentRows =
+    entityType === "manifesto_promise"
+      ? await db.query.documents.findMany({
+          columns: {
+            id: true,
+            title: true,
+            type: true,
+            publishedOn: true,
+            partyId: true,
+            electionId: true,
+            stateId: true,
+          },
+          with: {
+            party: { columns: { name: true } },
+            state: { columns: { name: true } },
+          },
+          orderBy: (d, { desc }) => [desc(d.publishedOn), desc(d.createdAt)],
+          limit: 500,
+        })
+      : [];
+
   let edit: { entityId: string; payload: unknown } | undefined;
   if (editId && /^[0-9a-f-]{36}$/.test(editId)) {
-    const payload = await snapshotEntity(db, entityType as "event" | "term" | "election", editId);
+    const payload = await snapshotEntity(db, entityType as EntityType, editId);
     if (!payload) notFound();
     edit = { entityId: editId, payload };
   }
@@ -108,6 +142,23 @@ export default async function ContributeEntityPage({
             parties={partyRows}
             defaultStateId={defaultStateId}
             edit={edit as { entityId: string; payload: ElectionPayload } | undefined}
+          />
+        )}
+        {entityType === "manifesto_promise" && (
+          <PromiseForm
+            documents={documentRows.map((d) => ({
+              id: d.id,
+              title: d.title,
+              type: d.type,
+              publishedOn: d.publishedOn,
+              partyId: d.partyId,
+              partyName: d.party?.name ?? null,
+              electionId: d.electionId,
+              stateId: d.stateId,
+              stateName: d.state?.name ?? null,
+            }))}
+            defaultDocumentId={defaultDocumentId}
+            edit={edit as { entityId: string; payload: PromisePayload } | undefined}
           />
         )}
       </div>

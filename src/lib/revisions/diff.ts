@@ -24,6 +24,23 @@ export type ScalarDiffRow = {
 };
 
 const FIELD_DEFS: Record<EntityType, Array<{ field: string; label: string; prose?: boolean }>> = {
+  // The quoted wording is prose-diffed: a reviewer needs to see exactly which
+  // words a proposal changes in a quotation, since altering one is the most
+  // consequential edit that can be made to a promise.
+  manifesto_promise: [
+    { field: "officialText", label: "Promise, as written", prose: true },
+    { field: "officialLang", label: "Language of the quote" },
+    { field: "plainText", label: "Plain restatement", prose: true },
+    { field: "category", label: "Category" },
+    { field: "scope", label: "Geographic scope" },
+    { field: "statedTimeline", label: "Stated timeline" },
+    { field: "statedBudgetInr", label: "Stated budget (₹)" },
+    { field: "pageRef", label: "Page reference" },
+    { field: "documentId", label: "Manifesto" },
+    { field: "partyId", label: "Party" },
+    { field: "electionId", label: "Election" },
+    { field: "stateId", label: "State" },
+  ],
   event: [
     { field: "stateId", label: "State" },
     { field: "year", label: "Year" },

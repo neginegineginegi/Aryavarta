@@ -320,6 +320,26 @@ Each phase ships something usable and none blocks the site.
 
 Phases 1 and 2 are worth doing regardless of whether the rest is ever built.
 
+**Shipped so far:** phases 1, 2 and 3.
+
+Phase 3 as built: `promise_category` and `promise_scope` enums, the
+`manifesto_promises` table, `manifesto_promise` on `revisionEntityEnum`, the
+payload schema and canonicalizer, snapshot and diff support, create/update/
+delete branches in `applyRevision` writing citations through the polymorphic
+table, an extraction form at `/contribute/manifesto_promise`, a document page
+at `/archive/[documentId]` that doubles as the manifesto viewer, and a promise
+record page at `/promise/[promiseId]`.
+
+Two deliberate omissions carried forward from the design. A promise still has
+no status column, so the archive issues no verdict; that arrives in phase 4 as
+dated attributed claims. And `documentId` is not editable on a promise: moving
+a quotation to a different document is a delete plus a create, so the citation
+trail cannot be quietly rewritten.
+
+Batch review for bulk extraction (`revision_batches`) is not part of phase 3.
+It changes how moderators approve, not what a promise is, and it should be its
+own increment.
+
 ---
 
 ## 7. Backward compatibility

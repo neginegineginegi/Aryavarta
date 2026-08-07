@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { eventTypeEnum } from "@/lib/db/schema";
+import { eventTypeEnum, promiseCategoryEnum, promiseScopeEnum } from "@/lib/db/schema";
 
 /**
  * The payload contract shared by forms, snapshots, the approval transaction,
@@ -229,6 +229,52 @@ export function canonicalizeResults<T extends { partyId: string }>(results: T[])
   return results.slice().sort((a, b) => a.partyId.localeCompare(b.partyId));
 }
 
+/**
+ * A promise extracted from a manifesto.
+ *
+ * `officialText` is the quoted wording and is required; `plainText` is an
+ * optional editorial restatement shown under a label. `pageRef` is what makes
+ * the entry checkable, so the proposal form asks for it even though the schema
+ * allows it to be absent for documents without page numbers.
+ *
+ * Note there is no status field. Whether a promise was kept is never the
+ * archive's own claim; that is a separate, attributed, sourced record.
+ */
+export const promisePayloadSchema = z.object({
+  documentId: z.string().uuid(),
+  partyId: z.string().trim().min(2).max(64).nullish().transform((v) => v ?? null),
+  electionId: z.string().uuid().nullish().transform((v) => v ?? null),
+  stateId: z.string().trim().min(2).max(8).nullish().transform((v) => v ?? null),
+  officialText: z
+    .string()
+    .trim()
+    .min(10, "Quote the promise as written (min 10 chars)")
+    .max(4000),
+  officialLang: z.string().trim().min(2).max(8).default("en"),
+  plainText: z
+    .string()
+    .trim()
+    .max(2000)
+    .nullish()
+    .transform((v) => (v ? v : null)),
+  category: z.enum(promiseCategoryEnum.enumValues).default("other"),
+  scope: z.enum(promiseScopeEnum.enumValues).default("unspecified"),
+  statedTimeline: z.string().trim().max(200).nullish().transform((v) => (v ? v : null)),
+  statedBudgetInr: z
+    .union([z.number(), z.string()])
+    .nullish()
+    .transform((v) => (v === null || v === undefined || v === "" ? null : String(v))),
+  pageRef: z.string().trim().max(60).nullish().transform((v) => (v ? v : null)),
+  sortOrder: z.number().int().min(0).max(100000).default(0),
+  sources: sourcesField,
+});
+
+export type PromisePayload = z.infer<typeof promisePayloadSchema>;
+
+export function canonicalizePromise(p: PromisePayload): PromisePayload {
+  return { ...p, sources: canonicalizeSources(p.sources) };
+}
+
 export function canonicalizeEvent(p: EventPayload): EventPayload {
   return { ...p, sources: canonicalizeSources(p.sources) };
 }
@@ -245,18 +291,20 @@ export function canonicalizeElection(p: ElectionPayload): ElectionPayload {
   };
 }
 
-export type EntityType = "term" | "election" | "event";
+export type EntityType = "term" | "election" | "event" | "manifesto_promise";
 
-export type AnyPayload = TermPayload | ElectionPayload | EventPayload;
+export type AnyPayload = TermPayload | ElectionPayload | EventPayload | PromisePayload;
 
 export const payloadSchemaFor = {
   term: termPayloadSchema,
   election: electionPayloadSchema,
   event: eventPayloadSchema,
+  manifesto_promise: promisePayloadSchema,
 } as const;
 
 export const canonicalizeFor = {
   term: canonicalizeTerm,
   election: canonicalizeElection,
   event: canonicalizeEvent,
+  manifesto_promise: canonicalizePromise,
 } as const;

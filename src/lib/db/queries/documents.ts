@@ -2,7 +2,7 @@ import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { documents } from "@/lib/db/schema";
+import { documents, manifestoPromises } from "@/lib/db/schema";
 
 /**
  * The media archive: one corpus covering manifestos, gazettes, judgments,
@@ -26,6 +26,7 @@ export type DocumentRow = {
   redistribution: "permitted" | "link_only" | "unknown";
   pageCount: number | null;
   hasText: boolean;
+  promises: number;
   stateId: string | null;
   partyId: string | null;
   electionId: string | null;
@@ -60,6 +61,14 @@ const SELECT = {
   redistribution: documents.redistribution,
   pageCount: documents.pageCount,
   hasText: sql<boolean>`(${documents.fullText} IS NOT NULL AND length(${documents.fullText}) > 0)`,
+  // How many promises have been quoted out of this document. Extraction is
+  // manual and partial, so the browse row says the number rather than letting
+  // a reader assume a manifesto has been covered end to end.
+  promises: sql<number>`(
+    SELECT count(*)::int FROM ${manifestoPromises}
+    WHERE ${manifestoPromises.documentId} = ${documents.id}
+      AND ${manifestoPromises.deletedAt} IS NULL
+  )`,
   stateId: documents.stateId,
   partyId: documents.partyId,
   electionId: documents.electionId,

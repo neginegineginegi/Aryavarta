@@ -76,6 +76,16 @@ export default async function ContributePage({
             An assembly election with seat counts, turnout, and outcome.
           </p>
         </Link>
+        <Link
+          href="/contribute/manifesto_promise"
+          className="rounded-sm border border-rule-dark bg-paper-raised p-4 transition-colors hover:border-ink"
+        >
+          <h2 className="font-display text-lg font-semibold text-ink">Manifesto promise</h2>
+          <p className="mt-1 text-[0.82rem] text-ink-muted">
+            A pledge quoted word for word out of a document already in the archive, with the page
+            it came from.
+          </p>
+        </Link>
       </section>
 
       <section className="section-card px-6 py-9 sm:px-10">
