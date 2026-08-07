@@ -105,6 +105,26 @@ export const DOCUMENT_TYPE_LABELS: Record<string, string> = {
 };
 
 /**
+ * What kind of artefact a source is. A factual classification of the
+ * document, not a rating of it: the archive never scores its sources.
+ */
+export const SOURCE_KIND_LABELS: Record<string, string> = {
+  gazette: "Gazette",
+  eci_report: "ECI report",
+  cag_report: "CAG report",
+  court_judgment: "Court judgment",
+  assembly_record: "Assembly record",
+  budget_document: "Budget document",
+  ministry_report: "Ministry report",
+  press_release: "Press release",
+  manifesto: "Manifesto",
+  news: "News report",
+  research: "Research",
+  rti_response: "RTI response",
+  other: "Other",
+};
+
+/**
  * Subject headings for manifesto promises. These describe what a promise is
  * about, nothing more: they are filing labels, not a scoring rubric.
  */

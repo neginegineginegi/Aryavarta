@@ -8,7 +8,9 @@ import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { DevelopmentSection } from "@/components/state/DevelopmentSection";
 import { getDevelopment } from "@/lib/db/queries/development";
 import { Badge } from "@/components/ui/Badge";
-import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
+import { buildCitationIndex, CiteMarks } from "@/components/ui/Citations";
+import { SourceList } from "@/components/ui/SourceList";
+import { getSourceClassifications, getSourceUsage } from "@/lib/db/queries/sources";
 import { PartyTag } from "@/components/ui/PartyTag";
 import { personSlug } from "@/lib/db/queries/person";
 import { getAllStateIds, getStateArticle } from "@/lib/db/queries/state";
@@ -70,6 +72,15 @@ export default async function StatePage({
     ...allTerms.map((t) => t.sources),
     ...elections.map((e) => e.sources),
     ...events.map((e) => e.sources),
+  ]);
+
+  // The Source Explorer's reverse index. Two small queries against the ids
+  // already on the page, so a reader can see how much of the archive rests on
+  // any one document without leaving the record.
+  const sourceIds = citations.ordered.map((s) => s.id);
+  const [usageMap, classMap] = await Promise.all([
+    getSourceUsage(sourceIds),
+    getSourceClassifications(sourceIds),
   ]);
 
   const eventsByType = new Map<EventType, typeof events>();
@@ -391,7 +402,11 @@ export default async function StatePage({
             No sources yet: this page has no published claims.
           </p>
         ) : (
-          <ReferenceList sources={citations.ordered} />
+          <SourceList
+            sources={citations.ordered}
+            usage={Object.fromEntries(usageMap)}
+            classifications={Object.fromEntries(classMap)}
+          />
         )}
       </section>
     </article>
