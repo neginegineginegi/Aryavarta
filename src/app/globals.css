@@ -189,42 +189,114 @@ thead th {
   color: var(--color-accent);
 }
 
-/* Ruled statistical plate: a framed table with a hairline inner grid, used
-   wherever charts sit beside figures (Development Lens, indicator pages,
-   compare). Wrap in an overflow-x-auto div; the frame hugs the table width.
-   Cell padding stays in markup. */
-.plate {
-  min-width: fit-content;
-  border: 1px solid var(--color-rule-dark);
-  background: var(--color-paper-raised);
-}
-.plate table {
+/* ---------------------------------------------------------------------------
+   Record tables, per the archetype handoff.
+
+   Borderless by design: a single hairline under the mono column headers,
+   lighter hairlines between rows, and nothing around the outside. Density
+   lives inside the block (rows at 10px) while the space between blocks does
+   the separating. Replaces the earlier fully-ruled plate so every data table
+   on the site reads the same way.
+   --------------------------------------------------------------------------- */
+.rec-table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
 }
-.plate th,
-.plate td {
-  border: 1px solid var(--color-rule);
+.rec-table thead th {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--color-ink-meta);
+  padding: 0 0 8px;
+  border-bottom: 1px solid var(--color-rule);
+  background: none;
+}
+.rec-table tbody td {
+  padding: 10px 0;
+  border-bottom: 1px solid var(--color-rule-light);
   vertical-align: top;
 }
-.plate thead th {
+.rec-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.rec-table tbody tr:hover td {
   background: var(--color-paper-sunken);
-  color: var(--color-ink-faint);
-  font-size: 0.68rem;
-  font-weight: 500;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+}
+/* Cells need their own inset once rows can be hovered as a block. */
+.rec-table th:first-child,
+.rec-table td:first-child {
+  padding-left: 4px;
+}
+.rec-table th:last-child,
+.rec-table td:last-child {
+  padding-right: 4px;
 }
 /* Category band spanning the full table width. */
-.plate .plate-band {
-  background: var(--color-paper-sunken);
+.rec-band {
   font-family: var(--font-mono);
-  font-size: 0.62rem;
-  font-weight: 700;
+  font-size: 9px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--color-ink-meta);
+  background: var(--color-paper-sunken);
+  padding: 7px 10px;
+}
+/* Numbers align on the decimal in every table. */
+.rec-num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Party colour as data: an 11px swatch, never interface chrome. */
+.swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgb(0 0 0 / 0.08);
+}
+
+/* Citation marker sitting after a value or sentence. */
+.cite-marker {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--color-verify);
+  white-space: nowrap;
+}
+.cite-marker:hover {
+  text-decoration: underline;
+}
+
+/* Fixed-enum event type badge. */
+.type-badge {
+  display: inline-block;
+  border-radius: 999px;
+  background: var(--color-paper-badge);
+  padding: 3px 8px;
+  font-family: var(--font-mono);
+  font-size: 8px;
   letter-spacing: 0.12em;
-  color: var(--color-accent);
+  text-transform: uppercase;
+  color: var(--color-ink-soft);
+  white-space: nowrap;
+}
+
+/* Government timeline strip: one segment per term, width by duration. */
+.timeline-strip {
+  display: flex;
+  height: 26px;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.timeline-seg {
+  transition: opacity 120ms ease;
+}
+.timeline-seg:hover {
+  opacity: 0.75;
 }
 
 /* Raised panel used for dashboards, summaries, and list entries. */
@@ -430,7 +502,9 @@ thead th {
   font-size: 0.6em;
   vertical-align: super;
   line-height: 0;
-  color: var(--color-accent);
+  /* Citations take the verification blue, not the accent: they are a
+     trust signal, not an action. */
+  color: var(--color-verify);
   font-weight: 700;
   text-decoration: none;
 }

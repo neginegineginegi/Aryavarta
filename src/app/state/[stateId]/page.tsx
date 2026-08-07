@@ -81,39 +81,41 @@ export default async function StatePage({
   }
 
   return (
-    <article className="mx-auto max-w-4xl px-6 pb-12">
-      {/* Masthead */}
-      <header className="border-b border-rule py-10">
-        <nav className="text-[0.8rem] text-ink-faint">
-          <Link href="/" className="hover:text-ink">Map</Link>
+    <article className="mx-auto max-w-[1200px] px-4 pb-4">
+      {/* Page title block: breadcrumb, title, mono meta line, then the
+          government timeline strip, all inside the first section card. */}
+      <header className="section-card px-6 py-9 sm:px-10">
+        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+          <Link href="/browse" className="hover:text-ink">Browse</Link>
           <span className="mx-1.5">/</span>
-          <span>{state.name}</span>
+          <Link href="/" className="hover:text-ink">States</Link>
+          <span className="mx-1.5">/</span>
+          <span className="text-ink-muted">{state.name}</span>
         </nav>
-        <div className="mt-2 flex flex-wrap items-baseline justify-between gap-4">
-          <h1 className="font-display text-[2.75rem] font-semibold leading-tight tracking-tight text-ink">
+        <div className="mt-3 flex flex-wrap items-baseline justify-between gap-4">
+          <h1 className="font-display text-[clamp(38px,5vw,52px)] font-light leading-[1.05] text-ink">
             {state.name}
           </h1>
           <span className="flex gap-2">
-            <Link
-              href={`/state/${state.id}/history`}
-              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink-muted transition-colors hover:border-ink hover:text-ink"
-            >
+            <Link href={`/state/${state.id}/history`} className="btn btn-secondary btn-sm">
               History
             </Link>
-            <Link
-              href={`/contribute?state=${state.id}`}
-              className="rounded-sm border border-rule-dark px-3 py-1 text-[0.82rem] text-ink transition-colors hover:border-ink"
-            >
+            <Link href={`/contribute?state=${state.id}`} className="btn btn-primary btn-sm">
               Suggest an edit
             </Link>
           </span>
         </div>
-        <p className="mt-2 text-[0.85rem] text-ink-muted">
+        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
           {state.kind === "state" ? "State" : "Union Territory"}
-          {state.formedOn ? <> · formed {formatDate(state.formedOn)}</> : null}
+          {state.formedOn ? <> · since {yearOf(state.formedOn)}</> : null}
+          {" · "}
+          {terms.filter((t) => t.kind === "cm").length} governments
+          {" · "}
+          {elections.length} elections
           {state.dissolvedOn ? (
             <>
-              {" "}· <span className="text-danger">dissolved {formatDate(state.dissolvedOn)}</span>
+              {" · "}
+              <span className="text-accent">dissolved {formatDate(state.dissolvedOn)}</span>
             </>
           ) : null}
         </p>
@@ -140,8 +142,8 @@ export default async function StatePage({
       />
 
       {/* Chief Ministers */}
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Chief Ministers &amp; Governments</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">Chief Ministers &amp; Governments</h2>
         {terms.length === 0 ? (
           <EmptyNote entity="chief-minister terms" stateId={state.id} />
         ) : (
@@ -218,8 +220,8 @@ export default async function StatePage({
 
       {/* Governors */}
       {governorTerms.length > 0 && (
-        <section className="border-b border-rule py-8">
-          <h2 className="section-label">Governors</h2>
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[30px] font-light leading-tight text-ink">Governors</h2>
           <table className="mt-4 w-full max-w-2xl text-left text-[0.88rem]">
             <thead>
               <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
@@ -253,8 +255,8 @@ export default async function StatePage({
       )}
 
       {/* Elections */}
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Assembly Elections</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">Assembly Elections</h2>
         {elections.length === 0 ? (
           <EmptyNote entity="elections" stateId={state.id} />
         ) : (
@@ -332,8 +334,8 @@ export default async function StatePage({
       </section>
 
       {/* Governance record */}
-      <section className="border-b border-rule py-8">
-        <h2 className="section-label">Governance Record</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">Governance Record</h2>
         {events.length === 0 ? (
           <EmptyNote entity="events" stateId={state.id} />
         ) : (
@@ -379,8 +381,8 @@ export default async function StatePage({
       {/* References */}
       <DevelopmentSection grouped={development} />
 
-      <section className="py-8">
-        <h2 className="section-label">References</h2>
+      <section className="section-card px-6 py-9 sm:px-10">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">References</h2>
         {citations.ordered.length === 0 ? (
           <p className="mt-3 text-[0.85rem] text-ink-faint">
             No sources yet: this page has no published claims.

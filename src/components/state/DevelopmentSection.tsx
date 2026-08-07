@@ -19,11 +19,18 @@ import { formatDate, formatNumber } from "@/lib/format";
 export function DevelopmentSection({ grouped }: { grouped: Array<[string, IndicatorSeries[]]> }) {
   if (grouped.length === 0) return null;
 
-  const cell = "px-3 align-top";
+  const cell = "pr-4 align-top";
 
   return (
-    <section className="border-b border-rule py-8">
-      <h2 className="section-label">Development indicators</h2>
+    <section className="section-card px-6 py-9 sm:px-10">
+      <div className="flex flex-wrap items-baseline justify-between gap-3">
+        <h2 className="font-display text-[30px] font-light leading-tight text-ink">
+          Development lens
+        </h2>
+        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          Presented as published · never scored
+        </span>
+      </div>
       <p className="mt-2 max-w-2xl text-[0.82rem] text-ink-faint">
         Factual indicators from named statistical sources, shown as published. Abhilekh does
         not score, rank, or grade governments; the numbers and their sources speak for
@@ -31,8 +38,8 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
       </p>
 
       <div className="mt-5 overflow-x-auto">
-        <div className="plate">
-          <table className="text-[0.85rem]">
+        <div className="min-w-fit">
+          <table className="rec-table text-[0.85rem]">
             <thead>
               <tr>
                 <th className={`${cell} py-2`}>Indicator</th>
@@ -45,7 +52,7 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
               {grouped.map(([category, series]) => (
                 <Fragment key={category}>
                   <tr>
-                    <th colSpan={4} scope="colgroup" className="plate-band px-3 py-1.5">
+                    <th colSpan={4} scope="colgroup" className="rec-band">
                       {category}
                     </th>
                   </tr>

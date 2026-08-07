@@ -104,8 +104,8 @@ export default async function IndicatorPage({
                   )}
                 </div>
                 <div className="mt-3 overflow-x-auto">
-                  <div className="plate">
-                    <table className="text-[0.8rem]">
+                  <div className="min-w-fit">
+                    <table className="rec-table text-[0.8rem]">
                       <thead>
                         <tr>
                           <th className="px-2.5 py-1.5">Year</th>

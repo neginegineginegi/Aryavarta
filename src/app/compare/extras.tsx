@@ -194,8 +194,8 @@ export async function PartyStateCompare({ a, b }: { a: string; b: string }) {
       </p>
 
       <div className="mt-5 overflow-x-auto">
-        <div className="plate">
-          <table className="min-w-[760px] text-[0.85rem]">
+        <div className="min-w-fit">
+          <table className="rec-table min-w-[760px] text-[0.85rem]">
             <thead>
               <tr>
                 <th className="w-[22%] px-3 py-2">State</th>
@@ -207,7 +207,7 @@ export async function PartyStateCompare({ a, b }: { a: string; b: string }) {
               {shared.length > 0 && (
                 <Fragment>
                   <tr>
-                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                    <th colSpan={3} scope="colgroup" className="rec-band">
                       Both parties have governed
                     </th>
                   </tr>
@@ -219,7 +219,7 @@ export async function PartyStateCompare({ a, b }: { a: string; b: string }) {
               {separate.length > 0 && (
                 <Fragment>
                   <tr>
-                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                    <th colSpan={3} scope="colgroup" className="rec-band">
                       {shared.length > 0 ? "Governed by one of the two" : "No state in common"}
                     </th>
                   </tr>
@@ -406,8 +406,8 @@ export async function StateIndicatorCompare({ a, b }: { a: string; b: string }) 
         rank, or grade governments; the numbers and their sources speak for themselves.
       </p>
       <div className="mt-5 overflow-x-auto">
-        <div className="plate">
-          <table className="min-w-[560px] text-[0.85rem]">
+        <div className="min-w-fit">
+          <table className="rec-table min-w-[560px] text-[0.85rem]">
             <thead>
               <tr>
                 <th className="w-[28%] px-3 py-2">Indicator</th>
@@ -419,7 +419,7 @@ export async function StateIndicatorCompare({ a, b }: { a: string; b: string }) 
               {[...byCategory.entries()].map(([category, pairs]) => (
                 <Fragment key={category}>
                   <tr>
-                    <th colSpan={3} scope="colgroup" className="plate-band px-3 py-1.5">
+                    <th colSpan={3} scope="colgroup" className="rec-band">
                       {category}
                     </th>
                   </tr>
