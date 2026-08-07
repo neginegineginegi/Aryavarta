@@ -2,10 +2,12 @@
 
 import india from "@svg-maps/india";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapData, MapTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
+import { YearScrubber } from "@/components/map/YearScrubber";
+import { useYearPlayback } from "@/lib/use-year-playback";
 
 const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
@@ -16,11 +18,13 @@ const NA_SWATCH =
   "repeating-linear-gradient(45deg, var(--color-paper-sunken) 0 2px, var(--color-rule-dark) 2px 3px)";
 const TOOLTIP_WIDTH = 260;
 const TOOLTIP_HEIGHT = 90;
+/** Per-state delay in the load-in wave; 14ms is the handoff's figure. */
+const REVEAL_STEP_MS = 14;
+/** Lerp factor for the tooltip's trail. Higher is tighter to the cursor. */
+const TRAIL = 0.22;
 
 type Tooltip = {
   stateId: string;
-  x: number;
-  y: number;
   /** 'pointer' follows the cursor; 'focus' pins to a fixed corner for keyboard users. */
   anchor: "pointer" | "focus";
 };
@@ -51,29 +55,37 @@ function describeTerm(term: MapTerm | null): string {
 export function MapExplorer({ data }: { data: MapData }) {
   const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
-  const [year, setYearState] = useState(data.maxYear);
+  const tipRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<Tooltip | null>(null);
 
-  // The selected year is global state, mirrored into the URL (?y=) so any
-  // view of the atlas is shareable. Read client-side after mount (keeps the
-  // page statically cacheable); written via history.replaceState (no server
-  // round-trip per slider tick).
+  // The selected year is mirrored into the URL (?y=) so any view of the atlas
+  // is shareable. Written via history.replaceState, never a router push: a
+  // slider tick, and every step of a replay, must not touch the server.
+  const syncUrl = useCallback(
+    (y: number) => {
+      const url = new URL(window.location.href);
+      if (y === data.maxYear) url.searchParams.delete("y");
+      else url.searchParams.set("y", String(y));
+      window.history.replaceState(null, "", url.toString());
+    },
+    [data.maxYear],
+  );
+
+  const playback = useYearPlayback({
+    min: data.minYear,
+    max: data.maxYear,
+    initial: data.maxYear,
+    onYearChange: syncUrl,
+  });
+  const { year, setYear, stop } = playback;
+
+  // Read ?y= client-side after mount, which keeps the page statically
+  // cacheable. setYear rather than a raw setState so the URL stays canonical.
   useEffect(() => {
     const raw = new URLSearchParams(window.location.search).get("y");
-    if (raw && /^\d{4}$/.test(raw)) {
-      const y = Math.min(Math.max(Number(raw), data.minYear), data.maxYear);
-      setYearState(y);
-    }
+    if (raw && /^\d{4}$/.test(raw)) setYear(Number(raw));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  function setYear(y: number) {
-    setYearState(y);
-    const url = new URL(window.location.href);
-    if (y === data.maxYear) url.searchParams.delete("y");
-    else url.searchParams.set("y", String(y));
-    window.history.replaceState(null, "", url.toString());
-  }
 
   const termsByState = useMemo(() => {
     const m = new Map<string, MapTerm[]>();
@@ -169,11 +181,89 @@ export function MapExplorer({ data }: { data: MapData }) {
     return { fills, lines, legend };
   }, [termsByState, stateLifecycle, year]);
 
+  // Tooltip trail. The prototype lerps the tip toward the cursor at 0.22 per
+  // frame so it arrives a beat late, which reads as weight. Position is
+  // written straight to the node inside the animation frame rather than held
+  // in React state: a setState per pointermove would re-render the whole map.
+  const targetRef = useRef({ x: 0, y: 0 });
+  const posRef = useRef({ x: 0, y: 0 });
+  const rafRef = useRef<number | null>(null);
+  const trailingRef = useRef(false);
+
+  const place = useCallback((x: number, y: number) => {
+    const el = tipRef.current;
+    const box = containerRef.current;
+    if (!el || !box) return;
+    // Clamped to the card, so the tip never escapes the map it describes.
+    const left = Math.max(0, Math.min(x + 14, box.clientWidth - TOOLTIP_WIDTH));
+    const top =
+      y + 14 + TOOLTIP_HEIGHT > box.clientHeight
+        ? Math.max(0, y - 14 - TOOLTIP_HEIGHT)
+        : y + 14;
+    el.style.transform = `translate3d(${left}px, ${top}px, 0)`;
+  }, []);
+
+  // A plain declaration, not a useCallback: the loop schedules itself, and it
+  // only ever reads refs, so a fresh closure per render costs nothing.
+  function step() {
+    const p = posRef.current;
+    const t = targetRef.current;
+    p.x += (t.x - p.x) * TRAIL;
+    p.y += (t.y - p.y) * TRAIL;
+    place(p.x, p.y);
+    rafRef.current = requestAnimationFrame(step);
+  }
+
   function showPointerTooltip(e: React.PointerEvent, stateId: string) {
     const rect = containerRef.current?.getBoundingClientRect();
     if (!rect) return;
-    setTooltip({ stateId, x: e.clientX - rect.left, y: e.clientY - rect.top, anchor: "pointer" });
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    targetRef.current = { x, y };
+
+    if (!trailingRef.current) {
+      // First frame of a new hover: snap, so the tip does not fly in from
+      // wherever the pointer left the map last time.
+      trailingRef.current = true;
+      posRef.current = { x, y };
+      place(x, y);
+      if (!window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        rafRef.current = requestAnimationFrame(step);
+      }
+    } else if (rafRef.current === null) {
+      place(x, y); // reduced motion: track exactly, no easing
+    }
+    setTooltip({ stateId, anchor: "pointer" });
   }
+
+  const endTrail = useCallback(() => {
+    trailingRef.current = false;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => endTrail, [endTrail]);
+
+  // Keyboard scrubbing, per the prototype: arrows step a year, space plays.
+  // Bound to the document but ignored unless the body itself has focus, so a
+  // reader tabbed into the slider, a state path or any other control keeps
+  // that element's native key handling.
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.target !== document.body) return;
+      if (e.key === "ArrowRight") setYear(year + 1);
+      else if (e.key === "ArrowLeft") setYear(year - 1);
+      else if (e.key === " ") {
+        e.preventDefault();
+        playback.toggle();
+      } else return;
+      if (e.key !== " ") stop();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [year, setYear, stop, playback]);
 
   function open(stateId: string) {
     // Straight to the state's home page, carrying the selected year so the
@@ -191,9 +281,6 @@ export function MapExplorer({ data }: { data: MapData }) {
       }
     : null;
 
-  const containerW = containerRef.current?.clientWidth ?? 320;
-  const containerH = containerRef.current?.clientHeight ?? 400;
-
   return (
     <div>
       {/* The map's own mode control: which government layer is shown. */}
@@ -201,31 +288,12 @@ export function MapExplorer({ data }: { data: MapData }) {
         <ModeSwitch />
       </div>
 
-      {/* Year scrubber */}
-      <div className="mb-5 flex items-center gap-5">
-        <div className="w-24 shrink-0 text-right">
-          <span className="font-mono text-[2.1rem] font-bold leading-none text-ink">
-            {year}
-          </span>
-        </div>
-        <div className="flex-1">
-          <input
-            type="range"
-            className="year-slider"
-            min={data.minYear}
-            max={data.maxYear}
-            step={1}
-            value={year}
-            onChange={(e) => setYear(Number(e.target.value))}
-            aria-label="Select year"
-            aria-valuetext={String(year)}
-          />
-          <div className="mt-1 flex justify-between font-mono text-[0.66rem] text-ink-faint">
-            <span>{data.minYear}</span>
-            <span>{data.maxYear}</span>
-          </div>
-        </div>
-      </div>
+      <YearScrubber
+        playback={playback}
+        min={data.minYear}
+        max={data.maxYear}
+        markers={data.markers}
+      />
 
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Map */}
@@ -248,11 +316,14 @@ export function MapExplorer({ data }: { data: MapData }) {
                 <line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-rule-dark)" strokeWidth="2" />
               </pattern>
             </defs>
-            {india.locations.map((loc) => (
+            {india.locations.map((loc, i) => (
               <path
                 key={loc.id}
                 d={loc.path}
-                className="map-state"
+                className="map-state map-reveal"
+                // The load-in wave: the country assembles state by state
+                // instead of appearing all at once.
+                style={{ animationDelay: `${i * REVEAL_STEP_MS}ms` }}
                 fill={view.fills.get(loc.id)}
                 tabIndex={0}
                 role="link"
@@ -264,12 +335,13 @@ export function MapExplorer({ data }: { data: MapData }) {
                     open(loc.id);
                   }
                 }}
-                onFocus={() => setTooltip({ stateId: loc.id, x: 8, y: 8, anchor: "focus" })}
+                onFocus={() => setTooltip({ stateId: loc.id, anchor: "focus" })}
                 onBlur={() => setTooltip((t) => (t?.anchor === "focus" ? null : t))}
                 onPointerMove={(e) => showPointerTooltip(e, loc.id)}
-                onPointerLeave={() =>
-                  setTooltip((t) => (t?.anchor === "pointer" ? null : t))
-                }
+                onPointerLeave={() => {
+                  endTrail();
+                  setTooltip((t) => (t?.anchor === "pointer" ? null : t));
+                }}
               />
             ))}
             {/* Lakshadweep's real geometry is a scatter of sub-pixel islands
@@ -293,31 +365,23 @@ export function MapExplorer({ data }: { data: MapData }) {
                   open("ld");
                 }
               }}
-              onFocus={() => setTooltip({ stateId: "ld", x: 8, y: 8, anchor: "focus" })}
+              onFocus={() => setTooltip({ stateId: "ld", anchor: "focus" })}
               onBlur={() => setTooltip((t) => (t?.anchor === "focus" ? null : t))}
               onPointerMove={(e) => showPointerTooltip(e, "ld")}
-              onPointerLeave={() =>
-                setTooltip((t) => (t?.anchor === "pointer" ? null : t))
-              }
+              onPointerLeave={() => {
+                endTrail();
+                setTooltip((t) => (t?.anchor === "pointer" ? null : t));
+              }}
             />
           </svg>
           {tooltip && tooltipContent && (
             <div
-              className="pointer-events-none absolute z-10 w-60 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
-              style={
-                tooltip.anchor === "focus"
-                  ? { left: tooltip.x, top: tooltip.y }
-                  : {
-                      left: Math.max(
-                        0,
-                        Math.min(tooltip.x + 14, containerW - TOOLTIP_WIDTH),
-                      ),
-                      top:
-                        tooltip.y + 14 + TOOLTIP_HEIGHT > containerH
-                          ? Math.max(0, tooltip.y - 14 - TOOLTIP_HEIGHT)
-                          : tooltip.y + 14,
-                    }
-              }
+              ref={tipRef}
+              className="pointer-events-none absolute left-0 top-0 z-10 w-60 rounded-sm border border-rule-dark bg-paper-raised px-3 py-2 text-[0.8rem] shadow-sm"
+              // Pointer position is written by the trail loop; a focus anchor
+              // is pinned, because a tooltip that drifts is no help to someone
+              // navigating by keyboard.
+              style={tooltip.anchor === "focus" ? { transform: "translate3d(8px, 8px, 0)" } : undefined}
             >
               <p className="font-semibold text-ink">{tooltipContent.stateName}</p>
               <p className="text-ink-muted">{tooltipContent.line}</p>
