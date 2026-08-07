@@ -7,6 +7,7 @@ import {
   searchDocuments,
   type DocumentRow,
 } from "@/lib/db/queries/documents";
+import { EmptyState } from "@/components/ui/States";
 import { DOCUMENT_TYPE_LABELS, formatDate, formatNumber } from "@/lib/format";
 
 export const metadata: Metadata = {
@@ -190,15 +191,11 @@ export default async function ArchivePage({
 
       <section className="section-card px-6 py-8 sm:px-10">
         {corpus.total === 0 ? (
-          <div className="py-10 text-center">
-            <p className="text-[0.95rem] text-ink-muted">No documents recorded yet.</p>
-            <p className="mt-1 text-[12.5px] text-ink-faint">
-              The archive fills as moderators add manifestos, gazettes and reports.
-            </p>
-            <Link href="/contribute" className="btn btn-secondary mt-5">
-              Contribute a document
-            </Link>
-          </div>
+          <EmptyState
+            message="No documents recorded yet."
+            helper="The archive fills as moderators add manifestos, gazettes and reports."
+            action={{ label: "Contribute a document", href: "/contribute" }}
+          />
         ) : (
           <div className="flex flex-col gap-8 lg:flex-row">
             <aside className="lg:w-56 lg:shrink-0">
@@ -238,9 +235,13 @@ export default async function ArchivePage({
               </div>
 
               {rows.length === 0 ? (
-                <p className="py-10 text-center text-[0.9rem] text-ink-muted">
-                  Nothing matches those filters.
-                </p>
+                <div className="mt-4">
+                  <EmptyState
+                    message="Nothing matches those filters."
+                    helper="Clearing one of them usually widens the result enough to find the document."
+                    action={{ label: "Clear filters", href: "/archive" }}
+                  />
+                </div>
               ) : (
                 <div className="mt-4 overflow-x-auto">
                   <table className="rec-table min-w-[640px] text-[0.88rem]">

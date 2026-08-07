@@ -7,6 +7,7 @@ import { UnionMapExplorer } from "@/components/map/UnionMapExplorer";
 import { personSlug } from "@/lib/db/queries/person";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
+import { EmptyState } from "@/components/ui/States";
 import { PartyTag } from "@/components/ui/PartyTag";
 import { getUnionMapData } from "@/lib/db/queries/map";
 import { getUnionOverview } from "@/lib/db/queries/union";
@@ -257,9 +258,12 @@ export default async function UnionPage() {
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[28px] font-light leading-tight text-ink">References</h2>
         {citations.ordered.length === 0 ? (
-          <p className="mt-3 text-[0.85rem] text-ink-faint">
-            No sources yet: this page has no published claims.
-          </p>
+          <div className="mt-3">
+            <EmptyState
+              message="No sources yet: this page has no published claims."
+              helper="Every claim the archive publishes carries a citation, so an empty reference list means an empty record."
+            />
+          </div>
         ) : (
           <ReferenceList sources={citations.ordered} />
         )}

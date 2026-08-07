@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { WithdrawButton } from "@/components/contribute/WithdrawButton";
 import { Badge } from "@/components/ui/Badge";
+import { EmptyState } from "@/components/ui/States";
 import { requireUserPage } from "@/lib/authz";
 import { getOwnRevisions, revisionEntityHref } from "@/lib/db/queries/revisions";
 import { formatDate } from "@/lib/format";
@@ -91,7 +92,12 @@ export default async function ContributePage({
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[28px] font-light leading-tight text-ink">Your submissions</h2>
         {mine.length === 0 ? (
-          <p className="mt-3 text-[0.85rem] text-ink-muted">Nothing submitted yet.</p>
+          <div className="mt-3">
+            <EmptyState
+              message="Nothing submitted yet."
+              helper="Anything you propose appears here with its review status until a moderator decides it."
+            />
+          </div>
         ) : (
           <ul className="mt-3 divide-y divide-rule">
             {mine.map((rev) => (

@@ -613,6 +613,17 @@ thead th {
   animation: stateIn var(--dur-card) ease backwards;
 }
 
+/* Skeleton bar for a table row that has not arrived yet.
+
+   Deliberately still. The motion rules say nothing loops decoratively, and a
+   shimmer is a loop: it draws the eye to the part of the page with the least
+   information on it. A bar at the real row height already says "a row belongs
+   here", which is the whole job. */
+.skeleton {
+  border-radius: 4px;
+  background: linear-gradient(90deg, #eceae6, #f3f2ef, #eceae6);
+}
+
 /* One switch for the whole system. Anything that moves must be reachable from
    here: transitions collapse to instant, animations run once to their end
    state, and the decorative prism stops entirely. */

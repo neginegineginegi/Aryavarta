@@ -9,6 +9,7 @@ import { DevelopmentSection } from "@/components/state/DevelopmentSection";
 import { getDevelopment } from "@/lib/db/queries/development";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks } from "@/components/ui/Citations";
+import { EmptyState } from "@/components/ui/States";
 import { SourceList } from "@/components/ui/SourceList";
 import { getSourceClassifications, getSourceUsage } from "@/lib/db/queries/sources";
 import { PartyTag } from "@/components/ui/PartyTag";
@@ -398,9 +399,12 @@ export default async function StatePage({
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[30px] font-light leading-tight text-ink">References</h2>
         {citations.ordered.length === 0 ? (
-          <p className="mt-3 text-[0.85rem] text-ink-faint">
-            No sources yet: this page has no published claims.
-          </p>
+          <div className="mt-3">
+            <EmptyState
+              message="No sources yet: this page has no published claims."
+              helper="Every claim the archive publishes carries a citation, so an empty reference list means an empty record."
+            />
+          </div>
         ) : (
           <SourceList
             sources={citations.ordered}
