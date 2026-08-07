@@ -44,6 +44,18 @@
 
   --shadow-card: 0 1px 3px rgb(0 0 0 / 0.08);
   --shadow-card-hover: 0 2px 10px rgb(0 0 0 / 0.1);
+
+  /* Motion, from the interaction handoff. Two curves and five durations,
+     layered by how large the thing being moved is: a button answers the
+     finger, a map fill takes its time because it is showing you a decade of
+     government changing. Nothing here loops; nothing decorates. */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* overshoots: press feedback */
+  --ease-glide: cubic-bezier(0.3, 1, 0.45, 1); /* settles: panels and reveals */
+  --dur-press: 150ms; /* buttons, chips, thumbs */
+  --dur-row: 250ms; /* table rows, legend rows */
+  --dur-card: 300ms; /* card lift */
+  --dur-panel: 450ms; /* drawers, view switches, scroll reveal */
+  --dur-fill: 600ms; /* map fills on a year change */
 }
 
 
@@ -332,7 +344,18 @@ thead th {
   font-weight: 500;
   line-height: 1;
   white-space: nowrap;
-  transition: background-color 150ms ease, color 150ms ease, box-shadow 150ms ease;
+  /* Same spring the rest of the controls use; see the motion system below. */
+  transition:
+    transform var(--dur-press) var(--ease-spring),
+    background-color var(--dur-press) ease,
+    color var(--dur-press) ease,
+    box-shadow var(--dur-press) ease;
+}
+.btn:hover {
+  transform: scale(1.04);
+}
+.btn:active {
+  transform: scale(0.96);
 }
 .btn-primary,
 .btn-primary:hover {
@@ -466,9 +489,145 @@ thead th {
     transform: translateX(-3%) rotate(-4deg);
   }
 }
-/* Decorative motion only: stillness costs nothing here. */
+/* ---------------------------------------------------------------------------
+   Motion system.
+
+   Every animated surface in the archive draws from the tokens above rather
+   than inventing its own timing, so the whole site moves at one tempo. The
+   rule the handoff sets, and this follows: motion only where it explains a
+   change. A fill crossfades because the government changed. A row lifts
+   because it is the one under your cursor. Nothing moves to be noticed.
+
+   The reduced-motion block at the bottom of this section switches all of it
+   off in one place, so a new animation cannot ship without being covered.
+   --------------------------------------------------------------------------- */
+
+/* Press feedback. Applied to a control, it answers the pointer with a small
+   spring; the overshoot is what makes it feel physical rather than fading. */
+.press {
+  transition:
+    transform var(--dur-press) var(--ease-spring),
+    background-color var(--dur-row) ease,
+    color var(--dur-row) ease,
+    border-color var(--dur-row) ease;
+}
+.press:hover {
+  transform: scale(1.04);
+}
+.press:active {
+  transform: scale(0.96);
+}
+
+/* Dense-row hover: a wash and a hair of travel, enough to track which row you
+   are on in a long table without the row shouting about it. */
+.row-hover {
+  transition:
+    background-color var(--dur-row) ease,
+    transform var(--dur-row) var(--ease-glide);
+}
+.row-hover:hover {
+  background-color: var(--color-paper-sunken);
+  transform: translateX(2px);
+}
+
+/* Scroll reveal. Elements start displaced and are released by the observer in
+   useReveal(); the initial state is only ever applied by that hook, so content
+   is visible by default and stays visible with JavaScript disabled. */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+  transition:
+    opacity var(--dur-panel) var(--ease-glide),
+    transform var(--dur-panel) var(--ease-glide);
+}
+.reveal-in {
+  opacity: 1;
+  transform: none;
+}
+
+/* Panel and drawer entries. */
+@keyframes softDown {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes riseIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes drawerIn {
+  from {
+    opacity: 0;
+    transform: translateX(28px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes scrimIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+.anim-soft-down {
+  animation: softDown var(--dur-card) var(--ease-glide);
+}
+.anim-rise-in {
+  animation: riseIn var(--dur-panel) var(--ease-glide);
+}
+.anim-drawer-in {
+  animation: drawerIn var(--dur-panel) cubic-bezier(0.3, 1.1, 0.4, 1);
+}
+.anim-scrim-in {
+  animation: scrimIn var(--dur-card) ease;
+}
+
+/* One switch for the whole system. Anything that moves must be reachable from
+   here: transitions collapse to instant, animations run once to their end
+   state, and the decorative prism stops entirely. */
 @media (prefers-reduced-motion: reduce) {
   .prism-wide {
+    animation: none;
+  }
+  .press,
+  .btn,
+  .row-hover,
+  .reveal,
+  .card-hover,
+  .map-state {
+    transition: none;
+  }
+  .press:hover,
+  .press:active,
+  .btn:hover,
+  .btn:active,
+  .row-hover:hover,
+  .card-hover:hover {
+    transform: none;
+  }
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+  .anim-soft-down,
+  .anim-rise-in,
+  .anim-drawer-in,
+  .anim-scrim-in {
     animation: none;
   }
 }
@@ -497,12 +656,15 @@ thead th {
   color: var(--color-ink-meta);
 }
 .card-hover {
-  transition: box-shadow 150ms ease, border-color 150ms ease, transform 150ms ease;
+  transition:
+    box-shadow var(--dur-card) ease,
+    border-color var(--dur-card) ease,
+    transform var(--dur-card) var(--ease-glide);
 }
 .card-hover:hover {
   border-color: var(--color-rule-dark);
   box-shadow: var(--shadow-card-hover);
-  transform: translateY(-1px);
+  transform: translateY(-2px);
 }
 
 /* The masthead's own divider lives in MastheadShell: nothing at rest, a
@@ -534,8 +696,13 @@ thead th {
 .map-state {
   stroke: var(--color-paper);
   stroke-width: 0.75;
-  /* fill transition = governments visibly change as the year scrubs */
-  transition: filter 120ms ease, opacity 120ms ease, fill 350ms ease;
+  /* The slowest thing on the page, deliberately. When the year scrubs, a
+     state's fill crossfading over 600ms is the archive showing a government
+     change; snapping would read as a glitch rather than an event. */
+  transition:
+    filter 120ms ease,
+    opacity 120ms ease,
+    fill var(--dur-fill) ease;
   cursor: pointer;
 }
 .map-state:hover,
