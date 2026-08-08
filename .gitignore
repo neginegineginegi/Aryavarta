@@ -40,3 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 !.env.example
+
+# Raw third-party datasets stay out of the repo; manifests are committed.
+data/raw/*
+!data/raw/gem
+data/raw/gem/*
+!data/raw/gem/MANIFEST.md

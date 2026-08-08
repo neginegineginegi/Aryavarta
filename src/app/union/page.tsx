@@ -11,6 +11,8 @@ import { EmptyState } from "@/components/ui/States";
 import { PartyTag } from "@/components/ui/PartyTag";
 import { getUnionMapData } from "@/lib/db/queries/map";
 import { getUnionOverview } from "@/lib/db/queries/union";
+import { DevelopmentSection } from "@/components/state/DevelopmentSection";
+import { getDevelopment } from "@/lib/db/queries/development";
 import {
   EVENT_TYPE_LABELS,
   EVENT_TYPE_ORDER,
@@ -103,6 +105,9 @@ function TermTable({
 }
 
 export default async function UnionPage() {
+  // National indicator series ride the union pseudo-state, so the union
+  // record page carries the same Development Lens the state pages do.
+  const development = await getDevelopment("in");
   const [{ pmTerms, presidentTerms, elections, events }, unionMap] = await Promise.all([
     getUnionOverview(),
     getUnionMapData(),
@@ -254,6 +259,8 @@ export default async function UnionPage() {
           </div>
         )}
       </section>
+
+      <DevelopmentSection grouped={development} />
 
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[28px] font-light leading-tight text-ink">References</h2>
