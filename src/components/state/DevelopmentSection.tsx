@@ -3,7 +3,7 @@ import { Fragment } from "react";
 
 import type { IndicatorSeries } from "@/lib/db/queries/development";
 import { TrendChart } from "@/components/ui/TrendChart";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
 /**
  * The Development Lens: sourced factual indicators for a state, grouped by
@@ -90,7 +90,12 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                               points={s.values.map((v) => ({
                                 year: v.year,
                                 value: Number(v.value),
-                                note: v.reportingPeriod ?? v.sourceTitle,
+                                // Falling back to the source title named a
+                                // single-source series on every point, which
+                                // the Source column already carries.
+                                note:
+                                  v.reportingPeriod ??
+                                  (sourcesDiffer(s.values) ? v.sourceTitle : undefined),
                               }))}
                               width={180}
                               height={44}

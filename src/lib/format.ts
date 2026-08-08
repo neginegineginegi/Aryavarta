@@ -152,3 +152,20 @@ export const PROMISE_SCOPE_LABELS: Record<string, string> = {
   constituency: "Constituency",
   unspecified: "Scope unstated",
 };
+
+/**
+ * Do the values in one series come from more than one source?
+ *
+ * Trend-chart captions should carry only what distinguishes a point. Naming
+ * the source on every point of a single-source series repeats a string the
+ * card already shows once, and because the chart is a client component that
+ * string is serialized once per point: on the hydropower indicator page, 27
+ * states and a century of commissioning years meant the same 44 characters
+ * 1,425 times, a tenth of the page.
+ */
+export function sourcesDiffer(values: ReadonlyArray<{ sourceTitle: string }>): boolean {
+  for (let i = 1; i < values.length; i++) {
+    if (values[i].sourceTitle !== values[0].sourceTitle) return true;
+  }
+  return false;
+}

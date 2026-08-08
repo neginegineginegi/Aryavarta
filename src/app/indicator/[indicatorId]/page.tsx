@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 
 import { getIndicatorAcrossStates } from "@/lib/db/queries/development";
 import { TrendChart } from "@/components/ui/TrendChart";
-import { formatDate, formatNumber } from "@/lib/format";
+import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
 export const revalidate = 3600;
 
@@ -94,10 +94,17 @@ export default async function IndicatorPage({
                 <div className="mt-3">
                   {s.values.length >= 2 ? (
                     <TrendChart
+                      // Name the source per point only where a series draws on
+                      // more than one; otherwise the caption repeats what the
+                      // card states once. The reporting period always stays,
+                      // because a fiscal or survey label ("2023-24") says
+                      // something the year on the axis does not.
                       points={s.values.map((v) => ({
                         year: v.year,
                         value: Number(v.value),
-                        note: `${v.sourceTitle}${v.reportingPeriod ? ` · ${v.reportingPeriod}` : ""}`,
+                        note: sourcesDiffer(s.values)
+                          ? `${v.sourceTitle}${v.reportingPeriod ? ` · ${v.reportingPeriod}` : ""}`
+                          : (v.reportingPeriod ?? undefined),
                       }))}
                       width={340}
                       height={80}
