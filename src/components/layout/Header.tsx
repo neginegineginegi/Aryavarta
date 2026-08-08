@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { AuthNav } from "@/components/layout/AuthNav";
-import { NavLinks } from "@/components/layout/HeaderNav";
+import { ContributeButton, NavLinks } from "@/components/layout/HeaderNav";
 import { MastheadShell } from "@/components/layout/MastheadShell";
 
 /**
@@ -21,15 +21,13 @@ export function Header() {
             अभिलेखः
           </span>
         </Link>
-        <nav className="flex flex-wrap items-center gap-x-6 gap-y-1 justify-self-center">
+        <nav className="nav-root flex flex-wrap items-center gap-x-6 gap-y-1 justify-self-center">
           <NavLinks />
         </nav>
         {/* Account cluster: pinned to the far edge, visually quieter than
             the primary nav. */}
         <div className="ml-auto flex items-center gap-3 lg:ml-0 lg:justify-self-end">
-          <Link href="/contribute" className="btn btn-primary px-4 py-2 text-[13px]">
-            Contribute
-          </Link>
+          <ContributeButton />
           <AuthNav />
         </div>
       </div>

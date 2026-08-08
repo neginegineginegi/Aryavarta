@@ -858,6 +858,132 @@ input[type="range"].year-slider::-moz-range-thumb {
 }
 
 /* ---------------------------------------------------------------------------
+   Cursor field. The engine (src/lib/cursor-field.ts) writes `translate`,
+   `font-variation-settings` and `--cx-t` per character; everything decorative
+   lives here so the two can be reasoned about separately.
+   --------------------------------------------------------------------------- */
+
+/* A word never breaks mid-letter, and letters need a box to translate. */
+.cx-word {
+  display: inline-block;
+  white-space: nowrap;
+}
+.cx-char {
+  display: inline-block;
+  will-change: transform;
+}
+
+/* "chars" thickens as well as lifts, so it may only be used where a width
+   change cannot re-break a line. "ink" tints instead, and is safe anywhere. */
+[data-cx="ink"] .cx-char {
+  color: color-mix(in oklab, var(--color-accent) calc(var(--cx-t, 0) * 100%), currentColor);
+}
+
+/* A panel highlight that follows the pointer. --cx-gx/--cx-gy are the pointer
+   in the panel's own coordinates; --cx-go fades the whole thing out when the
+   pointer leaves, so nothing snaps. */
+.cx-glow {
+  position: relative;
+  isolation: isolate;
+}
+.cx-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: var(--cx-go, 0);
+  transition: opacity var(--dur-card) var(--ease-glide);
+  background: radial-gradient(
+    260px circle at var(--cx-gx, 50%) var(--cx-gy, 50%),
+    color-mix(in oklab, var(--color-accent) 12%, transparent),
+    transparent 70%
+  );
+}
+
+/* Nav dropdown panel. A hidden absolute panel STILL contributes to
+   document.body.scrollWidth: visibility:hidden does not remove its box from
+   the scroll extent, so a panel hanging off the right edge hands every
+   visitor a horizontal scrollbar with all menus closed. Two defences, both
+   needed: `display:none` when closed removes the box entirely, and the
+   right-hand triggers align their panels to the right so an open one cannot
+   reach past the viewport either. Do NOT paper over this with overflow-x on
+   body, which hides real overflow instead of fixing it. */
+/* The nav row is the panel's containing block below md (see the media query
+   at the end of this block), so it has to be positioned. */
+.nav-root {
+  position: relative;
+}
+
+.nav-panel {
+  display: none;
+  position: absolute;
+  top: calc(100% + 10px);
+  z-index: 60;
+  min-width: 15rem;
+  padding: 0.5rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 14px;
+  background: var(--color-paper-raised);
+  box-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.28);
+}
+.nav-panel[data-open="true"] {
+  display: block;
+}
+.nav-panel[data-align="left"] {
+  left: 0;
+}
+.nav-panel[data-align="right"] {
+  right: 0;
+}
+
+.nav-panel-item {
+  opacity: 0;
+  translate: 0 -4px;
+  animation: nav-item-in var(--dur-row) var(--ease-glide) forwards;
+}
+@keyframes nav-item-in {
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+/* Below md the panel drops to the full width of the nav row rather than
+   hanging off a trigger, which is what would otherwise overflow at 320px. */
+@media (max-width: 767px) {
+  /* Full width under the nav row, WITHOUT resizing the trigger's wrapper.
+     Growing the wrapper on open re-laid out the whole centred nav row, which
+     slid the trigger out from under the pointer, which closed the menu, which
+     slid it back: a flicker loop at 320px. Making the wrapper static instead
+     hands the panel's containing block to .nav-root, so `left: 0; right: 0`
+     spans the row and opening reflows nothing at all. */
+  .nav-entry {
+    position: static;
+  }
+  .nav-panel {
+    left: 0;
+    right: 0;
+    min-width: 0;
+  }
+}
+
+/* The saffron/white/green rule under an open nav panel. Decorative only. */
+.tricolor-rule {
+  height: 2px;
+  border: 0;
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ff9933 33%,
+    var(--color-rule) 33%,
+    var(--color-rule) 66%,
+    #138808 66%,
+    #138808 100%
+  );
+}
+
+/* ---------------------------------------------------------------------------
    One switch for the whole system. Anything that moves must be reachable from
    here: transitions collapse to instant, animations run once to their end
    state, and the decorative prism stops entirely.
@@ -902,5 +1028,29 @@ input[type="range"].year-slider::-moz-range-thumb {
   .anim-scrim-in,
   .map-reveal {
     animation: none;
+  }
+  /* The cursor field is decoration, not information: no letter moves, no
+     weight shifts, no panel glows. The engine also refuses to start when the
+     query matches, so this is the belt to its braces. */
+  .cx-char {
+    translate: none !important;
+    font-variation-settings: normal !important;
+    color: inherit !important;
+    will-change: auto;
+  }
+  .cx-glow::before {
+    opacity: 0 !important;
+    transition: none;
+  }
+  .cx-magnet {
+    translate: none !important;
+  }
+  .nav-panel {
+    transition: none;
+  }
+  .nav-panel-item {
+    animation: none;
+    opacity: 1;
+    translate: none;
   }
 }
