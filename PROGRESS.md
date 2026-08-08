@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `7603cd1`.
+Last updated: 2026-08-08, commit `1794cc1`.
 
 ## 1. Current state
 
@@ -23,6 +23,7 @@ is still a snapshot.
 
 | Commit | What |
 | --- | --- |
+| `1794cc1` | Cursor field and nav dropdowns, built from the spec (files absent) |
 | `7603cd1` | Trend captions carry what varies, not the same source 1,425 times |
 | `a07bb3d` | Energy: hydro, nuclear and gas fired power complete the band |
 | `509f9b3` | Energy: solar and wind become the first multi-year indicator series |
@@ -106,6 +107,19 @@ clear, the twelve national moments are published, and the scrubber's marker line
   which would have refused the gas and oil tracker for being accurate about one retired unit.
   `reconstruction_note()` and `coverage_sentence()` read the counts out instead, and produce
   byte-identical text when the count is zero so nothing already published moves.
+- **Cursor field** (`src/lib/cursor-field.ts`): module singleton, one rAF loop, geometry cached
+  in DOCUMENT coordinates so scroll is free. Anything that changes layout without a resize must
+  call `refresh()`. It parks when everything reaches rest. **Like `SegmentedControl`, this was
+  built from a written spec because the handoff's four source files were in no uploaded bundle**;
+  it is meant to be replaced wholesale. Two rules the spec itself dictates: `chars` mode changes
+  advance widths, so it is banned anywhere a width change reflows neighbours (a centred wrapping
+  nav row counts, not just wrapping prose), and mono text always takes `ink` because Plex Mono is
+  pinned to 400/500 with no variable axis to interpolate.
+- **A closed dropdown must be `display:none`, not merely hidden.** `visibility:hidden` leaves the
+  box in the scroll extent, so an off-viewport panel hands every visitor a horizontal scrollbar
+  with all menus shut. Below md the panel spans the nav row by making `.nav-entry` position:static
+  so `.nav-root` becomes its containing block; growing the wrapper instead reflows the centred row
+  and flickers the menu open and shut at 320px.
 - **`TrendChart` is a client component, so every point's caption ships in the payload.** Naming
   the source per point on a single-source series put one 44-character string 1,425 times on the
   hydropower indicator page. `sourcesDiffer()` in `format.ts` gates it; the reporting period
