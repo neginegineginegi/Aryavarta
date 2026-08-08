@@ -301,6 +301,7 @@ export function MapExplorer({
         min={data.minYear}
         max={data.maxYear}
         markers={data.markers}
+        facts={data.facts}
       />
 
       <div className="flex flex-col gap-8 lg:flex-row">

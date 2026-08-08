@@ -1,6 +1,6 @@
 "use client";
 
-import type { MapMarker } from "@/lib/db/queries/map";
+import type { MapFact, MapMarker } from "@/lib/db/queries/map";
 import type { Playback } from "@/lib/use-year-playback";
 
 /**
@@ -50,11 +50,13 @@ export function YearScrubber({
   min,
   max,
   markers,
+  facts = [],
 }: {
   playback: Playback;
   min: number;
   max: number;
   markers: MapMarker[];
+  facts?: MapFact[];
 }) {
   const { year, playing, speed, loop, setYear, toggle, cycleSpeed, toggleLoop, skipTo } =
     playback;
@@ -72,6 +74,13 @@ export function YearScrubber({
   // record is some years back rather than implying it happened now.
   const current = markers.reduce<MapMarker | null>(
     (best, m) => (m.year <= year && (!best || m.year >= best.year) ? m : best),
+    null,
+  );
+
+  // Same rule for the fact line: the most recent computed fact at or before
+  // the selected year, so scrubbing walks through what the record shows.
+  const fact = facts.reduce<MapFact | null>(
+    (best, f) => (f.year <= year && (!best || f.year >= best.year) ? f : best),
     null,
   );
 
@@ -181,6 +190,29 @@ export function YearScrubber({
           </>
         )}
       </p>
+
+      {/* "From the record": a line the archive's own election data shows for
+          this point on the timeline, linking to the cited election. Computed,
+          never written by hand; absent when the archive holds no elections.
+          Not aria-live: during a replay the marker line above already
+          announces, and two live regions talking over each other help no one. */}
+      {facts.length > 0 && (
+        <p className="mt-1 min-h-[1.25rem] text-[0.82rem] text-ink-muted">
+          {fact && (
+            <>
+              <span className="mr-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-meta">
+                From the record
+              </span>
+              <a
+                href={`/election/${fact.electionId}`}
+                className="underline-offset-2 hover:text-accent hover:underline"
+              >
+                {fact.text}
+              </a>
+            </>
+          )}
+        </p>
+      )}
     </div>
   );
 }

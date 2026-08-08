@@ -2,7 +2,14 @@ import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { events, parties, states, terms } from "@/lib/db/schema";
+import {
+  electionResults,
+  elections,
+  events,
+  parties,
+  states,
+  terms,
+} from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 import { yearOf } from "@/lib/format";
 
@@ -45,6 +52,7 @@ export type MapData = {
   states: MapState[];
   terms: MapTerm[];
   markers: MapMarker[];
+  facts: MapFact[];
   minYear: number;
   maxYear: number;
 };
@@ -59,7 +67,7 @@ export type MapData = {
  * go stale after December 31.
  */
 const getCachedMapData = unstable_cache(
-  async (): Promise<Omit<MapData, "maxYear" | "markers">> => {
+  async (): Promise<Omit<MapData, "maxYear" | "markers" | "facts">> => {
     const [stateRows, termRows] = await Promise.all([
       db
         .select({
@@ -147,9 +155,154 @@ const getCachedMapMarkers = unstable_cache(
 /** The union pseudo-state; national records hang off it. */
 const UNION_STATE_ID = "in";
 
+/**
+ * A line under the scrubber stating something the archive's own published
+ * data shows for a year, linking to the election it came from.
+ */
+export type MapFact = {
+  year: number;
+  text: string;
+  electionId: string;
+};
+
+/**
+ * "From the record" facts, computed from published election results.
+ *
+ * The living-map prototype hardcoded these ("Sikkim, 2024: SKM won 31 of 32
+ * seats"); here the same lines are derived from the elections actually in the
+ * archive, so every one links to a cited record and every superlative is
+ * scoped to the published record rather than asserted about history at large.
+ * Nothing here is written by hand: if the data is not in the archive, the
+ * fact does not exist.
+ */
+const getCachedMapFacts = unstable_cache(
+  async (): Promise<MapFact[]> => {
+    const rows = await db
+      .select({
+        id: elections.id,
+        stateId: elections.stateId,
+        stateName: states.name,
+        scope: elections.scope,
+        electionDate: elections.electionDate,
+        totalSeats: elections.totalSeats,
+        turnoutPercent: elections.turnoutPercent,
+        seats: electionResults.seatsWon,
+        partyName: parties.name,
+        partyAbbreviation: parties.abbreviation,
+      })
+      .from(elections)
+      .innerJoin(electionResults, eq(electionResults.electionId, elections.id))
+      .innerJoin(parties, eq(electionResults.partyId, parties.id))
+      .innerJoin(states, eq(elections.stateId, states.id))
+      .where(isNull(elections.deletedAt));
+
+    // Winner per election = largest party by seats, the same convention the
+    // rest of the atlas uses.
+    type Win = {
+      id: string;
+      stateName: string;
+      scope: string;
+      year: number;
+      totalSeats: number | null;
+      turnout: number | null;
+      seats: number;
+      party: string;
+    };
+    const byElection = new Map<string, Win>();
+    for (const r of rows) {
+      const cur = byElection.get(r.id);
+      if (cur && cur.seats >= r.seats) continue;
+      byElection.set(r.id, {
+        id: r.id,
+        stateName: r.stateName,
+        scope: r.scope,
+        year: yearOf(r.electionDate),
+        totalSeats: r.totalSeats,
+        turnout: r.turnoutPercent == null ? null : Number(r.turnoutPercent),
+        seats: r.seats,
+        party: r.partyAbbreviation ?? r.partyName,
+      });
+    }
+    const wins = [...byElection.values()];
+    if (wins.length === 0) return [];
+
+    const facts: MapFact[] = [];
+    const label = (w: Win) =>
+      w.scope === "lok_sabha" ? "general election" : `${w.stateName} assembly election`;
+
+    // Earliest election held in the archive.
+    const first = wins.reduce((a, b) => (b.year < a.year ? b : a));
+    facts.push({
+      year: first.year,
+      electionId: first.id,
+      text: `The earliest election in the published record: the ${label(first)}, ${first.year}.`,
+    });
+
+    // Highest published turnout.
+    const withTurnout = wins.filter((w) => w.turnout != null);
+    if (withTurnout.length > 0) {
+      const t = withTurnout.reduce((a, b) => (b.turnout! > a.turnout! ? b : a));
+      facts.push({
+        year: t.year,
+        electionId: t.id,
+        text: `${t.stateName}, ${t.year}: ${t.turnout}% turnout, the highest in the published record.`,
+      });
+    }
+
+    // Largest seat share where the total is known.
+    const withShare = wins.filter((w) => w.totalSeats != null && w.totalSeats > 0);
+    if (withShare.length > 0) {
+      const s = withShare.reduce((a, b) =>
+        b.seats / b.totalSeats! > a.seats / a.totalSeats! ? b : a,
+      );
+      facts.push({
+        year: s.year,
+        electionId: s.id,
+        text: `${s.stateName}, ${s.year}: ${s.party} won ${s.seats} of ${s.totalSeats} seats, the largest share in the published record.`,
+      });
+    }
+
+    // Largest Lok Sabha winner by seats.
+    const ls = wins.filter((w) => w.scope === "lok_sabha");
+    if (ls.length > 0) {
+      const big = ls.reduce((a, b) => (b.seats > a.seats ? b : a));
+      facts.push({
+        year: big.year,
+        electionId: big.id,
+        text: `${big.year}: ${big.party} won ${big.seats}${big.totalSeats ? ` of ${big.totalSeats}` : ""} Lok Sabha seats, the most in the published record.`,
+      });
+      const firstLs = ls.reduce((a, b) => (b.year < a.year ? b : a));
+      facts.push({
+        year: firstLs.year,
+        electionId: firstLs.id,
+        text: `${firstLs.year}: the earliest general election in the published record. ${firstLs.party} won ${firstLs.seats}${firstLs.totalSeats ? ` of ${firstLs.totalSeats}` : ""} seats.`,
+      });
+    }
+
+    // Most recent election, so the right-hand end of the timeline has a line.
+    const last = wins.reduce((a, b) => (b.year > a.year ? b : a));
+    facts.push({
+      year: last.year,
+      electionId: last.id,
+      text: `The most recent election in the record: the ${label(last)}, ${last.year}. ${last.party} won ${last.seats}${last.totalSeats ? ` of ${last.totalSeats}` : ""} seats.`,
+    });
+
+    // One fact per year, earliest-added wins, sorted for the scrubber.
+    const byYear = new Map<number, MapFact>();
+    for (const f of facts) if (!byYear.has(f.year)) byYear.set(f.year, f);
+    return [...byYear.values()].sort((a, b) => a.year - b.year);
+  },
+  ["map-facts"],
+  { revalidate: 300 },
+);
+
 export async function getMapData(): Promise<MapData> {
-  const [cached, markers] = await Promise.all([getCachedMapData(), getCachedMapMarkers()]);
-  return { ...cached, markers, maxYear: new Date().getFullYear() };
+  const [cached, markers, facts] = await Promise.all([
+    getCachedMapData(),
+    getCachedMapMarkers(),
+    getCachedMapFacts(),
+  ]);
+  return { ...cached, markers, facts, maxYear: new Date().getFullYear() };
 }
 
 export type UnionTerm = {
@@ -165,6 +318,7 @@ export type UnionTerm = {
 export type UnionMapData = {
   terms: UnionTerm[];
   markers: MapMarker[];
+  facts: MapFact[];
   minYear: number;
   maxYear: number;
 };
@@ -175,7 +329,7 @@ export type UnionMapData = {
  * Same maxYear-outside-the-cache rule as getMapData.
  */
 const getCachedUnionMapData = unstable_cache(
-  async (): Promise<Omit<UnionMapData, "maxYear" | "markers">> => {
+  async (): Promise<Omit<UnionMapData, "maxYear" | "markers" | "facts">> => {
     const termRows = await db
       .select({
         kind: terms.kind,
@@ -212,11 +366,12 @@ const getCachedUnionMapData = unstable_cache(
 );
 
 export async function getUnionMapData(): Promise<UnionMapData> {
-  // The same marker set the state map uses: union-scope events are national
-  // by definition, so they belong on both scrubbers.
-  const [cached, markers] = await Promise.all([
+  // The same marker and fact sets the state map uses: national records
+  // belong on both scrubbers.
+  const [cached, markers, facts] = await Promise.all([
     getCachedUnionMapData(),
     getCachedMapMarkers(),
+    getCachedMapFacts(),
   ]);
-  return { ...cached, markers, maxYear: new Date().getFullYear() };
+  return { ...cached, markers, facts, maxYear: new Date().getFullYear() };
 }
