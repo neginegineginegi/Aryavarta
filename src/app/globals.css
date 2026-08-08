@@ -883,6 +883,16 @@ thead th {
 }
 
 /* Year slider. */
+/* One number for the thumb, shared with the event ticks below the track.
+   A range thumb travels from half its own width in to half its width from
+   the end, so a tick placed at a flat percentage of the track misses it by up
+   to half a thumb, worst at the two extremes: measured at -9.8px on the first
+   year and +10.5px on the last. Both the thumb and the ticks read this. */
+input[type="range"].year-slider,
+.year-ticks {
+  --year-thumb: 20px;
+}
+
 input[type="range"].year-slider {
   -webkit-appearance: none;
   appearance: none;
@@ -894,8 +904,8 @@ input[type="range"].year-slider {
 input[type="range"].year-slider::-webkit-slider-thumb {
   -webkit-appearance: none;
   appearance: none;
-  width: 20px;
-  height: 20px;
+  width: var(--year-thumb);
+  height: var(--year-thumb);
   border-radius: 50%;
   background: var(--color-accent);
   border: 3px solid var(--color-paper-raised);
@@ -903,13 +913,22 @@ input[type="range"].year-slider::-webkit-slider-thumb {
   cursor: ew-resize;
 }
 input[type="range"].year-slider::-moz-range-thumb {
-  width: 14px;
-  height: 14px;
+  /* Was 14px while WebKit's was 20px, so the thumb rendered a different size
+     per browser and only one of them could ever match the ticks. */
+  width: var(--year-thumb);
+  height: var(--year-thumb);
+  box-sizing: border-box;
   border-radius: 50%;
   background: var(--color-accent);
   border: 3px solid var(--color-paper-raised);
   box-shadow: 0 0 0 1px var(--color-rule-dark), 0 1px 4px rgb(23 23 26 / 0.25);
   cursor: ew-resize;
+}
+
+/* Sits on the thumb's real travel, not on a flat percentage of the track.
+   --p is the year's 0..1 position, set inline by YearScrubber. */
+.year-tick {
+  left: calc(var(--year-thumb) / 2 + var(--p, 0) * (100% - var(--year-thumb)));
 }
 
 /* ---------------------------------------------------------------------------

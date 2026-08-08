@@ -158,7 +158,7 @@ export function YearScrubber({
           />
           {inRange.length > 0 && (
             <div
-              className="pointer-events-none absolute inset-x-0"
+              className="year-ticks pointer-events-none absolute inset-x-0"
               // Range inputs carry their own vertical margin, so the offset is
               // measured from the parent rather than assumed: 22px lands the
               // dots just under the 4px track.
@@ -168,8 +168,13 @@ export function YearScrubber({
               {inRange.map((m) => (
                 <span
                   key={m.eventId}
-                  className="absolute top-0 h-[3px] w-[3px] -translate-x-px rounded-full bg-ink-ghost"
-                  style={{ left: `${((m.year - min) / span) * 100}%` }}
+                  // Horizontal placement is .year-tick in globals.css: the
+                  // thumb does not travel the full width, so a flat percentage
+                  // missed it by up to half a thumb. Only the 0..1 position
+                  // comes from here. -translate-x-1/2 centres the 3px dot on
+                  // that point rather than hanging it off the right of it.
+                  className="year-tick absolute top-0 h-[3px] w-[3px] -translate-x-1/2 rounded-full bg-ink-ghost"
+                  style={{ "--p": (m.year - min) / span } as React.CSSProperties}
                 />
               ))}
             </div>
