@@ -1,127 +1,130 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-04 (post-redesign ship, commit `8588c85`)
+Last updated: 2026-08-08, commit `e7074c1`.
 
 ## 1. Current state
 
-**Working and deployed.** Live at https://abhilekh-orpin.vercel.app; main auto-deploys on push.
-Everything in the original spec plus the atlas phases is built: map + year slider, state/union/
-election/event/party/person pages, contribution flow, moderation queue with diff + conflict
-detection, revision history, search + question answering, insights, compare (elections/leaders/
-parties/states), Wikidata import pipeline, admin (users, party colors, import), reports/disputes.
-36 unit tests green; `pnpm build` clean (57 pages).
+**Live and healthy** at https://abhilekh-orpin.vercel.app; `main` auto-deploys on push. Every
+deploy this session reported success via the GitHub commit-status API. 71 unit tests green,
+`pnpm build` clean (59 pages), repo-wide lint at **0 errors** (3 warnings, all unused-directive).
 
-Just shipped (this session): EB Garamond typography, a full redesign on user green-light (card
-system, sticky masthead header, rebuilt homepage/footer, spacing pass, site-wide copy rewrite
-removing every em dash from user-facing prose), then a second palette pass to the "Making
-Software" scheme: cool near-white paper, electric-blue accent, Space Mono technical labels.
-Also: the /union page now opens with an interactive map (whole country takes the PM's party
-color per selected year, click → /union/[year]); Lakshadweep renders as a clickable circle
-marker in both maps (its real geometry is sub-pixel specks; see the comment in MapExplorer);
-and the header was refined per user sketch: States/Union toggle lives INSIDE the map cards
-(top-left, above the scrubber), account cluster (Review / name / Sign out, subtle icons) sits
-far right behind a hairline divider. The user has begun importing real data on production.
+Built and deployed across the whole project: map + year scrubber, state/union/election/event/
+party/person/promise/document pages, contribution flow, moderation queue with diff and conflict
+detection, revision history, search and question answering, insights, compare, Wikidata import,
+admin, reports/disputes, media archive, manifesto promises, Development Lens.
 
-**All content is placeholder demo data** (Demo Party Alpha, H. Template Das, etc.). Real facts
-enter only via /admin/import → moderator verify → approve. Nothing known broken.
+## 2. What this session shipped (newest first)
 
-**Sandbox quirks (this repo's dev env, not the app):** outbound to Neon/Wikidata/vercel.app is
-proxy-blocked — use local PG16 + `IMPORT_FIXTURES=1`; local Postgres dies sometimes
-(`su postgres -c '/usr/lib/postgresql/16/bin/pg_ctl -D /var/lib/postgresql/16/abhilekh -l .../log.txt -o "-p 5432 -k /var/run/postgresql" start'`);
-kill dev server with `pkill -f 'next-serve[r]'` (bracket avoids self-kill); Playwright needs
-`executablePath: '/opt/pw-browsers/chromium'` + `--no-proxy-server` + createRequire of the
-project package.json. After any DB reseed: `rm -rf .next` (stale data cache serves 404s).
+| Commit | What |
+| --- | --- |
+| `e7074c1` | Development Lens: real column gutters, deliberate category order, "Snapshot" label |
+| `1c7b514` | Industry by state: steel/cement/raw materials from 5 GEM files |
+| `97f57ff` | Steel snapshots: first Development Data dataset; Development Lens added to /union |
+| `53667ff` | Ten-point inspection of the GEM steel tracker |
+| `a08c2cc` | The 241 MB ingestion pipeline, designed before built |
+| `1f3a8fc` | Insights: header and first group were glued together |
+| `dcb6ccf` | Development Data layer: audit and plan |
+| `cbe8972` | Compare morphing (roadmap P5): seat bars glide between selections |
+| `18022b3` | Discovery (P3): did-you-know lines from the insights engine on record pages |
+| `fd9f6bb` | Living Graphs (P2): TrendChart answers questions on hover/tap/keyboard |
+| `e504424` | Twelve national moments as pending drafts for review |
+| `d6bc97f` | "From the record" fact line under the scrubber, computed not written |
+| `78e59f2` | Arrows only where direction is real |
+| `eb0449c` | States/Union toggles the map in place instead of navigating |
+| `67a5a7b` | Loading, empty and error states (root loading.tsx + error.tsx) |
+| `f8c996b` | Source Explorer drawer: what else rests on this document |
+| `9bd0de8` | Time Machine on the map: replay, markers, tooltip trail |
+| `a15d4ea` | Motion system: one tempo for the whole archive |
+| `7702f48` | Accountability layer phase 3: manifesto promises |
 
-**Ship flow:** commit on `claude/india-politics-archive-go5kio` → `git checkout main && git
-merge --ff-only <branch> && git push` → push feature branch too. Schema changes go in
-`scripts/ensure-upgrades.mjs` (append-only, idempotent; runs during Vercel build).
+**Interaction roadmap (from the design handoff's 14-evolution-roadmap): P0–P5 all shipped
+except P4 Story Mode**, which is blocked on event approvals (see §4).
 
-Product-evolution increment (from the user's PRODUCT EVOLUTION doc): event taxonomy widened
-to 17 types (upgrade 4), Development Lens tables + state-page section (upgrade 5; admin-curated
-like parties, every value carries source + verified date, NEVER scores governments), two new
-insight groups (average turnout by state, government stability), ARCHITECTURE.md (records the
-Phase 3 live-mode plug-in design: provisional-results flag, feed bot, historical context from
-existing queries), docs/DATA_FORMAT.md (durable CSV spec incl. indicators sheets).
+## 3. Architecture notes added this session
 
-Bulk data pipeline: data/inbox/*.csv is loaded by scripts/load-inbox.ts on EVERY build (after
-ensure-upgrades), creating pending Import Bot drafts with the user's cited sources; idempotent
-via kind-aware dedup, report printed in the build log. First real batch (Gujarat: 29 terms, 14
-elections with results incl. new seatsContested/allianceName payload fields, 7 events) is
-committed in the inbox. Election result payloads now round-trip seats_contested and
-alliance_name (payloads/snapshot/apply all updated); snapshotsEqual treats null == absent so
-additive payload fields never false-conflict old snapshots.
+- **Motion system** lives in `globals.css`: two curves (`--ease-spring`, `--ease-glide`) and
+  five durations (`--dur-press` 150ms → `--dur-fill` 600ms). The
+  `@media (prefers-reduced-motion: reduce)` block is **pinned to the END of the file on
+  purpose** — its selectors are the same specificity as the rules they override, so mid-file it
+  silently did nothing for `.map-state`. Any new animated class must be added to it.
+- **`.rec-table tbody td { padding: 10px 0 }` outranks Tailwind padding utilities** on those
+  cells (element+class beats a single class). Column gutters therefore live in `globals.css`
+  (`td + td { padding-left: 16px }`), not in component classNames. Every `pr-4` written on a
+  rec-table cell was dead CSS until `e7074c1`.
+- **`useYearPlayback`** (`src/lib/use-year-playback.ts`) drives both maps: rAF-based, not
+  setInterval. Playback is deliberately NOT disabled by reduced-motion (it is information);
+  the easing around it is. URL sync happens in an effect on `year`, never inside a setState
+  updater (an updater runs in the render phase and would mutate the router mid-render).
+- **`MapPanel`** holds both map payloads so States/Union swaps in place (`?mode=union`);
+  `/union` remains the full record page, reached by clicking the map. Explorers take
+  `showModeSwitch` so neither component is forked.
+- **`SeatBar` morphing** is a FLIP across remounts using module-scope state keyed by `morphKey`;
+  bars without a `morphKey` render exactly as the old server-only version.
+- **`SegmentedControl`** (`src/components/ui/SegmentedControl.tsx`) is a **PLACEHOLDER**. The
+  user referred to a handoff `SegmentedControl.tsx`; it is not in any of the uploaded bundles.
+  It implements the three rules they stated (one persistent indicator element, measured in
+  `useLayoutEffect` + `document.fonts.ready`, never remounted on toggle) and is written to be
+  replaced wholesale.
+- **Development Data**: `indicators` + `indicator_values` already ARE the generic model
+  (Indicator/Geography/Time/Value/Unit/Source/Methodology). National values ride union
+  pseudo-state `'in'`. Adding a dataset needs **no schema change** — a category and rows in the
+  two inbox CSVs. Category reading order is in `CATEGORY_ORDER` in `queries/development.ts`.
+- Raw third-party data stays OUT of the repo: `data/raw/` is gitignored except
+  `data/raw/gem/MANIFEST.md`, which carries filename, size, SHA-256, release, license and
+  verdict for every file received.
 
-## 2. Open TODOs (priority order)
+## 4. Open items — ALL need the user
 
-1. **Redesign sign-off** — user hasn't reacted to the shipped redesign yet; fix whatever page
-   they name.
-2. **Constituency Explorer** (biggest manifesto item) — BLOCKED on user decision: accept TCPD
-   Lok Dhaba license (lokdhaba.ashoka.edu.in) or approve heavier ECI PDF parsing. Do not start
-   without that answer.
-3. **Real data population** — run /admin/import per state, verify drafts against ECI statistical
-   reports (source-amend at review), approve. User-driven; assist when asked.
-4. User-side ops (remind, don't nag): rotate Neon DB password (was pasted in chat); publish
-   Google OAuth app (still Testing mode → only test users can sign in); legal review before wide
-   launch (defamation/BNS §356, IT Act §79 posture, IT Rules 2021 grievance officer, DPDP).
-5. If user licenses real Sabon: drop woff2 in `src/fonts/`, swap next/font/google →
-   next/font/local in `src/app/layout.tsx` (comment there documents it).
-6. Long-tail manifesto entities (deferred): cabinets, policies, Rajya Sabha composition, court
-   judgments, districts, swing maps (needs #2's data).
+1. **Steel production series decision.** The GEM plant-level workbook has crude steel production
+   2019–2024, but reporting plants cover only ~63% of India's actual output. Publish clearly
+   labelled as partial, or leave out? Unanswered. Everything else from that batch is shipped.
+2. **India power dataset still missing.** The energy timeline (solar/wind/hydro/coal, year
+   scrubbing) has no data. The 241 MB CSV was never supplied; `Portal_Energetico_tracker` turned
+   out to be GEM's **Latin America** portal with **zero India rows**. The pipeline is fully
+   designed in `docs/DEVELOPMENT_DATA.md` §3 and waits only on a header + 50–100 rows.
+3. **`/review` queue.** Twelve national-moment drafts (Independence, Emergency, liberalisation,
+   COVID …) are pending, plus ~79 older drafts. Approving the twelve lights up the map's
+   historical marker line and unblocks P4 Story Mode. **Source URLs are unverified** — this
+   sandbox cannot reach external hosts, so verification is a review-time job.
 
-## 3. Tricky decisions — do not re-litigate
+Also parked, lower value: `useReveal` is built and used by nothing (applying it site-wide means
+wrapping ~30 server pages in client components or a DOM-scanning shim — deliberately not done);
+batch review for bulk promise extraction; three placeholder documents in `data/inbox/documents.csv`
+with unverified URLs.
 
-- **No fabricated real facts, ever** (user hard rule). Seed/demo data must be obviously fake.
-- **Development indicators are NEVER shown against a party.** The party-vs-party compare shows a
-  state-by-state political record only (terms, time in office, heads of government, recorded
-  election results). Putting a state's IMR or literacy beside whoever governed it would make the
-  page a scorecard attributing outcomes to parties, which the archive refuses to be. Indicators
-  stay on state/indicator pages with their own timeline and sources. Do not "helpfully" add them.
-- **Time in office is a UNION of intervals, never a sum** (`src/lib/tenure.ts`). Parties hold
-  several offices at once (CM in two states, or a CM while holding the PM's chair); summing term
-  lengths reports more time in office than has elapsed. This was a live bug in PartyPanel.
-- **State-wise shares are measured against the state's own existence** (`formed_on` → today), so
-  Telangana (2014) is not made to look worse than West Bengal (1950). Rows never sort by tenure
-  length: that turns a record into a league table. Shared states sort first.
-- **Wikipedia/Wikidata never source of truth**: imports become *pending* revisions from Import
-  Bot (`origin='import'`), verified by a moderator; `amendRevisionSourcesAction` lets the
-  reviewer attach the authoritative (ECI) source before approving.
-- **Em dashes are banned in user-facing prose** (user feels strongly). Empty table cells keep
-  the "—" marker deliberately — that's a data convention, not writing.
-- **Electric-blue accent** (`#2743ee`) + cool near-white paper + Space Mono labels: user
-  explicitly asked for the look of Dan Hollick's "Making Software" site (screenshots supplied),
-  replacing the earlier teal. Party colors are still data colors only (map/legend/seat bars),
-  never interface chrome.
-- **Font variables MUST stay on the `<html>` element** in layout.tsx. They once sat on
-  `<body>`, and because `html { font-family: var(--font-body) }` could not resolve them the
-  whole site silently fell back to Times New Roman. Don't move them back.
-- **EB Garamond, not Sabon**: Sabon is commercial (Linotype), can't be bundled; EB Garamond is
-  the closest open face. User asked for "a font like Sabon" and accepted this.
-- **User's "DO NOT REDESIGN THE UI" manifesto rule was explicitly superseded** — they later said
-  "the UI/UX sucks" and picked *all four* overhaul areas in a follow-up question. Redesign was
-  authorized; don't treat the old instruction as binding.
-- **neon-serverless (WebSocket) driver, not neon-http**: approval flow needs interactive
-  transactions (SELECT FOR UPDATE). `DATABASE_DRIVER=neon` switches it on in prod.
-- **JWT role is a hint only**; `requireRole()` re-fetches the role from DB on every gated action.
-  ADMIN_EMAIL bootstrap runs in both the signIn event and the jwt callback.
-- **Next 16**: use `updateTag(tag)` in server actions (`revalidateTag` now needs 2 args).
-- **Map year semantics**: color = government in office on 31 Dec; a state formed any time in
-  year Y exists for year Y. Pre-formation states render the n.a. hatch, not a party color.
-- **One `terms` table for all offices** (cm/presidents_rule/pm/president/governor) with check
-  constraints; union is pseudo-state `'in'`, Ladakh `'la'` has no map geometry.
-- Imported parties named in `data/inbox/party_colors.csv` get their conventional color +
-  abbreviation AT CREATION (`canonicalParty()` in src/lib/import/canonical-party-colors.ts;
-  the sheet is traced into server bundles via `outputFileTracingIncludes`). Only uncurated
-  parties fall back to the deterministic FNV-hash color (`pickPartyColor`); fix those at
-  /admin/parties (auto-assign button also prefers the sheet now). Root cause this closes:
-  the user saw Samajwadi Party render BLUE because runtime imports predated the next build,
-  and only builds ran the color sheet. Distinct per-party colors matter a lot to the user.
+## 5. Sandbox traps that cost real time this session
 
-## 4. Next step
+- **`pkill -f next-server` inside a compound command kills the compound's own shell** (the
+  pattern matches its command line). Several "clean rebuild" steps therefore never ran while a
+  zombie server kept answering on :3000 — that produced an hour chasing a rendering bug that did
+  not exist. Use `fuser -k 3000/tcp`, and verify the server actually restarted.
+- **Playwright `page.mouse.move()` teleports** and does not produce the pointermove stream a
+  real hand does; hover handlers appear broken. Use `{ steps: N }`.
+- **Measure computed styles, not inline styles**, when checking a transition: the inline value
+  flips instantly by design and reads back as the target.
+- **Delaying a response at the network layer stalls the headers**, so no Suspense shell can
+  arrive — that measures nothing. To test `loading.tsx`, make the *server* slow.
+- Read `node_modules/next/dist/docs/` before assuming Next behaviour (AGENTS.md rule). It pays:
+  the loading.js doc's own note explains the `unstable_instant` caveat, which does not apply here
+  because `cacheComponents` is off.
+- After a DB reseed or new inbox rows: `rm -rf .next` before rebuilding, or the data cache serves
+  stale pages. `getDevelopment` also caches 1h.
 
-Ask the user two questions, then act on the answers:
-1. Any page in the deployed redesign that still looks wrong (fix it), and
-2. The Constituency Explorer data-source decision: TCPD Lok Dhaba license vs ECI PDF parsing
-   (then start that build — it's the last big manifesto item).
+## 6. Ship flow (unchanged)
 
-If resuming with no user present, there is nothing safely actionable beyond small polish; both
-big threads are blocked on their input.
+Commit on `claude/india-politics-archive-go5kio` → push it → `git checkout main && git merge
+--ff-only <branch> && git push origin main` → watch
+`https://api.github.com/repos/neginegineginegi/Aryavarta/commits/<sha>/status`. Schema changes go
+in `scripts/ensure-upgrades.mjs` (append-only, idempotent, runs during the Vercel build).
+`scripts/load-inbox.ts` loads the CSVs on every build; `indicator_values` inserts are
+conflict-do-nothing on (indicator, state, year), so **corrections to an existing value need a
+manual update**, not a reload.
+
+## 7. Standing project rules
+
+No fabricated real facts, ever — demo data must be obviously fake. No em dashes in user-facing
+prose. Wikipedia/Wikidata is never source of truth; imports become pending revisions. Font
+variables stay on `<html>` in layout.tsx. The archive never scores, ranks or grades: no promise
+verdicts, no scorecards, and superlatives are always scoped "in the published record". Party
+colours are data colours from `data/inbox/party_colors.csv` — the user cares a great deal that
+every party is visually distinct.
