@@ -222,6 +222,24 @@ whole, and the scrub-the-years experience the energy brief describes is not
 derivable from this file. The energy CSV remains a separate dataset with its
 own pending sample.
 
+## 3c. Batch 2 inspection: five further GEM files (2026-08-08)
+
+Full verdicts and checksums in data/raw/gem/MANIFEST.md. In short: the steel
+plant-level workbook carries state attribution the unit data lacked, so
+nominal crude steel capacity is now published by state; the cement tracker
+ingests cleanly by state; the met coal and iron ore file contributes four
+national values with GEM's estimation basis quoted in each methodology; the
+chemicals inventory has no numeric fields and is not ingested; and Portal
+Energetico is GEM's Latin America portal with zero India rows, so the energy
+timeline experience still waits on an India power dataset.
+
+Deliberately unpublished from this batch: the steel production series (2019
+to 2024), because the reporting plants cover roughly 63 percent of India's
+crude steel output and a partial sum would read as the national total; the
+cement production column (15 plants); and the met coal consumption columns
+(factor-multiplication estimates). Any of these can be published later with
+an owner decision and a coverage caveat in the indicator name itself.
+
 ## 4. Decisions that wait for the file
 
 - The indicator set (total capacity, additions, per-technology series) and
