@@ -29,10 +29,10 @@ export default async function AdminUsersPage({
         </h1>
         <p className="mt-1 flex gap-4 text-[0.82rem]">
           <Link href="/admin/import" className="text-accent underline-offset-2 hover:underline">
-            → Import reference data
+            Import reference data
           </Link>
           <Link href="/admin/parties" className="text-accent underline-offset-2 hover:underline">
-            → Party colors &amp; abbreviations
+            Party colors &amp; abbreviations
           </Link>
         </p>
         <p className="mt-2 text-[0.88rem] text-ink-muted">

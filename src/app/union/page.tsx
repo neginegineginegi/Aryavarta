@@ -203,7 +203,7 @@ export default async function UnionPage() {
                   href={`/election/${e.id}`}
                   className="text-[0.78rem] text-accent underline-offset-2 hover:underline"
                 >
-                  dashboard →
+                  dashboard
                 </Link>
               </li>
             ))}
@@ -277,7 +277,7 @@ function EmptyNote({ what }: { what: string }) {
     <p className="mt-3 text-[0.85rem] text-ink-muted">
       No {what} recorded yet.{" "}
       <Link href="/contribute?state=in" className="text-accent underline-offset-2 hover:underline">
-        Contribute →
+        Contribute
       </Link>{" "}
       <span className="text-ink-faint">
         (administrators can pre-fill these via the import pipeline)

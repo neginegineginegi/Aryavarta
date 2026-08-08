@@ -38,7 +38,7 @@ export default async function InsightsPage() {
           Not enough approved data to compute insights yet. They appear on their own as the
           archive grows.{" "}
           <Link href="/contribute" className="text-accent underline-offset-2 hover:underline">
-            Contribute →
+            Contribute
           </Link>
         </p>
       ) : (
@@ -66,7 +66,7 @@ export default async function InsightsPage() {
                             href={l.href}
                             className="text-accent underline-offset-2 hover:underline"
                           >
-                            {l.label} →
+                            {l.label}
                           </Link>
                         ))}
                       </p>

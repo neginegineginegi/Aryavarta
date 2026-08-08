@@ -61,7 +61,7 @@ export default async function PromisePage({
             href={`/archive/${p.documentId}`}
             className="text-accent underline-offset-2 hover:underline"
           >
-            View the document →
+            View the document
           </Link>
         </p>
       </div>

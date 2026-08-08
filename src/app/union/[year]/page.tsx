@@ -143,7 +143,7 @@ export default async function UnionYearPage({
                   href={`/election/${e.id}`}
                   className="ml-2 text-[0.82rem] text-accent underline-offset-2 hover:underline"
                 >
-                  Full election dashboard →
+                  Full election dashboard
                 </Link>
               </li>
             ))}
@@ -157,7 +157,7 @@ export default async function UnionYearPage({
           <p className="mt-3 text-[0.85rem] text-ink-muted">
             No national governance events recorded for {year}.{" "}
             <Link href="/contribute?state=in" className="text-accent underline-offset-2 hover:underline">
-              Add one →
+              Add one
             </Link>
           </p>
         ) : (

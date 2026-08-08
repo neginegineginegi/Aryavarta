@@ -138,7 +138,7 @@ export function YearFocus({
                 href={`/election/${e.id}`}
                 className="text-accent underline-offset-2 hover:underline"
               >
-                Dashboard →
+                Dashboard
               </Link>
             </p>
           ))}
@@ -155,7 +155,7 @@ export function YearFocus({
           href={`/state/${stateId}/${year}`}
           className="text-accent underline-offset-2 hover:underline"
         >
-          Full {year} snapshot with citations →
+          Full {year} snapshot with citations
         </Link>
       </p>
     </aside>

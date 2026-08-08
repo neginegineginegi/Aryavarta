@@ -119,7 +119,7 @@ export default async function ElectionPage({
                 href={`/contribute/election?edit=${election.id}`}
                 className="text-accent underline-offset-2 hover:underline"
               >
-                Add them →
+                Add them
               </Link>
             </p>
           ) : (
@@ -206,7 +206,7 @@ export default async function ElectionPage({
               href={`/state/${election.stateId}/${yearOf(formedTerm.startDate)}`}
               className="text-[0.85rem] text-accent underline-offset-2 hover:underline"
             >
-              view that year →
+              view that year
             </Link>
           </p>
         ) : (

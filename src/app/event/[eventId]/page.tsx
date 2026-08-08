@@ -47,10 +47,10 @@ export default async function EventPage({
         </p>
         <p className="mt-6 flex gap-4 text-[0.88rem]">
           <Link href={`/event/${event.id}/history`} className="text-accent underline-offset-2 hover:underline">
-            View revision history →
+            View revision history
           </Link>
           <Link href={`/state/${event.stateId}`} className="text-accent underline-offset-2 hover:underline">
-            {event.stateName} page →
+            {event.stateName} page
           </Link>
         </p>
       </div>

@@ -4,6 +4,39 @@ import type { MapMarker } from "@/lib/db/queries/map";
 import type { Playback } from "@/lib/use-year-playback";
 
 /**
+ * Player glyphs as inline SVG, not text characters. "▶" and "❚❚" sit on the
+ * text baseline, so they render at different sizes and vertical positions per
+ * platform font; a drawn icon is identical everywhere and centres properly
+ * against its label.
+ */
+function PlayIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+      <path d="M1.5 0.8 L9 5 L1.5 9.2 Z" />
+    </svg>
+  );
+}
+
+function PauseIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+      <rect x="1" y="0.8" width="2.8" height="8.4" rx="0.6" />
+      <rect x="6.2" y="0.8" width="2.8" height="8.4" rx="0.6" />
+    </svg>
+  );
+}
+
+/** Standard skip-to-next: triangle against a bar, as in any media player. */
+function SkipIcon() {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden>
+      <path d="M0.8 0.8 L7 5 L0.8 9.2 Z" />
+      <rect x="7.8" y="0.8" width="1.8" height="8.4" rx="0.5" />
+    </svg>
+  );
+}
+
+/**
  * The scrubber and its replay controls.
  *
  * Ported from the living-map prototype's control row. The prototype's markers
@@ -57,7 +90,7 @@ export function YearScrubber({
           className="btn btn-primary btn-sm"
           aria-pressed={playing}
         >
-          <span aria-hidden>{playing ? "❚❚" : "▶"}</span>
+          {playing ? <PauseIcon /> : <PlayIcon />}
           {playing ? "Pause" : "Play"}
         </button>
 
@@ -84,10 +117,11 @@ export function YearScrubber({
             <button
               type="button"
               onClick={() => skipTo(markerYears)}
-              className="press rounded-full bg-paper-badge px-3 py-1.5 font-mono text-[11px] tracking-[0.08em] text-ink-muted"
-              aria-label="Skip to the next year with a recorded national event"
+              className="press inline-flex items-center gap-1.5 rounded-full bg-paper-badge px-3 py-1.5 font-mono text-[11px] tracking-[0.08em] text-ink-muted"
+              aria-label="Jump to the next year with a recorded national event"
             >
-              »
+              <SkipIcon />
+              Next event
             </button>
           )}
         </div>

@@ -297,7 +297,7 @@ export default async function StatePage({
                       href={`/election/${e.id}`}
                       className="text-[0.78rem] text-accent underline-offset-2 hover:underline"
                     >
-                      dashboard →
+                      dashboard
                     </Link>
                     <span className="text-[0.8rem] text-ink-faint">
                       {e.totalSeats ? `${formatNumber(e.totalSeats)} seats` : null}
@@ -425,7 +425,7 @@ function EmptyNote({ entity, stateId }: { entity: string; stateId: string }) {
         href={`/contribute?state=${stateId}`}
         className="text-accent underline-offset-2 hover:underline"
       >
-        Be the first to contribute →
+        Be the first to contribute
       </Link>
     </p>
   );

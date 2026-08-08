@@ -165,7 +165,7 @@ export default async function ReviewRevisionPage({
                   rel="noopener noreferrer"
                   className="text-accent underline-offset-2 hover:underline"
                 >
-                  Open the document →
+                  Open the document
                 </a>
               </p>
             )}

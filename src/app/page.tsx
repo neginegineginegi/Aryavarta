@@ -132,7 +132,7 @@ export default async function HomePage() {
             </Link>
           </div>
           <Link href="/contribute" className="mt-[18px] text-[13px] text-ink-soft">
-            Contribute a sourced correction ›
+            Contribute a sourced correction
           </Link>
           <p className="mt-11 max-w-[520px] text-[16px] text-[#3a3a36]">
             Who governed every Indian state, union territory and the Union, year by year since{" "}

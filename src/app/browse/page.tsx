@@ -48,7 +48,7 @@ export default async function BrowsePage() {
         </p>
         <div className="mt-5 flex flex-wrap gap-2">
           <Link href="/archive" className="btn btn-secondary btn-sm">
-            The media archive →
+            The media archive
           </Link>
         </div>
       </header>
@@ -57,7 +57,7 @@ export default async function BrowsePage() {
         <h2 className="font-display text-[28px] font-light leading-tight text-ink">Union</h2>
         <p className="mt-2">
           <Link href="/union" className="text-accent underline-offset-2 hover:underline">
-            Union Government of India →
+            Union Government of India
           </Link>{" "}
           <span className="text-[0.82rem] text-ink-faint">
             Prime Ministers, Presidents, Lok Sabha elections

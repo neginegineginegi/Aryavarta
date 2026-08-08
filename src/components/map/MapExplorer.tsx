@@ -394,7 +394,7 @@ export function MapExplorer({
               <p className="font-semibold text-ink">{tooltipContent.stateName}</p>
               <p className="text-ink-muted">{tooltipContent.line}</p>
               <p className="mt-0.5 text-[0.72rem] text-ink-faint">
-                {tooltip.anchor === "focus" ? "Press Enter for details" : "Click for details →"}
+                {tooltip.anchor === "focus" ? "Press Enter for details" : "Click for details"}
               </p>
             </div>
           )}

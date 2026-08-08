@@ -81,7 +81,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
     : kind === "cm_terms"
       ? (preview.terms ?? []).map((t: ImportedTerm) => ({
           main: `${t.personLabel} · ${t.partyLabel ?? "party unknown"}`,
-          detail: `${t.startDate ?? "start unknown"} → ${t.endDate ?? "present"}${
+          detail: `${t.startDate ?? "start unknown"} – ${t.endDate ?? "present"}${
             t.startPrecision && t.startPrecision !== "day" ? ` (${t.startPrecision} precision)` : ""
           }`,
         }))
@@ -155,7 +155,7 @@ export function ImportPanel({ states }: { states: StateOption[] }) {
           {commitMsg}{" "}
           {!commitMsg.startsWith("Error") && (
             <Link href="/review" className="underline">
-              Open review queue →
+              Open review queue
             </Link>
           )}
         </p>

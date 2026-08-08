@@ -33,7 +33,7 @@ export function ReportForm({
           Thank you. A moderator will review the report; its resolution will be recorded
           publicly.{" "}
           <Link href={backHref} className="text-accent underline-offset-2 hover:underline">
-            Back to the entry →
+            ← Back to the entry
           </Link>
         </p>
       </div>

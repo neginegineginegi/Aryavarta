@@ -161,7 +161,7 @@ export default async function StateYearPage({
                   href={`/election/${e.id}`}
                   className="text-[0.82rem] text-accent underline-offset-2 hover:underline"
                 >
-                  Full election dashboard →
+                  Full election dashboard
                 </Link>
               </li>
             ))}
@@ -178,7 +178,7 @@ export default async function StateYearPage({
               href={`/contribute?state=${state.id}`}
               className="text-accent underline-offset-2 hover:underline"
             >
-              Add one →
+              Add one
             </Link>
           </p>
         ) : (

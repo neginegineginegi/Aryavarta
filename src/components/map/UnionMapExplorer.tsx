@@ -245,7 +245,7 @@ export function UnionMapExplorer({
                 <p className="text-ink-muted">President: {president.cmName}</p>
               ) : null}
               <p className="mt-0.5 font-mono text-[0.62rem] text-ink-faint">
-                Click for the {year} record →
+                Click for the {year} record
               </p>
             </div>
           )}
