@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `e7074c1`.
+Last updated: 2026-08-08, commit `509f9b3`.
 
 ## 1. Current state
 
@@ -13,10 +13,16 @@ party/person/promise/document pages, contribution flow, moderation queue with di
 detection, revision history, search and question answering, insights, compare, Wikidata import,
 admin, reports/disputes, media archive, manifesto promises, Development Lens.
 
+44 indicators carry 2,676 values. The Development Lens now holds an **Energy** band with the
+archive's first multi-year series: utility-scale solar capacity 2011–2025 (92,754 MW nationally,
+33,452 MW in Rajasthan) and wind 1990–2025 (27,055 MW). Everything else is a snapshot.
+
 ## 2. What this session shipped (newest first)
 
 | Commit | What |
 | --- | --- |
+| `509f9b3` | Energy: solar and wind become the first multi-year indicator series |
+| `4bb01be` | PROGRESS.md rewritten as a durable handoff |
 | `e7074c1` | Development Lens: real column gutters, deliberate category order, "Snapshot" label |
 | `1c7b514` | Industry by state: steel/cement/raw materials from 5 GEM files |
 | `97f57ff` | Steel snapshots: first Development Data dataset; Development Lens added to /union |
@@ -69,23 +75,58 @@ except P4 Story Mode**, which is blocked on event approvals (see §4).
   (Indicator/Geography/Time/Value/Unit/Source/Methodology). National values ride union
   pseudo-state `'in'`. Adding a dataset needs **no schema change** — a category and rows in the
   two inbox CSVs. Category reading order is in `CATEGORY_ORDER` in `queries/development.ts`.
+  Indicator rows are inserted **directly, not as revisions**, so a dataset goes live on the
+  build that loads it; only editorial content (terms, elections, events, promises) queues for
+  review.
+- **Cumulative capacity series** (`extract-gem-power-2026.py`): for each geography and year,
+  the summed capacity of assets whose recorded commissioning year is that year or earlier. A
+  geography's series starts at ITS OWN first recorded year, never at the dataset minimum:
+  emitting zeros earlier would assert "this state had none", which a tracker with a size
+  threshold cannot support. **The test for whether a source may become a series at all is
+  whether its capacity figure belongs to the year it is filed under.** GEM tracks project
+  phases, so a solar expansion is a new dated row and the series is sound. A blast furnace is
+  one row whose "current capacity" is a present-day rating (oldest operating Indian unit 1919,
+  all 80 dated units relined), so iron is published as snapshots. That series was built and
+  withdrawn; do not rebuild it. Coverage percentages are computed at extract time and written
+  into the methodology text so prose cannot drift from data.
+- **Watch for per-file sentinels.** The GEM iron workbook writes the literal string `unknown`
+  in date cells that the solar and wind trackers leave empty. Treating it as a value counted
+  every row as carrying a retired date. `blank()` in the extractor holds the shared set; check
+  any new file for its own sentinel before trusting a coverage number.
+- **Map markers prefer a record that cites a source**, then the earliest date, then earliest
+  created. Not a cosmetic tie-break: the seeded 1984 placeholder carries a date while Operation
+  Blue Star's record carries only a year, so date-first ordering put a row titled "DEMO:" on the
+  public timeline ahead of it.
 - Raw third-party data stays OUT of the repo: `data/raw/` is gitignored except
   `data/raw/gem/MANIFEST.md`, which carries filename, size, SHA-256, release, license and
   verdict for every file received.
 
-## 4. Open items — ALL need the user
+## 4. Open items
 
-1. **Steel production series decision.** The GEM plant-level workbook has crude steel production
-   2019–2024, but reporting plants cover only ~63% of India's actual output. Publish clearly
-   labelled as partial, or leave out? Unanswered. Everything else from that batch is shipped.
-2. **India power dataset still missing.** The energy timeline (solar/wind/hydro/coal, year
-   scrubbing) has no data. The 241 MB CSV was never supplied; `Portal_Energetico_tracker` turned
-   out to be GEM's **Latin America** portal with **zero India rows**. The pipeline is fully
-   designed in `docs/DEVELOPMENT_DATA.md` §3 and waits only on a header + 50–100 rows.
-3. **`/review` queue.** Twelve national-moment drafts (Independence, Emergency, liberalisation,
-   COVID …) are pending, plus ~79 older drafts. Approving the twelve lights up the map's
-   historical marker line and unblocks P4 Story Mode. **Source URLs are unverified** — this
-   sandbox cannot reach external hosts, so verification is a review-time job.
+1. **Steel production series decision** (needs the user). The GEM plant-level workbook has crude
+   steel production 2019–2024, but reporting plants cover only ~63% of India's actual output.
+   Publish clearly labelled as partial, or leave out? Still unanswered.
+2. **Solar licence constraint** (needs the user's awareness, not a code change). 2,575 of 4,467
+   India solar rows derive from the TransitionZero Solar Asset Mapper under **CC BY-NC 4.0** and
+   621 from wiki-solar.org's proprietary set; only 1,191 are GEM-only CC BY 4.0. What ships is a
+   derived aggregate and all three upstreams are cited in the methodology, but the
+   non-commercial term constrains reuse of `solar-capacity-operating`.
+3. **Six approved moments sit before the map's earliest year.** `minYear` is the earliest
+   chief-minister term in the record, floored at 1947, and term data currently starts at 1978,
+   so Independence, the Constitution, both earlier wars and the Emergency cannot appear as
+   scrubber ticks. This is data completeness, not a defect: the range extends on its own as
+   historical terms are imported, and widening the slider past the term data would only show a
+   blank map. Importing pre-1978 CM terms is the fix.
+4. **Hydro, coal and thermal have no data.** The energy band currently holds solar and wind
+   only. The same extractor pattern takes GEM's other power trackers unchanged.
+
+Resolved this session: the `/review` queue (the user cleared it, so the twelve national moments
+are published and the marker line is live) and the long-missing India power dataset.
+
+Also parked, lower value: `useReveal` is built and used by nothing; batch review for bulk
+promise extraction; three placeholder documents in `data/inbox/documents.csv` with unverified
+URLs. The three seeded `DEMO:` national placeholders (1961, 1984, 2009) still show as markers in
+years where no real record exists; deleting seed data is the owner's call.
 
 Also parked, lower value: `useReveal` is built and used by nothing (applying it site-wide means
 wrapping ~30 server pages in client components or a DOM-scanning shim — deliberately not done);
@@ -109,6 +150,17 @@ with unverified URLs.
   because `cacheComponents` is off.
 - After a DB reseed or new inbox rows: `rm -rf .next` before rebuilding, or the data cache serves
   stale pages. `getDevelopment` also caches 1h.
+- **`data/inbox/indicator_values.csv` is CRLF; `indicators.csv` is LF.** Appending with Python
+  `read_text`/`write_text` silently rewrote 2,112 lines to LF and buried a 518-row addition in a
+  4,742-line diff. Append in **binary**, matching whatever endings the file already has, and
+  check `git diff --numstat` shows zero deletions before committing a data file.
+- **Playwright needs an explicit `executablePath`** here: the installed version looks for
+  `chromium_headless_shell-1234` but `/opt/pw-browsers` holds `chromium` and `-1194` builds.
+  Launch with `{ executablePath: "/opt/pw-browsers/chromium" }`. Scripts must also live under the
+  repo root to resolve the package, and `range.fill(y)` throws "Malformed value" for a year
+  outside the slider's own min/max, which is a useful signal about the record's coverage.
+- **`pnpm tsx` compiles one-off scripts as CJS**, so top-level `await` fails. Wrap in
+  `async function main() { … } main()`.
 
 ## 6. Ship flow (unchanged)
 
