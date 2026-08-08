@@ -94,9 +94,14 @@ export default async function IndicatorPage({
                 <div className="mt-3">
                   {s.values.length >= 2 ? (
                     <TrendChart
-                      points={s.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+                      points={s.values.map((v) => ({
+                        year: v.year,
+                        value: Number(v.value),
+                        note: `${v.sourceTitle}${v.reportingPeriod ? ` · ${v.reportingPeriod}` : ""}`,
+                      }))}
                       width={340}
                       height={80}
+                      unit={indicator.unit}
                       ariaLabel={`${indicator.name} in ${s.stateName}, ${s.values[0].year} to ${latest.year}`}
                     />
                   ) : (

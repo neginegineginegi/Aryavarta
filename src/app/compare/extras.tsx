@@ -468,9 +468,15 @@ function IndicatorCell({ series }: { series?: IndicatorSeries }) {
       {series.values.length >= 2 && (
         <div className="mt-1.5">
           <TrendChart
-            points={series.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+            points={series.values.map((v) => ({
+              year: v.year,
+              value: Number(v.value),
+              note: v.reportingPeriod ?? v.sourceTitle,
+            }))}
             width={170}
             height={44}
+            unit={series.unit}
+            href={`/indicator/${series.id}`}
             ariaLabel={`${series.name}, ${series.values[0].year} to ${latest.year}`}
           />
         </div>

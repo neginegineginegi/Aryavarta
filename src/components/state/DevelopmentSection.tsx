@@ -81,9 +81,15 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                         <td className={`${cell} hidden py-2.5 md:table-cell`}>
                           {s.values.length >= 2 ? (
                             <TrendChart
-                              points={s.values.map((v) => ({ year: v.year, value: Number(v.value) }))}
+                              points={s.values.map((v) => ({
+                                year: v.year,
+                                value: Number(v.value),
+                                note: v.reportingPeriod ?? v.sourceTitle,
+                              }))}
                               width={180}
                               height={44}
+                              unit={s.unit}
+                              href={`/indicator/${s.id}`}
                               ariaLabel={`${s.name}, ${s.values[0].year} to ${latest.year}`}
                             />
                           ) : (
