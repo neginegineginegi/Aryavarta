@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import {
   electionResults,
   elections,
+  eventSources,
   events,
   parties,
   states,
@@ -124,9 +125,13 @@ const getCachedMapData = unstable_cache(
  */
 const getCachedMapMarkers = unstable_cache(
   async (): Promise<MapMarker[]> => {
-    // DISTINCT ON picks one event per year: the earliest dated, then the
-    // earliest created, so the choice is stable between requests instead of
-    // shuffling as rows are added.
+    // DISTINCT ON picks one event per year. A record that cites a source wins
+    // over one that cites none, then the earliest dated, then the earliest
+    // created, so the choice is stable between requests instead of shuffling
+    // as rows are added. Sourced-first is not a tie-break detail: the seeded
+    // placeholder for 1984 carries a date and no source, so ordering by date
+    // alone put "DEMO: Placeholder national record" on the public timeline in
+    // front of Operation Blue Star, whose draft records only a year.
     const rows = await db
       .selectDistinctOn([events.year], {
         year: events.year,
@@ -143,6 +148,7 @@ const getCachedMapMarkers = unstable_cache(
       )
       .orderBy(
         asc(events.year),
+        sql`exists (select 1 from ${eventSources} where ${eventSources.eventId} = ${events.id}) DESC`,
         sql`${events.eventDate} ASC NULLS LAST`,
         asc(events.createdAt),
       );

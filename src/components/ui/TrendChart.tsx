@@ -73,8 +73,14 @@ export function TrendChart({
     .join(" ");
   const last = clean[clean.length - 1];
 
+  // Group from a thousand, not from ten thousand. The old threshold predated
+  // any indicator measured in the thousands, and once capacity series arrived
+  // it put "29 - 33,451.9" and "21 - 3018" in adjacent rows of one table.
+  // Small values keep two decimals; toLocaleString alone would allow three.
   const fmt = (v: number) =>
-    Math.abs(v) >= 10000 ? v.toLocaleString("en-IN") : String(Math.round(v * 100) / 100);
+    Math.abs(v) >= 1000
+      ? v.toLocaleString("en-IN")
+      : String(Math.round(v * 100) / 100);
 
   const active = sel !== null ? clean[sel] : null;
 

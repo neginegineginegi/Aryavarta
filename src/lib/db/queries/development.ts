@@ -106,6 +106,7 @@ const CATEGORY_ORDER = [
   "Education",
   "Health",
   "Infrastructure",
+  "Energy",
   "Agriculture",
   "Industry",
   "Environment",

@@ -240,16 +240,70 @@ cement production column (15 plants); and the met coal consumption columns
 (factor-multiplication estimates). Any of these can be published later with
 an owner decision and a coverage caveat in the indicator name itself.
 
+## 3d. Batch 3: the India power data arrives (2026-08-08)
+
+The Global Solar and Global Wind Power Trackers (February 2026) are the
+datasets sections 2 and 3 were designed for. Checksums and per-file verdicts in
+data/raw/gem/MANIFEST.md; transform in
+`scripts/one-off/extract-gem-power-2026.py`.
+
+These are the archive's **first multi-year indicator series**. Everything
+published before was a snapshot. The shape is a cumulative stock: for each
+geography and year, the summed capacity of projects whose recorded
+commissioning year is that year or earlier.
+
+**Why a cumulative series is legitimate here and was refused for iron.** GEM
+tracks project PHASES. An expansion is a new row with its own year and its own
+capacity, so each figure belongs to the year it is filed under: Ananthapuramu
+Phase 1 is 250 MW in 2018 and Phase 2 is 150 MW in 2019, two rows. A blast
+furnace is one row whose "current capacity" is a present-day rating; the oldest
+operating Indian unit dates from 1919 and all 80 dated operating units carry a
+recorded relining, so summing current ratings by start year would have
+published "975 ttpa of blast furnace capacity in 1919" from a 2018
+measurement. The iron series was built, measured, and withdrawn to snapshots.
+No caveat text can repair a chart whose earliest point is a false claim.
+
+**Three things every generated methodology now states, computed at extract
+time so the prose cannot drift from the data:**
+
+1. Dated coverage, in units and in capacity. Undated assets are absent from
+   every year, so a value understates the fleet by exactly that share.
+2. That the series is reconstructed from the fleet operating at the release
+   date, so anything commissioned and later retired is invisible. The script
+   exits if a future release adds retired India rows, which would falsify the
+   claim.
+3. For solar, the AC/DC rating mix (51.7 per cent MWac, 20.6 per cent MWp/dc,
+   27.7 per cent unspecified). GEM's own notes say the basis "is often not
+   specified". Ratings are summed as published and never converted.
+
+**A licence constraint the owner should know about.** 2,575 of 4,467 India
+solar rows derive partly or wholly from the TransitionZero Solar Asset Mapper
+under **CC BY-NC 4.0**, and 621 from wiki-solar.org's proprietary dataset. Only
+1,191 are GEM-only CC BY 4.0. What Abhilekh publishes is a derived aggregate
+rather than a copy of the records, and all three upstreams are named in the
+indicator methodology, but the non-commercial term is a real constraint on how
+this particular series may be reused.
+
+Reading order gained an `Energy` band, placed after Infrastructure in
+`CATEGORY_ORDER`. That is data, not architecture: no schema change, no new
+table, two CSV files as with every other dataset.
+
 ## 4. Decisions that wait for the file
+
+Answered for solar and wind by batch 3; still open for any future dataset.
 
 - The indicator set (total capacity, additions, per-technology series) and
   whether "additions by year" is present in the data or must be derived as a
-  first difference, which would then be labeled as derived.
+  first difference, which would then be labeled as derived. Batch 3 publishes
+  the stock only; annual additions are a first difference of it and were not
+  published, because a flow invites reading a single year as a government's
+  doing.
 - Whether values are capacity, generation, or project counts, and at what
   status. Nothing is published until this is answered from the file itself.
 - State attribution (plant location) and whether sub-state geography exists.
 - Licensing: GEM publishes under CC BY 4.0; the citation line and any
-  redistribution note follow what the supplied file's own terms say.
+  redistribution note follow what the supplied file's own terms say. See 3d:
+  a GEM file can carry rows under a different upstream licence.
 
 ## 5. Schema note
 
