@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
 
 export const metadata: Metadata = {
   title: "About",
@@ -13,7 +14,7 @@ export default function AboutPage() {
       {/* The one interior page allowed the tinted ground and a prism streak:
           it is prose, not data. */}
       <header className="section-card section-tint tricolor-strip relative px-6 py-16 sm:px-10">
-        <div aria-hidden className="prism prism-soft" />
+        <TricolorRibbon variant="soft" />
         <div className="relative mx-auto max-w-[560px]">
           <span lang="hi" className="deva-eyebrow">
             परिचय

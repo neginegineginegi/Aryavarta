@@ -17,6 +17,8 @@
  * meant to be replaced wholesale if the original turns up.
  */
 
+import { fieldEnergy, fieldTime } from "@/lib/living-field";
+
 export type CursorTextMode = "chars" | "ink";
 
 /** Motion constants. All of these are from the handoff's motion table. */
@@ -39,6 +41,7 @@ type CharTarget = {
   base: Float64Array; // resting font-weight per character
   cur: Float64Array; // eased intensity, 0 at rest
   live: boolean; // was anything written last frame
+  seed: number; // stable per-group phase offset for the scroll wave
 };
 
 type MagnetTarget = {
@@ -121,6 +124,9 @@ function tick() {
   frame = 0;
   let active = false;
 
+  // Read once per frame, not once per character.
+  const wave = Math.min(1, fieldEnergy() * 0.5) * 2.6;
+
   for (const t of charTargets) {
     const lift = LIFT[t.mode];
     let live = false;
@@ -131,12 +137,17 @@ function tick() {
       // Squared falloff: full strength under the pointer, nothing past RADIUS.
       const target = d2 >= RADIUS_SQ ? 0 : 1 - d2 / RADIUS_SQ;
       const next = t.cur[i] + (target - t.cur[i]) * EASE;
-      const wasResting = t.cur[i] < REST && next < REST;
+      // The scroll wave: a travelling ripple driven by how excited the page
+      // is, offset per character so a crest runs ALONG a line rather than
+      // lifting all of it at once. At rest `wave` is 0 and this costs nothing.
+      const ripple =
+        wave > 0.02 ? Math.sin(i * 0.42 + fieldTime() * 2.4 + t.seed) * wave : 0;
+      const wasResting = t.cur[i] < REST && next < REST && ripple === 0;
       t.cur[i] = next;
       if (wasResting) continue;
       live = true;
       const el = t.chars[i];
-      if (next < REST) {
+      if (next < REST && ripple === 0) {
         // Land exactly on rest once, then stop writing this character.
         el.style.translate = "";
         if (t.mode === "chars") el.style.fontVariationSettings = "";
@@ -144,7 +155,7 @@ function tick() {
         t.cur[i] = 0;
         continue;
       }
-      el.style.translate = `0 ${(lift * next).toFixed(2)}px`;
+      el.style.translate = `0 ${(lift * next + ripple).toFixed(2)}px`;
       if (t.mode === "chars") {
         el.style.fontVariationSettings = `"wght" ${Math.round(t.base[i] + WEIGHT_GAIN * next)}`;
       }
@@ -203,7 +214,9 @@ function tick() {
     }
   }
 
-  if (active) {
+  // Stay alive while the page is still excited, or the wave stops mid-scroll
+  // with the letters frozen wherever the last frame left them.
+  if (active || fieldEnergy() > 0.002) {
     frame = requestAnimationFrame(tick);
   } else {
     running = false;
@@ -295,6 +308,7 @@ export function registerChars(el: HTMLElement, mode: CursorTextMode): () => void
     base: new Float64Array(n),
     cur: new Float64Array(n),
     live: false,
+    seed: charTargets.size * 0.9,
   };
   if (mode === "chars") {
     for (let i = 0; i < n; i++) {

@@ -504,6 +504,118 @@ thead th {
     transform: translateX(-3%) rotate(-4deg);
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Living background: the tricolor bands as canvases.
+
+   A canvas can only draw inside itself, so every .ribbon-* box is TALLER than
+   the .prism-* it shadows and sits higher up to compensate. Change one number
+   and you must change its pair, or the wave clips flat against the top edge.
+
+   Each canvas carries the same gradient as its background, so with JavaScript
+   off the band is exactly the prism it replaced. The engine drops that
+   background only once it has something of its own to paint.
+   --------------------------------------------------------------------------- */
+.ribbon {
+  position: absolute;
+  left: -10%;
+  right: -10%;
+  width: 120%;
+  pointer-events: none;
+  opacity: var(--ribbon-opacity, 0.8);
+}
+.ribbon[data-live="true"] {
+  background: none;
+}
+
+/* prism-wide: top 44%, height 220 */
+.ribbon-wide {
+  top: 30%;
+  height: 440px;
+  filter: blur(42px);
+  background: linear-gradient(
+    90deg,
+    #ff9933 0%,
+    #ffb066 20%,
+    #fdf6ec 42%,
+    #ffffff 50%,
+    #f0f7ee 58%,
+    #4d9e5f 80%,
+    #138808 100%
+  );
+}
+
+/* prism-sharp: top 52%, height 26 */
+.ribbon-sharp {
+  left: -5%;
+  right: -5%;
+  width: 110%;
+  top: 45%;
+  height: 150px;
+  filter: blur(6px);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #ff9933 18%,
+    #ffd9b3 38%,
+    #ffffff 50%,
+    #cfe8d2 62%,
+    #138808 82%,
+    transparent
+  );
+}
+
+/* prism-soft: top 30%, height 140 */
+.ribbon-soft {
+  top: 16%;
+  height: 330px;
+  filter: blur(36px);
+  background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+}
+
+/* prism-reverse: top 46%, height 120 */
+.ribbon-reverse {
+  top: 33%;
+  height: 300px;
+  filter: blur(30px);
+  background: linear-gradient(90deg, #138808, #cfe8d2 30%, #ffffff 50%, #ffd9b3 70%, #ff9933 100%);
+}
+
+/* New band, behind the FAQ list. */
+.ribbon-faq {
+  top: 34%;
+  height: 280px;
+  filter: blur(38px);
+  opacity: 0.42;
+  background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+}
+
+/* A row that lights under the pointer. --lamp-x is the pointer in the row's
+   own coordinates; --lamp-o fades the whole thing so nothing snaps on. */
+.lamp-row {
+  position: relative;
+  isolation: isolate;
+}
+.lamp-row::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  opacity: var(--lamp-o, 0);
+  transition: opacity var(--dur-row) var(--ease-glide);
+  background: radial-gradient(
+    170px circle at var(--lamp-x, 50%) 50%,
+    color-mix(in oklab, var(--color-accent) 14%, transparent),
+    transparent 72%
+  );
+}
+
+/* The split copy is what a reader selects; the accessible duplicate is not,
+   so copying a heading yields its text once rather than twice. */
+[data-cx] > .sr-only {
+  user-select: none;
+}
 /* ---------------------------------------------------------------------------
    Motion system.
 
@@ -1052,5 +1164,17 @@ input[type="range"].year-slider::-moz-range-thumb {
     animation: none;
     opacity: 1;
     translate: none;
+  }
+  /* Bands stay VISIBLE but still: the engine paints one frame and binds no
+     listeners, and the CSS gradient underneath is what a reader sees anyway. */
+  .ribbon {
+    filter: blur(38px);
+  }
+  .ribbon-sharp {
+    filter: blur(6px);
+  }
+  .lamp-row::before {
+    opacity: 0 !important;
+    transition: none;
   }
 }

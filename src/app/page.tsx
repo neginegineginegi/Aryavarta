@@ -8,6 +8,7 @@ import { getArchiveStats } from "@/lib/db/queries/stats";
 import { revisions } from "@/lib/db/schema";
 import { formatNumber } from "@/lib/format";
 import { and, desc, eq } from "drizzle-orm";
+import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
 
 /**
  * The landing page, built to the Abhilekh design handoff: every section is a
@@ -97,8 +98,8 @@ export default async function HomePage() {
     <div className="mx-auto max-w-[1440px] px-4 pb-4">
       {/* ---------------------------------------------------------------- HERO */}
       <section className="section-card section-tint-hero relative flex min-h-[82vh] flex-col">
-        <div aria-hidden className="prism prism-wide" />
-        <div aria-hidden className="prism prism-sharp" />
+        <TricolorRibbon variant="wide" />
+        <TricolorRibbon variant="sharp" />
 
         <div className="relative flex justify-end px-6 pt-7 sm:px-9">
           <p className="text-right font-mono text-[10px] uppercase leading-[1.7] tracking-[0.12em] text-ink-meta">
@@ -311,7 +312,7 @@ export default async function HomePage() {
 
       {/* --------------------------------------------------------------- ABOUT */}
       <section id="about" className="section-card section-tint relative px-6 py-24 sm:py-28">
-        <div aria-hidden className="prism prism-soft" />
+        <TricolorRibbon variant="soft" />
         <div className="relative mx-auto max-w-[560px] text-[15.5px] leading-[1.75] text-ink-body">
           <p className="lede mb-[22px]">
             Every country keeps records of what its governments did. Far fewer keep an accessible
@@ -336,8 +337,9 @@ export default async function HomePage() {
       </section>
 
       {/* ----------------------------------------------------------------- FAQ */}
-      <section id="faq" className="section-card px-6 py-20 sm:py-24">
-        <div className="mx-auto mb-12 max-w-[520px] text-center">
+      <section id="faq" className="section-card relative px-6 py-20 sm:py-24">
+        <TricolorRibbon variant="faq" />
+        <div className="relative mx-auto mb-12 max-w-[520px] text-center">
           <span className="eyebrow">FAQ</span>
           <h2 className="display-2 mx-0 mb-3.5 mt-5 text-ink">
             Frequently
@@ -348,12 +350,14 @@ export default async function HomePage() {
             Quick answers on sourcing, moderation, and how to contribute.
           </p>
         </div>
-        <FaqAccordion items={FAQS} />
+        <div className="relative">
+          <FaqAccordion items={FAQS} />
+        </div>
       </section>
 
       {/* ----------------------------------------------------------------- CTA */}
       <section className="section-card section-tint relative px-6 py-28 text-center sm:py-32">
-        <div aria-hidden className="prism prism-reverse" />
+        <TricolorRibbon variant="reverse" />
         <div className="relative">
           <h2 className="display-3 mx-0 mb-7 mt-0 text-ink">
             Start with
