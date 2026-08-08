@@ -42,9 +42,12 @@ export default async function InsightsPage() {
           </Link>
         </p>
       ) : (
-        <div className="space-y-4">
-          {groups.map((g) => (
-            <section key={g.key} id={g.key} className="section-card px-6 py-8 sm:px-10">
+        // No wrapper div: card spacing site-wide comes from the
+        // `.section-card + .section-card` sibling rule, and an intermediate
+        // element breaks the chain at the header, gluing it to the first
+        // group. Rendered as direct siblings, every junction gets its 16px.
+        groups.map((g) => (
+          <section key={g.key} id={g.key} className="section-card px-6 py-8 sm:px-10">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
                 <h2 className="font-display text-[28px] font-light leading-tight text-ink">
                   {g.title}
@@ -80,9 +83,8 @@ export default async function InsightsPage() {
                 </span>{" "}
                 {g.method}
               </p>
-            </section>
-          ))}
-        </div>
+          </section>
+        ))
       )}
     </div>
   );
