@@ -48,7 +48,8 @@ is still a snapshot.
 | `7702f48` | Accountability layer phase 3: manifesto promises |
 
 **Interaction roadmap (from the design handoff's 14-evolution-roadmap): P0–P5 all shipped
-except P4 Story Mode**, which is blocked on event approvals (see §4).
+except P4 Story Mode**, which is now UNBLOCKED. It waited on event approvals; the queue is
+clear, the twelve national moments are published, and the scrubber's marker line is live.
 
 ## 3. Architecture notes added this session
 
