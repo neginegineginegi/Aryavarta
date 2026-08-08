@@ -257,6 +257,18 @@ thead th {
 .rec-table td:first-child {
   padding-left: 4px;
 }
+/* Column gutter.
+
+   The padding shorthand above sets 10px 0, and `.rec-table tbody td` is an
+   element-plus-class selector, so it outranks any single-class Tailwind
+   padding utility written on the cell. Callers had been adding pr-4 to these
+   cells for exactly this gutter and it silently did nothing, which is how a
+   180px chart came to sit flush against the source column beside it. The
+   gutter belongs here, where it actually applies. */
+.rec-table thead th + th,
+.rec-table tbody td + td {
+  padding-left: 16px;
+}
 .rec-table th:last-child,
 .rec-table td:last-child {
   padding-right: 4px;

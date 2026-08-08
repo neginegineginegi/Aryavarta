@@ -82,8 +82,35 @@ async function fetchDevelopment(stateId: string): Promise<Map<string, IndicatorS
     if (arr) arr.push(s);
     else byCategory.set(s.category, [s]);
   }
-  return byCategory;
+
+  // Deliberate reading order: people first, then what they live on, then the
+  // sectors. Without this the bands fall in whatever order the alphabetically
+  // first indicator name happens to sit in, which put industrial capacity
+  // above population purely because "Cement" precedes "Gross enrolment".
+  // Categories not named here follow, alphabetically.
+  const rank = new Map(CATEGORY_ORDER.map((c, i) => [c, i]));
+  const ordered = new Map(
+    [...byCategory.entries()].sort(([a], [b]) => {
+      const ra = rank.get(a) ?? Number.MAX_SAFE_INTEGER;
+      const rb = rank.get(b) ?? Number.MAX_SAFE_INTEGER;
+      return ra - rb || a.localeCompare(b);
+    }),
+  );
+  return ordered;
 }
+
+/** Reading order for Development Lens category bands. */
+const CATEGORY_ORDER = [
+  "Demography",
+  "Economy",
+  "Education",
+  "Health",
+  "Infrastructure",
+  "Agriculture",
+  "Industry",
+  "Environment",
+  "Law and order",
+];
 
 export function getDevelopment(stateId: string) {
   return unstable_cache(

@@ -19,7 +19,9 @@ import { formatDate, formatNumber } from "@/lib/format";
 export function DevelopmentSection({ grouped }: { grouped: Array<[string, IndicatorSeries[]]> }) {
   if (grouped.length === 0) return null;
 
-  const cell = "pr-4 align-top";
+  // Column gutters come from .rec-table in globals.css; padding utilities on
+  // these cells are outranked by the table's own rule and do nothing.
+  const cell = "align-top";
 
   return (
     <section className="section-card px-6 py-9 sm:px-10">
@@ -70,8 +72,12 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                           </Link>
                           <span className="block text-[0.72rem] text-ink-faint">{s.unit}</span>
                         </td>
-                        <td className={`${cell} py-2.5 whitespace-nowrap`}>
-                          <span className="tabular-nums font-medium text-ink">
+                        {/* The value never breaks; the reporting period may.
+                            A source that names a full release ("December 2025
+                            (V1) release") would otherwise push the cell into
+                            the trend column. */}
+                        <td className={`${cell} py-2.5`}>
+                          <span className="whitespace-nowrap tabular-nums font-medium text-ink">
                             {formatNumber(latest.value)}
                           </span>{" "}
                           <span className="tabular-nums text-[0.75rem] text-ink-faint">
@@ -93,7 +99,11 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                               ariaLabel={`${s.name}, ${s.values[0].year} to ${latest.year}`}
                             />
                           ) : (
-                            <span className="text-ink-faint">—</span>
+                            // Not missing data: a point-in-time measure. Say so,
+                            // rather than leaving a dash the reader has to guess at.
+                            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                              Snapshot
+                            </span>
                           )}
                         </td>
                         <td className={`${cell} py-2.5 text-[0.78rem]`}>
