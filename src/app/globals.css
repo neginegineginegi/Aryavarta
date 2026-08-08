@@ -506,108 +506,86 @@ thead th {
 }
 
 /* ---------------------------------------------------------------------------
-   Living background: the tricolor bands as canvases.
+   Living background, from design_handoff/17-living-background.
 
-   A canvas can only draw inside itself, so every .ribbon-* box is TALLER than
-   the .prism-* it shadows and sits higher up to compensate. Change one number
-   and you must change its pair, or the wave clips flat against the top edge.
+   Verbatim from the handoff's globals-additions.css with one change: its rules
+   were inside `@layer components`, and everything else in this file is
+   unlayered. An unlayered rule beats a layered one, so in a layer the older
+   .prism-* geometry would have won over .ribbon-*. Unlayered here, they apply
+   as the handoff intends.
+   --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   Ribbon geometry.
 
-   Each canvas carries the same gradient as its background, so with JavaScript
-   off the band is exactly the prism it replaced. The engine drops that
-   background only once it has something of its own to paint.
+   A canvas that paints the same tricolor band as .prism, except the shape is
+   computed per frame. Two differences from the div it replaces: it needs
+   VERTICAL HEADROOM for the wave (roughly 2.5x the band thickness, which is
+   why every top/height below differs from the .prism-* it shadows), and the
+   lean is drawn into the path rather than applied as a rotate, so the ends
+   stay square to the card and antialias cleanly.
    --------------------------------------------------------------------------- */
 .ribbon {
-  position: absolute;
-  left: -10%;
-  right: -10%;
+  display: block;
   width: 120%;
-  pointer-events: none;
+  left: -10%;
+  right: auto;
+}
+  /* The no-JS fallback the handoff's TricolorRibbon comment promises. Its
+     component renders `prism ribbon ribbon-*` without `prism-*`, and the
+     .ribbon-* rules carry no background, so with scripts off the bands were
+     blank. living-field sets `background: none` inline the moment it starts
+     painting, so this only ever shows when the engine is not running. */
+.ribbon-wide {
+  background: linear-gradient(90deg, #ff9933 0%, #ffb066 20%, #fdf6ec 42%, #ffffff 50%, #f0f7ee 58%, #4d9e5f 80%, #138808 100%);
+  top: 38%;
+  height: 320px;
+  filter: blur(42px);
   opacity: var(--ribbon-opacity, 0.8);
 }
-.ribbon[data-live="true"] {
-  background: none;
-}
-
-/* prism-wide: top 44%, height 220 */
-.ribbon-wide {
-  top: 30%;
-  height: 440px;
-  filter: blur(42px);
-  background: linear-gradient(
-    90deg,
-    #ff9933 0%,
-    #ffb066 20%,
-    #fdf6ec 42%,
-    #ffffff 50%,
-    #f0f7ee 58%,
-    #4d9e5f 80%,
-    #138808 100%
-  );
-}
-
-/* prism-sharp: top 52%, height 26 */
 .ribbon-sharp {
+  background: linear-gradient(90deg, transparent, #ff9933 18%, #ffd9b3 38%, #ffffff 50%, #cfe8d2 62%, #138808 82%, transparent);
   left: -5%;
-  right: -5%;
   width: 110%;
   top: 45%;
-  height: 150px;
+  height: 160px;
   filter: blur(6px);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    #ff9933 18%,
-    #ffd9b3 38%,
-    #ffffff 50%,
-    #cfe8d2 62%,
-    #138808 82%,
-    transparent
-  );
+  opacity: 0.7;
+  transform: none;
 }
-
-/* prism-soft: top 30%, height 140 */
 .ribbon-soft {
-  top: 16%;
-  height: 330px;
+  background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+  top: 18%;
+  height: 260px;
   filter: blur(36px);
-  background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+  opacity: 0.5;
+  transform: none;
 }
-
-/* prism-reverse: top 46%, height 120 */
 .ribbon-reverse {
-  top: 33%;
-  height: 300px;
-  filter: blur(30px);
   background: linear-gradient(90deg, #138808, #cfe8d2 30%, #ffffff 50%, #ffd9b3 70%, #ff9933 100%);
-}
-
-/* New band, behind the FAQ list. */
-.ribbon-faq {
   top: 34%;
-  height: 280px;
-  filter: blur(38px);
-  opacity: 0.42;
+  height: 240px;
+  filter: blur(30px);
+  opacity: var(--ribbon-opacity, 0.8);
+  transform: none;
+}
+.ribbon-faq {
   background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
+  top: 0;
+  height: 210px;
+  filter: blur(40px);
+  opacity: 0.32;
 }
 
-/* A row that lights under the pointer. --lamp-x is the pointer in the row's
-   own coordinates; --lamp-o fades the whole thing so nothing snaps on. */
+/* ---------------------------------------------------------------------------
+   Lamp: a highlight that sits under the cursor inside a row, instead of a
+   flat hover colour. --lamp-x/--lamp-y are the pointer in the row's own
+   coordinates; --lamp fades the whole thing out when the pointer leaves.
+   --------------------------------------------------------------------------- */
 .lamp-row {
-  position: relative;
-  isolation: isolate;
-}
-.lamp-row::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: -1;
-  border-radius: inherit;
-  opacity: var(--lamp-o, 0);
-  transition: opacity var(--dur-row) var(--ease-glide);
   background: radial-gradient(
-    170px circle at var(--lamp-x, 50%) 50%,
-    color-mix(in oklab, var(--color-accent) 14%, transparent),
-    transparent 72%
+    190px circle at var(--lamp-x, 50%) var(--lamp-y, 50%),
+    color-mix(in oklab, var(--color-saffron) calc(var(--lamp, 0) * 22%), transparent),
+    transparent 70%
   );
 }
 
@@ -1165,16 +1143,9 @@ input[type="range"].year-slider::-moz-range-thumb {
     opacity: 1;
     translate: none;
   }
-  /* Bands stay VISIBLE but still: the engine paints one frame and binds no
-     listeners, and the CSS gradient underneath is what a reader sees anyway. */
-  .ribbon {
-    filter: blur(38px);
-  }
-  .ribbon-sharp {
-    filter: blur(6px);
-  }
-  .lamp-row::before {
-    opacity: 0 !important;
-    transition: none;
+  /* Bands stay visible but still: the engine paints one frame and binds no
+     listeners under this query. From the handoff's own additions. */
+  .lamp-row {
+    background: none;
   }
 }

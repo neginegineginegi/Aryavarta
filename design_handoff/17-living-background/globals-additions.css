@@ -1,0 +1,76 @@
+/* Append to src/app/globals.css, AFTER the existing .prism block and BEFORE
+   the prefers-reduced-motion block at the end of the file (that block is
+   pinned last on purpose — source order is what makes it win). */
+
+@layer components {
+  /* ---------------------------------------------------------------------------
+     Ribbon geometry.
+
+     A canvas that paints the same tricolor band as .prism, except the shape is
+     computed per frame. Two differences from the div it replaces: it needs
+     VERTICAL HEADROOM for the wave (roughly 2.5x the band thickness, which is
+     why every top/height below differs from the .prism-* it shadows), and the
+     lean is drawn into the path rather than applied as a rotate, so the ends
+     stay square to the card and antialias cleanly.
+     --------------------------------------------------------------------------- */
+  .ribbon {
+    display: block;
+    width: 120%;
+    left: -10%;
+    right: auto;
+  }
+  .ribbon-wide {
+    top: 38%;
+    height: 320px;
+    filter: blur(42px);
+    opacity: var(--ribbon-opacity, 0.8);
+  }
+  .ribbon-sharp {
+    left: -5%;
+    width: 110%;
+    top: 45%;
+    height: 160px;
+    filter: blur(6px);
+    opacity: 0.7;
+    transform: none;
+  }
+  .ribbon-soft {
+    top: 18%;
+    height: 260px;
+    filter: blur(36px);
+    opacity: 0.5;
+    transform: none;
+  }
+  .ribbon-reverse {
+    top: 34%;
+    height: 240px;
+    filter: blur(30px);
+    opacity: var(--ribbon-opacity, 0.8);
+    transform: none;
+  }
+  .ribbon-faq {
+    top: 0;
+    height: 210px;
+    filter: blur(40px);
+    opacity: 0.32;
+  }
+
+  /* ---------------------------------------------------------------------------
+     Lamp: a highlight that sits under the cursor inside a row, instead of a
+     flat hover colour. --lamp-x/--lamp-y are the pointer in the row's own
+     coordinates; --lamp fades the whole thing out when the pointer leaves.
+     --------------------------------------------------------------------------- */
+  .lamp-row {
+    background: radial-gradient(
+      190px circle at var(--lamp-x, 50%) var(--lamp-y, 50%),
+      color-mix(in oklab, var(--color-saffron) calc(var(--lamp, 0) * 22%), transparent),
+      transparent 70%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lamp-row {
+    background: none;
+  }
+}

@@ -1,0 +1,77 @@
+PASTE THIS INTO CLAUDE CODE, FROM YOUR REPO ROOT.
+
+Prerequisite: the folder 17-living-background must exist inside your repo (drop it
+anywhere, e.g. design_handoff/17-living-background/). Claude Code can only read
+files in the checkout it is running in — it cannot see the design project.
+
+---
+
+Read src/lib/cursor-field.ts FIRST and note its real exports and their
+signatures. The instructions below assume a registration function that takes an
+element and a mode ("chars" | "ink") and returns an unregister function; if the
+actual API differs, adapt to it rather than rewriting the engine.
+
+Then read design_handoff/17-living-background/README.md and the three source
+files beside it.
+
+Do ALL FIVE steps. None of them are optional.
+
+1. Copy living-field.ts to src/lib/, TricolorRibbon.tsx and AutoLetters.tsx to
+   src/components/ui/. Append globals-additions.css to src/app/globals.css,
+   after the .prism rules and BEFORE the final prefers-reduced-motion block
+   (that block must stay last in the file).
+
+2. In AutoLetters.tsx, fix the import of registerChars to match the real export
+   name and signature you found in step 0. Do not change what it does.
+
+3. Mount <AutoLetters /> in src/app/layout.tsx, inside <body>, after <Header />.
+   THIS IS THE STEP THAT MAKES HOVER WORK ACROSS THE WHOLE PAGE. Without it,
+   only text explicitly wrapped in <CursorText> reacts, which is why the page
+   currently looks dead.
+
+4. Replace every decorative prism div with the canvas component. Find them by
+   class, not line number:
+     className="prism prism-wide"    -> <TricolorRibbon variant="wide" />
+     className="prism prism-sharp"   -> <TricolorRibbon variant="sharp" />
+     className="prism prism-soft"    -> <TricolorRibbon variant="soft" />
+     className="prism prism-reverse" -> <TricolorRibbon variant="reverse" />
+   They are in src/app/page.tsx and src/app/about/page.tsx. Those are server
+   components; TricolorRibbon carries its own "use client", so the pages stay
+   server-rendered.
+
+5. Patch the scroll wave into src/lib/cursor-field.ts:
+     - import { fieldEnergy, fieldTime } from "@/lib/living-field";
+     - give each registered group a stable numeric seed at registration time if
+       it has none;
+     - in the per-character loop, after the proximity value is computed, add:
+         const wave = Math.min(1, fieldEnergy() * 0.5) * 2.6;
+         const ripple = wave > 0.02
+           ? Math.sin(i * 0.42 + fieldTime() * 2.4 + group.seed) * wave
+           : 0;
+       and add `ripple` to the number of px the character is translated by;
+     - keep the rAF loop alive while fieldEnergy() > 0.002, or the wave stops
+       mid-scroll.
+
+6. Give the FAQ section a ribbon and a lamp: make its card `relative`, add
+   <TricolorRibbon variant="faq" /> as its first child, and on each question's
+   clickable row add `data-lamp` and the `lamp-row` class, removing any flat
+   hover background it has now.
+
+Then run the dev server and report the results of these four checks in the
+browser console. Do not tell me it is done until all four pass:
+
+  document.querySelectorAll('.cx-char').length
+      -> must be in the THOUSANDS on the landing page. 0 means AutoLetters is
+         not mounted (step 3). A few dozen means only <CursorText> is working.
+
+  document.querySelectorAll('canvas.ribbon').length
+      -> must be 4 on the landing page, 1 on /about.
+
+  [...document.querySelectorAll('canvas.ribbon')].map(c => c.width)
+      -> every value > 0. A 0 means the canvas has no laid-out size, usually a
+         missing `relative` on the parent section.
+
+  document.body.scrollWidth === document.documentElement.clientWidth
+      -> true at 320px and at 1440px.
+
+If a check fails, fix the cause and re-run it. Report what you changed.

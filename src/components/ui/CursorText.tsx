@@ -35,7 +35,10 @@ export function CursorText({
   const parts = children.split(/(\s+)/);
 
   return (
-    <Tag ref={ref} className={className} data-cx={mode} {...rest}>
+    // data-auto="skip" keeps AutoLetters off this subtree. Without it the
+    // blanket pass walks `span`, finds both the accessible copy and every
+    // .cx-char below, and splits letters that are already letters.
+    <Tag ref={ref} className={className} data-cx={mode} data-auto="skip" {...rest}>
       {/* One accessible copy of the real string; the letter soup is hidden
           from assistive tech so it is never spelled out one glyph at a time. */}
       <span className="sr-only">{children}</span>

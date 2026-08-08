@@ -1,8 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
-
-import { registerLamp } from "@/lib/living-field";
+import { useState } from "react";
 
 export type Faq = { q: string; a: string };
 
@@ -14,19 +12,9 @@ export type Faq = { q: string; a: string };
 export function FaqAccordion({ items }: { items: Faq[] }) {
   const [open, setOpen] = useState(0);
 
-  // The lamp follows the pointer along the row, so the flat hover fill is
-  // gone: two highlights fighting over the same row reads as a bug.
-  const rows = useRef(new Map<HTMLElement, () => void>());
-  const lampRef = useCallback((el: HTMLElement | null) => {
-    if (el && !rows.current.has(el)) rows.current.set(el, registerLamp(el));
-  }, []);
-  useEffect(() => {
-    const registry = rows.current;
-    return () => {
-      registry.forEach((stop) => stop());
-      registry.clear();
-    };
-  }, []);
+  // The lamp needs no registration: living-field finds the [data-lamp] row
+  // from the pointer's own target. The flat hover fill is gone because two
+  // highlights fighting over one row reads as a bug.
 
   return (
     <div className="mx-auto flex max-w-[640px] flex-col gap-2.5">
@@ -39,7 +27,6 @@ export function FaqAccordion({ items }: { items: Faq[] }) {
               onClick={() => setOpen(isOpen ? -1 : i)}
               aria-expanded={isOpen}
               data-lamp
-              ref={(el) => lampRef(el)}
               className="lamp-row flex w-full cursor-pointer items-center justify-between gap-4 px-5 py-4 text-left"
             >
               <span className="text-[14.5px] font-medium text-ink">{f.q}</span>

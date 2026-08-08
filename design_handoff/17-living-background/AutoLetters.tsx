@@ -96,58 +96,14 @@ export function AutoLetters({ root = "body" }: { root?: string }) {
       scan();
     };
 
+    scan();
     const mo = new MutationObserver(() => {
       if (busy || queued) return;
       queued = requestAnimationFrame(heal);
     });
-
-    // Start AFTER hydration, not on mount. This app streams, so a root effect
-    // fires while React is still claiming later chunks; splitting text it has
-    // not hydrated yet made every route throw "server rendered HTML didn't
-    // match the client", which then de-opts that tree to client rendering.
-    //
-    // Rather than guess a delay, wait for the DOM to go QUIET: hydration is a
-    // burst of childList work, so once nothing has been added or removed for
-    // a beat, React is done. Self-tuning, with a hard cap so a page that
-    // never settles still gets its letters. Attribute mutations are excluded
-    // deliberately, or the cursor field writing inline styles would hold the
-    // page "busy" forever. Behaviour is unchanged, only its start.
-    let cancelled = false;
-    let settleTimer = 0;
-    let capTimer = 0;
-    let settleObserver: MutationObserver | null = null;
-
-    const begin = () => {
-      if (cancelled) return;
-      cancelled = false;
-      settleObserver?.disconnect();
-      settleObserver = null;
-      clearTimeout(settleTimer);
-      clearTimeout(capTimer);
-      scan();
-      mo.observe(host, { childList: true, subtree: true, characterData: true });
-    };
-
-    const waitForQuiet = () => {
-      if (cancelled) return;
-      const bump = () => {
-        clearTimeout(settleTimer);
-        settleTimer = window.setTimeout(begin, 250);
-      };
-      settleObserver = new MutationObserver(bump);
-      settleObserver.observe(host, { childList: true, subtree: true });
-      bump();
-      capTimer = window.setTimeout(begin, 4000);
-    };
-
-    if (document.readyState === "complete") waitForQuiet();
-    else window.addEventListener("load", waitForQuiet, { once: true });
+    mo.observe(host, { childList: true, subtree: true, characterData: true });
 
     return () => {
-      cancelled = true;
-      settleObserver?.disconnect();
-      clearTimeout(settleTimer);
-      clearTimeout(capTimer);
       mo.disconnect();
       if (queued) cancelAnimationFrame(queued);
       for (const c of cleanups) c();
