@@ -172,6 +172,56 @@ will pin down and the validator will then enforce:
 10. Provenance: per-row source or wiki URL columns, and whether to carry
     them into value notes.
 
+## 3b. Inspection result: Global Iron and Steel Tracker, June 2026 (V1)
+
+The file supplied on 2026-08-08 is not a sample of the 241 MB energy CSV: it
+is the complete GEM Global Iron and Steel Tracker unit dataset (489 KB, 3,554
+units worldwide), Creative Commons BY 4.0, recommended citation "Global
+Energy Monitor, Global Iron and Steel Tracker, June 2026 (V1) release."
+
+Ten-point findings:
+
+1. **Columns**: four sheets by furnace type (electric arc 1,408 units, basic
+   oxygen 1,531, induction 605, open hearth 10) sharing a core of plant id,
+   unit id, unit name, wiki URL, country, status, seven lifecycle dates,
+   manufacturer, model and capacity; the EAF and IF sheets add charge-mix
+   percentage columns.
+2. **Types**: ids and vocabularies are strings; the date columns are declared
+   YYYY-MM-DD in the metadata sheet but actually hold bare year floats
+   (2018.0) or the literal string "unknown", which the validator must accept
+   as year-precision or missing.
+3. **Geography**: `Country/area` only. No state column, no coordinates, so
+   state-level attribution is impossible from this file; series are national
+   (`in`) only.
+4. **Dates**: for India, start years are known for 170 of 755 units (23%),
+   and for zero of the 166 basic-oxygen units that carry most capacity.
+5. **Technology**: the sheet is the classification. India: 75 EAF, 166 BOF,
+   514 IF, no OHF.
+6. **Capacity**: `Current capacity (ttpa)`, thousand tonnes per annum, known
+   for 750 of 755 India rows. "Current" is a snapshot at release, not a
+   history.
+7. **Status**: exactly eight categories, matching the metadata sheet.
+8. **Duplicates**: unit ids are globally unique (3,554 of 3,554); plant ids
+   repeat across units by design.
+9. **Missing values**: the literal string "unknown", plus a handful of empty
+   capacity cells.
+10. **Provenance**: a GEM wiki page per row; release, citation and license in
+    the About sheet.
+
+India snapshot at this release: operating 130,091 ttpa across 372 units;
+announced 230,816 ttpa across 315; under construction 37,550 ttpa across 42;
+cancelled 34,848; pre-retirement 918; mothballed 34.
+
+**What this dataset can honestly support**: national snapshot indicators per
+furnace route and status (operating capacity, capacity under construction,
+announced capacity), dated to the release, in a new category. **What it
+cannot support**: a year-by-year historical series. With start years missing
+for 77% of Indian units, including all basic-oxygen capacity, a timeline
+built from the 23% would present a fifth of the industry as if it were the
+whole, and the scrub-the-years experience the energy brief describes is not
+derivable from this file. The energy CSV remains a separate dataset with its
+own pending sample.
+
 ## 4. Decisions that wait for the file
 
 - The indicator set (total capacity, additions, per-technology series) and
