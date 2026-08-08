@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `a07bb3d`.
+Last updated: 2026-08-08, commit `7603cd1`.
 
 ## 1. Current state
 
@@ -23,6 +23,7 @@ is still a snapshot.
 
 | Commit | What |
 | --- | --- |
+| `7603cd1` | Trend captions carry what varies, not the same source 1,425 times |
 | `a07bb3d` | Energy: hydro, nuclear and gas fired power complete the band |
 | `509f9b3` | Energy: solar and wind become the first multi-year indicator series |
 | `4bb01be` | PROGRESS.md rewritten as a durable handoff |
@@ -104,6 +105,11 @@ except P4 Story Mode**, which is blocked on event approvals (see §4).
   which would have refused the gas and oil tracker for being accurate about one retired unit.
   `reconstruction_note()` and `coverage_sentence()` read the counts out instead, and produce
   byte-identical text when the count is zero so nothing already published moves.
+- **`TrendChart` is a client component, so every point's caption ships in the payload.** Naming
+  the source per point on a single-source series put one 44-character string 1,425 times on the
+  hydropower indicator page. `sourcesDiffer()` in `format.ts` gates it; the reporting period
+  always stays, because "2023-24" says something the year does not. Any new per-point prop is
+  paid for once per point, so ask whether it varies before adding it.
 - **Map markers prefer a record that cites a source**, then the earliest date, then earliest
   created. Not a cosmetic tie-break: the seeded 1984 placeholder carries a date while Operation
   Blue Star's record carries only a year, so date-first ordering put a row titled "DEMO:" on the
