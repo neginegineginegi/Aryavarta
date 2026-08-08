@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `509f9b3`.
+Last updated: 2026-08-08, commit `a07bb3d`.
 
 ## 1. Current state
 
@@ -13,14 +13,17 @@ party/person/promise/document pages, contribution flow, moderation queue with di
 detection, revision history, search and question answering, insights, compare, Wikidata import,
 admin, reports/disputes, media archive, manifesto promises, Development Lens.
 
-44 indicators carry 2,676 values. The Development Lens now holds an **Energy** band with the
-archive's first multi-year series: utility-scale solar capacity 2011–2025 (92,754 MW nationally,
-33,452 MW in Rajasthan) and wind 1990–2025 (27,055 MW). Everything else is a snapshot.
+48 indicators carry 4,243 values. The Development Lens holds an **Energy** band with five
+generating technologies as multi-year series, each with its own commissioning history:
+hydropower from 1922 (51,082 MW), nuclear from 1981 (8,240 MW), gas and oil fired from 1989
+(27,363 MW), wind from 1990 (27,055 MW), solar from 2011 (92,754 MW). Everything outside Energy
+is still a snapshot.
 
 ## 2. What this session shipped (newest first)
 
 | Commit | What |
 | --- | --- |
+| `a07bb3d` | Energy: hydro, nuclear and gas fired power complete the band |
 | `509f9b3` | Energy: solar and wind become the first multi-year indicator series |
 | `4bb01be` | PROGRESS.md rewritten as a durable handoff |
 | `e7074c1` | Development Lens: real column gutters, deliberate category order, "Snapshot" label |
@@ -88,11 +91,19 @@ except P4 Story Mode**, which is blocked on event approvals (see §4).
   one row whose "current capacity" is a present-day rating (oldest operating Indian unit 1919,
   all 80 dated units relined), so iron is published as snapshots. That series was built and
   withdrawn; do not rebuild it. Coverage percentages are computed at extract time and written
-  into the methodology text so prose cannot drift from data.
-- **Watch for per-file sentinels.** The GEM iron workbook writes the literal string `unknown`
-  in date cells that the solar and wind trackers leave empty. Treating it as a value counted
-  every row as carrying a retired date. `blank()` in the extractor holds the shared set; check
-  any new file for its own sentinel before trusting a coverage number.
+  into the methodology text so prose cannot drift from data. **The test is decided in the
+  About sheet's column definition, not by looking at the numbers**: "nameplate capacity" is the
+  design rating fixed at commissioning and may become a series; "Current capacity" is a
+  present-day rating and may not.
+- **Watch for per-file sentinels; there are at least three.** Solar and wind leave a date cell
+  empty, the iron workbooks write `unknown`, the gas and oil tracker writes `not found`. Nine
+  undated units hid behind the third spelling. `blank()` in the extractor holds the shared set;
+  check any new file for its own before trusting a coverage number.
+- **Never assert an absence in generated prose.** Solar and wind first claimed "the source
+  records no retired Indian projects" and the extractor exited if that stopped being true,
+  which would have refused the gas and oil tracker for being accurate about one retired unit.
+  `reconstruction_note()` and `coverage_sentence()` read the counts out instead, and produce
+  byte-identical text when the count is zero so nothing already published moves.
 - **Map markers prefer a record that cites a source**, then the earliest date, then earliest
   created. Not a cosmetic tie-break: the seeded 1984 placeholder carries a date while Operation
   Blue Star's record carries only a year, so date-first ordering put a row titled "DEMO:" on the
@@ -117,11 +128,12 @@ except P4 Story Mode**, which is blocked on event approvals (see §4).
    scrubber ticks. This is data completeness, not a defect: the range extends on its own as
    historical terms are imported, and widening the slider past the term data would only show a
    blank map. Importing pre-1978 CM terms is the fix.
-4. **Hydro, coal and thermal have no data.** The energy band currently holds solar and wind
-   only. The same extractor pattern takes GEM's other power trackers unchanged.
+4. **Coal fired power is the one generating technology still missing.** GEM's Global Coal Plant
+   Tracker would complete the band; the extractor takes it with one more `do_*` function.
 
 Resolved this session: the `/review` queue (the user cleared it, so the twelve national moments
-are published and the marker line is live) and the long-missing India power dataset.
+are published and the marker line is live), the long-missing India power dataset, and four of
+the five generating technologies that followed it.
 
 Also parked, lower value: `useReveal` is built and used by nothing; batch review for bulk
 promise extraction; three placeholder documents in `data/inbox/documents.csv` with unverified
