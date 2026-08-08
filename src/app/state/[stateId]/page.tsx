@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
 import { TimelineBand } from "@/components/state/TimelineBand";
+import { DiscoveryStrip } from "@/components/state/DiscoveryStrip";
 import { YearFocus } from "@/components/state/YearFocus";
 import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { DevelopmentSection } from "@/components/state/DevelopmentSection";
@@ -155,6 +156,8 @@ export default async function StatePage({
         formedYear={state.formedOn ? yearOf(state.formedOn) : null}
         dissolvedYear={state.dissolvedOn ? yearOf(state.dissolvedOn) : null}
       />
+
+      <DiscoveryStrip stateId={state.id} />
 
       {/* Chief Ministers */}
       <section className="section-card px-6 py-9 sm:px-10">

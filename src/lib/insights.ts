@@ -52,6 +52,8 @@ export type InsightItem = {
   headline: string;
   detail: string;
   links: InsightLink[];
+  /** Set when the item concerns one state, so record pages can pick their own. */
+  stateId?: string;
 };
 export type InsightGroup = {
   key: string;
@@ -92,6 +94,7 @@ export function computeInsights(
         items: top.map((p) => ({
           headline: `${p.name} · ${formatTenure(p.days)}`,
           detail: p.stateName,
+          stateId: p.stateId,
           links: [
             { label: p.name, href: `/person/${personSlug(p.name)}` },
             { label: p.stateName, href: `/state/${p.stateId}` },
@@ -115,6 +118,7 @@ export function computeInsights(
         method: "Completed CM terms (with an end date), ranked by days between swearing-in and exit.",
         items: completed.map((t) => ({
           headline: `${t.cmName} · ${t.days} days`,
+          stateId: t.stateId,
           detail: `${t.stateName}, ${yearOf(t.startDate)}`,
           links: [
             { label: t.cmName!, href: `/person/${personSlug(t.cmName!)}` },
@@ -148,6 +152,7 @@ export function computeInsights(
         method: "Winner's seats minus the majority mark (⌊seats/2⌋+1), across elections with recorded totals.",
         items: largest.map(({ e, winner, overMark }) => ({
           headline: `${winner.partyName} · ${overMark >= 0 ? "+" : ""}${overMark} over the mark`,
+          stateId: e.stateId,
           detail: `${e.stateName}, ${yearOf(e.electionDate)} (${winner.seatsWon}/${e.totalSeats})`,
           links: [{ label: "Election dashboard", href: `/election/${e.id}` }],
         })),
@@ -160,6 +165,7 @@ export function computeInsights(
         method: "Smallest seat gap between winner and runner-up, across elections with at least two recorded parties.",
         items: closest.map(({ e, winner, runnerUp }) => ({
           headline: `${winner.partyName} by ${winner.seatsWon - runnerUp!.seatsWon} seat${winner.seatsWon - runnerUp!.seatsWon === 1 ? "" : "s"} over ${runnerUp!.partyName}`,
+          stateId: e.stateId,
           detail: `${e.stateName}, ${yearOf(e.electionDate)}`,
           links: [{ label: "Election dashboard", href: `/election/${e.id}` }],
         })),
@@ -182,11 +188,13 @@ export function computeInsights(
         items: [
           {
             headline: `Highest: ${hi.turnoutPercent}%`,
+            stateId: hi.stateId,
             detail: `${hi.stateName}, ${yearOf(hi.electionDate)}`,
             links: [{ label: "Election dashboard", href: `/election/${hi.id}` }],
           },
           {
             headline: `Lowest: ${lo.turnoutPercent}%`,
+            stateId: lo.stateId,
             detail: `${lo.stateName}, ${yearOf(lo.electionDate)}`,
             links: [{ label: "Election dashboard", href: `/election/${lo.id}` }],
           },
@@ -218,6 +226,7 @@ export function computeInsights(
         method: "Count and cumulative duration of recorded President's Rule periods per state.",
         items: top.map((s) => ({
           headline: `${s.stateName} · ${s.count} period${s.count === 1 ? "" : "s"}, ${formatTenure(s.days)}`,
+          stateId: s.stateId,
           detail: "",
           links: [{ label: s.stateName, href: `/state/${s.stateId}` }],
         })),
