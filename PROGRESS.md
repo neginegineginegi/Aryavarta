@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `1794cc1`.
+Last updated: 2026-08-08, commit `9b303d8`.
 
 ## 1. Current state
 
@@ -23,6 +23,7 @@ is still a snapshot.
 
 | Commit | What |
 | --- | --- |
+| `9b303d8` | Living background: tricolor bands become reactive canvases |
 | `1794cc1` | Cursor field and nav dropdowns, built from the spec (files absent) |
 | `7603cd1` | Trend captions carry what varies, not the same source 1,425 times |
 | `a07bb3d` | Energy: hydro, nuclear and gas fired power complete the band |
@@ -115,6 +116,18 @@ clear, the twelve national moments are published, and the scrubber's marker line
   advance widths, so it is banned anywhere a width change reflows neighbours (a centred wrapping
   nav row counts, not just wrapping prose), and mono text always takes `ink` because Plex Mono is
   pinned to 400/500 with no variable axis to interpolate.
+- **Living field** (`src/lib/living-field.ts`): one `energy` number takes scroll, pointer travel
+  and taps, decays exponentially, and scales both wave height and drift. `phase` is pushed by
+  scroll, not time, so a crest travels through a band as the page moves. Also spec-built (files
+  absent; the `Abhilekh Landing.dc.html` in the bundles is the earlier version with no canvas).
+  **A `.ribbon-*` box is taller than the `.prism-*` it shadows and sits higher to compensate** so
+  the wave has headroom; change one number and you must change its pair. Each canvas keeps the
+  prism's gradient as a CSS background so bands survive with JavaScript off.
+- **`AutoLetters` mutates DOM React owns.** The MutationObserver heal is what makes that
+  survivable and it must ignore its own writes (`busy`). It registers everything as `ink` and
+  skips Devanagari (conjuncts break when split), prose over 420 chars, and anything inside a
+  table, form control or SVG. If letters vanish from one section, that section re-renders faster
+  than the heal: wrap it in `<CursorText>` and mark it `data-no-letters`.
 - **A closed dropdown must be `display:none`, not merely hidden.** `visibility:hidden` leaves the
   box in the scroll extent, so an off-viewport panel hands every visitor a horizontal scrollbar
   with all menus shut. Below md the panel spans the nav row by making `.nav-entry` position:static
