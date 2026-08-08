@@ -50,7 +50,15 @@ function eventsDuring(detail: ElectionDetail, events: EventSummary[]): EventSumm
   return events.filter((e) => e.year >= from && e.year <= to).slice(0, 12);
 }
 
-function SidePanel({ detail, events }: { detail: ElectionDetail; events: EventSummary[] }) {
+function SidePanel({
+  detail,
+  events,
+  side,
+}: {
+  detail: ElectionDetail;
+  events: EventSummary[];
+  side: "a" | "b";
+}) {
   const { election, formedTerm } = detail;
   const overview = buildOverview(election, formedTerm);
   return (
@@ -71,7 +79,11 @@ function SidePanel({ detail, events }: { detail: ElectionDetail; events: EventSu
       </div>
 
       {election.results.length > 0 && (
-        <SeatBar results={election.results} totalSeats={election.totalSeats} />
+        <SeatBar
+          results={election.results}
+          totalSeats={election.totalSeats}
+          morphKey={`compare-${side}`}
+        />
       )}
 
       {overview.length > 0 && (
@@ -310,8 +322,8 @@ export default async function ComparePage({
       {left && right && (
         <div className="space-y-8 pb-6">
           <div className="flex flex-col gap-5 lg:flex-row">
-            <SidePanel detail={left} events={leftEvents} />
-            <SidePanel detail={right} events={rightEvents} />
+            <SidePanel detail={left} events={leftEvents} side="a" />
+            <SidePanel detail={right} events={rightEvents} side="b" />
           </div>
 
           <section>

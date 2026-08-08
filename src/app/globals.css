@@ -672,6 +672,18 @@ thead th {
   color: var(--color-paper-raised);
 }
 
+/* Seat bar morph: segments glide to their new share, the majority mark
+   slides to its new position. Panel timing, because a whole result changing
+   is the largest data movement on the page. */
+.seat-seg {
+  transition:
+    width var(--dur-panel) var(--ease-glide),
+    opacity var(--dur-row) ease;
+}
+.seat-mark {
+  transition: left var(--dur-panel) var(--ease-glide);
+}
+
 /* View crossfade: the outgoing view falls away, then the incoming one rises.
    Sequential rather than simultaneous, so the two never overlap mid-swap. */
 .view-swap {
@@ -853,6 +865,10 @@ input[type="range"].year-slider::-moz-range-thumb {
   .reveal,
   .card-hover,
   .map-state,
+  .seat-seg,
+  .seat-mark,
+  .seg-ind,
+  .view-swap,
   .rec-table tbody td {
     transition: none;
   }
