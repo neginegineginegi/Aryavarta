@@ -73,3 +73,21 @@ rating fixed at commissioning. The iron workbooks name theirs "Current
 capacity", a present-day rating, and are snapshots for that reason. Read the
 About sheet's definition before deciding whether a file can become a series;
 do not infer it from the numbers.
+
+## Batch 5, obtained 2026-08-08
+
+Same transform, extended: `scripts/one-off/extract-gem-power-2026.py`. Coal was
+the last generating technology missing from the Energy band, and it is by far
+the largest.
+
+| File | SHA-256 | Verdict |
+| --- | --- | --- |
+| Global_Integrated_Power_August_2026.xlsx (28,785,579 B) | 8a5b3c361b195cbe1cb1430d42e6f557f765e528d4ccbe4574c0e0edd1c4a421 | Ingested, COAL AND BIOENERGY ONLY. 182,592 rows covering every technology in one sheet; the other five come from their dedicated trackers so each series cites the release it was built from. That split was checked, not assumed: this file reports 679 operating Indian wind units at 38,937 MW and 21 nuclear units at 8,240 MW, matching the dedicated trackers exactly. Coal is a series (862 operating units, 254,433 MW, 100.0 per cent of capacity dated, 22 states, none missing, 1965 to 2026). Bioenergy is a snapshot: only 58.6 per cent of its capacity carries a commissioning year. |
+| Global_Coal_Mine_Tracker_May_2026.xlsx (2,649,198 B) | 8a51bb5b82c73ef9745696e58d9c53f9aa1c92b6f5e6f8fcfe3781bc4213a80a | Ingested as a SNAPSHOT: coal mine capacity by state, 349 operating mines, 1,388 mtpa, 12 states, none missing. Supersedes batch 3's refusal of the methane tracker's coal mines, which carried only coordinates. No series: capacity is a present-day rating and only 57.3 per cent of mines record an opening year. Production is not published either, because each figure carries its own year of production rather than a common one. |
+| GeothermalPowerTrackerMarch2026Final.xlsx (180,369 B) | 27576c580dc53697ea4e11e8ce00378a7877ac37c6c47a820ea4f13bacb54a00 | Not ingested: **zero India rows**. India has no tracked geothermal generation. |
+| GlobalBioenergyPowerTrackerGBPTV3.xlsx (1,152,083 B) | 4799a4dae94addf2f5b96e8eb4beb5f2ca7683659fd262020c5f3a1f9ad45590 | Not ingested directly: it holds the same 158 Indian units as the integrated tracker but names a state for only 19 of them against 149. The integrated file is used instead, for the same data with the geography filled in. |
+| GEMGOITOilNGLPipelines202606.xlsx (573,063 B) | 48423b71e77e172d6598f022961b074835a0f80ed909e3b9c06d8c6618825cb0 | Not ingested: 24 Indian rows, and a pipeline is linear infrastructure with a start state and an end state rather than a location. Summing segment capacities would also double-count where segments overlap on one route. |
+
+Where two files carry the same asset, prefer the one whose geography is
+complete, and say which was used. Two of this batch's five are duplicates or
+empties rather than new data.

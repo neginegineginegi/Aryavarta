@@ -327,6 +327,30 @@ extraction tracker entirely, because 15 of its 19 India fields carry no
 subnational unit (11 being offshore) and its production sheet holds 14 rows in
 mixed units across scattered years.
 
+## 3f. Batch 5: coal completes the band (2026-08-08)
+
+Coal fired power is in, and it is the largest series the archive holds: 254,433
+MW against solar's 92,754, from 1965 to 2026, with 100.0 per cent of operating
+capacity carrying a commissioning year and every unit naming a state. The
+Energy band now reads coal, gas and oil, hydropower, nuclear, solar and wind as
+series, plus bioenergy as a snapshot.
+
+**When two files hold the same asset, prefer the one whose geography is
+complete, and say which was used.** The Global Integrated Power tracker carries
+every technology in one sheet. Only coal and bioenergy are read from it: the
+other five keep citing their dedicated trackers. That split was verified rather
+than assumed, by checking that the integrated file reproduces the dedicated
+ones exactly (679 operating Indian wind units at 38,937 MW; 21 nuclear at
+8,240 MW). Conversely the dedicated bioenergy tracker was set aside, because it
+names a state for 19 of 158 Indian units where the integrated file names one
+for 149.
+
+Two of the five files produced nothing. The geothermal tracker has **zero India
+rows**. The oil and NGL pipeline tracker has 24, and a pipeline is linear
+infrastructure with a start state and an end state rather than a location;
+summing segment capacities would double-count overlapping segments on one
+route.
+
 ## 4. Decisions that wait for the file
 
 Answered for solar and wind by batch 3; still open for any future dataset.

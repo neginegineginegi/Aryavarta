@@ -650,6 +650,188 @@ def do_iron(units_path: str, plants_path: str, ind: list[str], val: list[str]) -
                   "and are excluded")
 
 
+# --- coal-fired power and bioenergy, from the integrated tracker -------------
+
+# The Global Integrated Power tracker carries every technology in one sheet, so
+# it is read ONCE for both. Only coal and bioenergy are taken from it: solar,
+# wind, hydropower, nuclear and gas/oil already come from their own dedicated
+# trackers, and each series should cite the release it was actually built from.
+# Cross-checked before choosing that split, and the two files agree: this one
+# reports 679 operating Indian wind units at 38,937 MW and 21 nuclear units at
+# 8,240 MW, matching the dedicated trackers exactly.
+
+INTEGRATED_SHEET = "Power facilities"
+INTEGRATED_COLS = ["Type", "Country/area", "Capacity (MW)", "Status", "Start year",
+                   "Retired year", "Subnational unit (state, province)", "Technology"]
+INTEGRATED_YEAR = 2026  # the August 2026 release
+INTEGRATED_TITLE = "Global Energy Monitor, Global Integrated Power Tracker, August 2026 release"
+INTEGRATED_URL = "https://globalenergymonitor.org/projects/global-integrated-power-tracker/"
+
+
+def do_integrated(path: str, ind: list[str], val: list[str]) -> None:
+    wb, rows, ix = open_sheet(path, INTEGRATED_SHEET, INTEGRATED_COLS)
+    coal = Series("coal-power-capacity-operating", "Coal fired power capacity, operating",
+                  "MW", "Energy")
+    coal_retired = 0
+    bio_state: dict[str, float] = defaultdict(float)
+    bio_state_n: dict[str, int] = defaultdict(int)
+    bio_units = bio_dated = bio_nostate = 0
+    bio_total = bio_nostate_mw = bio_dated_mw = 0.0
+    tech: dict[str, float] = defaultdict(float)
+
+    for r in rows:
+        if r[ix["Country/area"]] != "India":
+            continue
+        kind = str(r[ix["Type"]]).strip().lower()
+        if kind not in ("coal", "bioenergy"):
+            continue
+        status = str(r[ix["Status"]]).strip().lower()
+        if kind == "coal" and not blank(r[ix["Retired year"]]):
+            coal_retired += 1
+        if status != "operating":
+            continue
+        cap = number(r[ix["Capacity (MW)"]])
+        if cap is None:
+            sys.exit(f"FATAL: integrated: operating Indian {kind} row with unreadable capacity")
+        st = r[ix["Subnational unit (state, province)"]]
+        state = None if blank(st) else str(st).strip()
+        if kind == "coal":
+            coal.add(state, year_of(r[ix["Start year"]]), cap)
+            tech[str(r[ix["Technology"]]).strip() or "unknown"] += cap
+        else:
+            bio_units += 1
+            bio_total += cap
+            if not blank(r[ix["Start year"]]):
+                bio_dated += 1
+                bio_dated_mw += cap
+            if state is None:
+                bio_nostate += 1
+                bio_nostate_mw += cap
+            else:
+                bio_state[state] += cap
+                bio_state_n[state] += 1
+    wb.close()
+
+    # --- coal: a series, and the largest one in the archive -------------------
+    sub = tech.get("subcritical", 0.0)
+    sup = tech.get("supercritical", 0.0) + tech.get("ultra-supercritical", 0.0)
+    coal_method = (
+        "Cumulative capacity of coal fired power units with status operating, summed over the "
+        "units whose recorded commissioning year is the stated year or earlier. Taken from the "
+        "integrated tracker rather than a coal-specific one; the same file's wind and nuclear "
+        "rows reproduce the dedicated trackers exactly, which is why the other technologies are "
+        "not read from it. "
+        + coverage_sentence(coal, "unit", "MW")
+        + "Every operating Indian unit carries a state, so the state values sum to the national "
+        f"one. By steam cycle, {grouped(sub)} MW of operating capacity is subcritical and "
+        f"{grouped(sup)} MW supercritical or ultra-supercritical; the distinction is the "
+        "source's own and is reported, not scored. This is generating capacity and not "
+        "generation or emissions. "
+        + reconstruction_note(coal_retired, "unit")
+    )
+    emit(coal, coal_method, INTEGRATED_TITLE, INTEGRATED_URL, ind, val)
+
+    # --- bioenergy: a snapshot, because only 59 per cent of it can be dated ---
+    bad = set(bio_state) - KNOWN_STATES
+    if bad:
+        sys.exit(f"FATAL: bioenergy: state name(s) not in the states table: {sorted(bad)}")
+    bio_method = (
+        "Sum of capacity over Indian bioenergy power units with status operating, as at the "
+        f"August 2026 release. Covers {bio_units} units totalling {grouped(bio_total)} MW, "
+        "burning agricultural waste, wood, municipal and industrial refuse and paper mill "
+        "wastes. No year-by-year series is published: only "
+        f"{pct(bio_dated_mw, bio_total)} per cent of that capacity carries a commissioning "
+        "year, so a cumulative curve would understate the fleet by more than a third and "
+        "would say more about what the source knows than about what was built. "
+        + (f"{grouped(bio_nostate_mw)} MW sits in {bio_nostate} unit"
+           f"{'s' if bio_nostate != 1 else ''} with no recorded state, which the national "
+           "figure includes and no state figure does, so the state values do not sum to the "
+           "national one. "
+           if bio_nostate else
+           "Every unit carries a state, so the state values sum to the national one. ")
+    )
+    ind.append(",".join(["bioenergy-capacity-operating", q("Bioenergy power capacity, operating"),
+                         q("MW"), q("Energy"), q(bio_method)]) + "\n")
+    for geo, value in [("India", bio_total)] + sorted(bio_state.items()):
+        n = bio_units if geo == "India" else bio_state_n[geo]
+        val.append(",".join([
+            "bioenergy-capacity-operating", q(geo), str(INTEGRATED_YEAR), fmt(value),
+            q(INTEGRATED_TITLE), INTEGRATED_URL, q("August 2026 release"), q(ORG),
+            q(f"{n} operating unit{'s' if n != 1 else ''}."), VERIFIED_ON,
+        ]) + "\n")
+    print(f"  bioenergy-capacity-operating: {len(bio_state) + 1} snapshot values "
+          f"({len(bio_state)} states plus India), {bio_units} units, {fmt(bio_total)} MW, "
+          f"{pct(bio_dated_mw, bio_total)}% dated (series withheld)")
+
+
+# --- coal mines --------------------------------------------------------------
+
+MINE_COLS = ["Country / Area", "State, Province", "Status", "Capacity (Mtpa)",
+             "Production (Mtpa)", "Opening Year", "Mine Type"]
+MINE_YEAR = 2026  # the May 2026 release
+
+
+def do_coal_mines(path: str, ind: list[str], val: list[str]) -> None:
+    """Coal mine capacity by state, as a snapshot.
+
+    Supersedes batch 3's refusal of the methane tracker's coal mines, which
+    carried only latitude and longitude. This is the dedicated tracker and
+    every operating Indian mine names its state.
+    """
+    wb, rows, ix = open_sheet(path, "Non-closed mines", MINE_COLS)
+    by_state: dict[str, float] = defaultdict(float)
+    by_state_n: dict[str, int] = defaultdict(int)
+    units = missing = dated = 0
+    total = 0.0
+    for r in rows:
+        if r[ix["Country / Area"]] != "India":
+            continue
+        if str(r[ix["Status"]]).strip().lower() != "operating":
+            continue
+        cap = number(r[ix["Capacity (Mtpa)"]])
+        if cap is None:
+            missing += 1
+            continue
+        st = r[ix["State, Province"]]
+        if blank(st):
+            sys.exit("FATAL: coal mines: operating Indian mine with no state")
+        if not blank(r[ix["Opening Year"]]):
+            dated += 1
+        units += 1
+        total += cap
+        by_state[str(st).strip()] += cap
+        by_state_n[str(st).strip()] += 1
+    wb.close()
+    bad = set(by_state) - KNOWN_STATES
+    if bad:
+        sys.exit(f"FATAL: coal mines: state name(s) not in the states table: {sorted(bad)}")
+    method = (
+        "Sum of capacity over Indian coal mines with status operating, as at the May 2026 "
+        f"release. Covers {units} mines; {missing} operating Indian mine"
+        f"{'s' if missing != 1 else ''} record no capacity and "
+        f"{'are' if missing != 1 else 'is'} excluded. This is what the mines are built to "
+        "extract, not what they "
+        "extracted. Two things in the workbook are deliberately not published: its production "
+        "column, because each figure carries its own year of production rather than a common "
+        f"one, and any year-by-year series, because only {pct(dated, units)} per cent of these "
+        "mines record an opening year and capacity is a present-day rating that cannot be laid "
+        "on the year a mine opened."
+    )
+    ind.append(",".join(["coal-mine-capacity-operating", q("Coal mine capacity, operating"),
+                         q("mtpa"), q("Industry"), q(method)]) + "\n")
+    title = "Global Energy Monitor, Global Coal Mine Tracker, May 2026 release"
+    url = "https://globalenergymonitor.org/projects/global-coal-mine-tracker/"
+    for geo, value in [("India", total)] + sorted(by_state.items()):
+        n = units if geo == "India" else by_state_n[geo]
+        val.append(",".join([
+            "coal-mine-capacity-operating", q(geo), str(MINE_YEAR), fmt(value), q(title), url,
+            q("May 2026 release"), q(ORG),
+            q(f"{n} operating mine{'s' if n != 1 else ''}."), VERIFIED_ON,
+        ]) + "\n")
+    print(f"  coal-mine-capacity-operating: {len(by_state) + 1} snapshot values "
+          f"({len(by_state)} states plus India), {units} mines, {fmt(total)} mtpa")
+
+
 ORE_COLS = ["Country/Area", "Subnational unit", "Operating status", "Design capacity (ttpa)",
             "Production 2024 (ttpa)", "Production 2023 (ttpa)", "Production 2022 (ttpa)",
             "Start date"]
@@ -751,9 +933,16 @@ def main() -> None:
     if p := arg("--iron-ore"):
         print("iron ore mines:")
         do_iron_ore(p, ind, val)
+    if p := arg("--integrated"):
+        print("coal fired power and bioenergy:")
+        do_integrated(p, ind, val)
+    if p := arg("--coal-mines"):
+        print("coal mines:")
+        do_coal_mines(p, ind, val)
     if not ind:
         sys.exit("nothing to do: pass at least one of --solar, --wind, --hydro, --nuclear, "
-                 "--gas-oil, --iron-ore, or --iron-units with --iron-plants")
+                 "--gas-oil, --integrated, --coal-mines, --iron-ore, or --iron-units "
+                 "with --iron-plants")
     (out / "indicators.add.csv").write_text(OUT_IND + "".join(ind))
     (out / "indicator_values.add.csv").write_text(OUT_VAL + "".join(val))
     print(f"\nwrote {len(ind)} indicators and {len(val)} values to {out}/")
