@@ -52,3 +52,24 @@ Sentinel warning for future releases: the iron unit workbook writes the literal
 string `unknown` in date cells that the solar and wind trackers leave empty.
 Treating that as a value counted every row as carrying a retired date. Check
 each new file for its own sentinel before trusting any coverage number.
+
+## Batch 4, obtained 2026-08-08
+
+Same transform, extended: `scripts/one-off/extract-gem-power-2026.py`. Three
+more generating technologies complete the Energy band; all are CC BY 4.0 with
+no non-commercial upstream.
+
+| File | SHA-256 | Verdict |
+| --- | --- | --- |
+| GlobalHydropowerTrackerMarch2026.xlsx (1,837,746 B) | 89193c207e1e5c5da5a264a08bd01f9578d68f066503d0f2f260db0dd9ec4088 | Ingested: cumulative operating hydropower capacity, 1922 to 2025, by state and for India. 224 operating India projects, every one carrying both a commissioning year and a state. One project crosses into Nepal; only the India-side capacity the file itself splits out is counted. Conventional storage, run-of-river and pumped storage are summed together and the methodology says pumped storage is a store rather than a source. |
+| GlobalNuclearPowerTrackerSeptember2025.xlsx (446,154 B) | 4d4bfe9dccc2df5270addd5f7a29d8ea5ca2f9591dd095b013cbe5011a9cc1d8 | Ingested: cumulative operating nuclear capacity, 1981 to 2025, by state and for India. Cleanest file received: 21 of 21 operating units dated and located, no threshold, no retirements. Gross nameplate capacity, not the design-net or reference-net columns beside it. |
+| GlobalOilandGasPlantTrackerGOGPTJanuary2026.xlsx (3,248,102 B) | d64dc73be3e87e8857dc366148509684fcd12e980c33d15dd4dbed217a0d769c | Ingested: cumulative operating gas and oil fired power capacity, 1989 to 2025, by state and for India. 91 of 100 operating units dated (97.0 per cent of capacity); the nine undated carry the sentinel `not found`, a third spelling after empty and `unknown`. One retired India unit exists and the methodology reports it rather than claiming none. |
+| GlobalIronOreMinesTrackerAugust2025V1.xlsx (202,831 B) | f5a14aa5cbb6c4d3cc3584451b9102d95564588a58c40a472dc7745cf5c63cd4 | Ingested as a SNAPSHOT only: iron ore mine design capacity by state, 220 operating mines, 500,862 ttpa. Two refusals recorded in the methodology itself: design capacity is a present-day rating so it cannot be laid on a commissioning axis, and the 2022/2023/2024 production columns are reported by 181, 167 and 130 mines respectively, so a three-point series would show the reporting count falling and read as production falling. |
+| GlobalOilandGasExtractionTrackerMarch2026.xlsx (5,393,993 B) | 10ed7bc007e47895c2f387449365c20d0a87679cb8c69be678d0cc60df4d1aa5 | Not ingested: 19 India fields, of which 15 have a blank subnational unit (11 are offshore and have no state by nature). The production sheet holds 14 rows across 7 fields in mixed units (million m3/y and million bbl/y) with data years scattered from 2011 to 2024, so neither a state series nor a national total can be built from it. |
+
+**The nameplate test.** Hydro and nuclear passed on Global Energy Monitor's own
+column definition, which calls the figure "nameplate capacity", the design
+rating fixed at commissioning. The iron workbooks name theirs "Current
+capacity", a present-day rating, and are snapshots for that reason. Read the
+About sheet's definition before deciding whether a file can become a series;
+do not infer it from the numbers.

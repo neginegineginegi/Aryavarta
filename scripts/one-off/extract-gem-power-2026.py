@@ -172,6 +172,45 @@ def grouped(v: float) -> str:
     return f"{v:,.0f}" if abs(v - round(v)) < 1e-9 else f"{v:,.1f}"
 
 
+def coverage_sentence(s: "Series", noun: str, unit: str) -> str:
+    """How much of the operating fleet the series can actually place in time.
+
+    Written from the counts rather than asserted, because a sentinel spelling
+    nobody expected can move a file off 100 per cent between releases. The gas
+    and oil tracker writes "not found" where solar leaves a cell empty and iron
+    writes "unknown"; only the shared sentinel set found the nine undated units
+    that made a hand-written "all 100 of 100" false.
+    """
+    if s.dated_units == s.total_units:
+        return (f"All {s.total_units} operating Indian {noun}s carry a commissioning year and "
+                f"a state, covering {grouped(s.dated_cap)} {unit}. ")
+    return (f"Of {s.total_units} operating Indian {noun}s {s.dated_units} carry a commissioning "
+            f"year, being {grouped(s.dated_cap)} {unit} of {grouped(s.total_cap)} {unit} "
+            f"({pct(s.dated_cap, s.total_cap)} per cent of operating capacity); the undated "
+            "remainder is absent from every year. ")
+
+
+def reconstruction_note(retired: int, noun: str) -> str:
+    """The tail every cumulative series carries, told from the data.
+
+    Solar and wind originally asserted "the source records no retired Indian
+    projects" and the extractor exited if that stopped being true. That is the
+    wrong shape: the gas and oil tracker legitimately holds a retired Indian
+    unit, and a dataset must not be refused for being accurate. The count is
+    read out instead, so the sentence cannot become false.
+    """
+    tail = (
+        f"The series is reconstructed from the fleet operating at the release date, so a {noun} "
+        "commissioned and later retired does not appear; "
+    )
+    if retired == 0:
+        return tail + f"the source records no retired Indian {noun}s."
+    return (
+        tail + f"the source records {retired} retired Indian {noun}"
+        f"{'s' if retired != 1 else ''}, excluded here and absent from every year."
+    )
+
+
 class Series:
     """Cumulative-stock builder for one indicator.
 
@@ -297,15 +336,12 @@ def do_solar(path: str, ind: list[str], val: list[str]) -> None:
         f"operating Indian capacity {pct(rating.get('MWac', 0), total)} per cent is stated "
         f"MWac, {pct(rating.get('MWp/dc', 0), total)} per cent MWp/dc and "
         f"{pct(rating.get('unknown', 0), total)} per cent unspecified. The ratings are summed "
-        "as published and are not converted between bases. The series is reconstructed from "
-        "the fleet operating at the release date, so a project commissioned and later "
-        "retired does not appear; the source records no retired Indian projects. Records for "
-        f"{tz} Indian projects derive partly or wholly from the TransitionZero Solar Asset "
-        f"Mapper, distributed under CC BY-NC 4.0, and {wksl} from the wiki-solar.org dataset."
+        "as published and are not converted between bases. "
+        + reconstruction_note(retired, "project")
+        + f" Records for {tz} Indian projects derive partly or wholly from the TransitionZero "
+        f"Solar Asset Mapper, distributed under CC BY-NC 4.0, and {wksl} from the "
+        "wiki-solar.org dataset."
     )
-    if retired:
-        sys.exit(f"FATAL: solar: {retired} Indian rows carry a retired year; the "
-                 "no-retirements claim in the methodology is no longer true")
     emit(s, method, "Global Energy Monitor, Global Solar Power Tracker, February 2026 release",
          "https://globalenergymonitor.org/projects/global-solar-power-tracker/", ind, val)
 
@@ -357,15 +393,141 @@ def do_wind(path: str, ind: list[str], val: list[str]) -> None:
             "Every dated project carries a state, so the state values sum to the national "
             "one. "
         )
-        + "The series is reconstructed from the fleet operating at the release date, so a "
-        "project commissioned and later retired does not appear; the source records no "
-        "retired Indian projects."
+        + reconstruction_note(retired, "project")
     )
-    if retired:
-        sys.exit(f"FATAL: wind: {retired} Indian rows carry a retired year; the "
-                 "no-retirements claim in the methodology is no longer true")
     emit(s, method, "Global Energy Monitor, Global Wind Power Tracker, February 2026 release",
          "https://globalenergymonitor.org/projects/global-wind-power-tracker/", ind, val)
+
+
+# --- hydropower, nuclear, gas and oil fired power -----------------------------
+
+# All three pass the nameplate test: Global Energy Monitor's own column
+# definition calls the figure "nameplate capacity" (hydro adds "of the
+# project", nuclear "of the unit"), which is the design rating fixed when the
+# asset was commissioned. The iron workbook by contrast names its column
+# "Current capacity", a present-day rating, which is why iron is snapshots.
+# Quote the source's wording before deciding; do not infer it from the numbers.
+
+HYDRO_COLS = ["Country/Area 1", "Country/Area 2", "Binational", "Capacity (MW)",
+              "Country/Area 1 Capacity (MW)", "Status", "Start Year", "Retired Year",
+              "State/Province 1", "Technology Type"]
+
+
+def do_hydro(path: str, ind: list[str], val: list[str]) -> None:
+    wb, rows, ix = open_sheet(path, "Data", HYDRO_COLS)
+    s = Series("hydro-capacity-operating", "Hydropower capacity, operating", "MW", "Energy")
+    retired = binational = 0
+    for r in rows:
+        if r[ix["Country/Area 2"]] == "India":
+            sys.exit("FATAL: hydro: India appears as Country/Area 2; the India-side capacity "
+                     "would have to come from the Country/Area 2 columns, which this does not read")
+        if r[ix["Country/Area 1"]] != "India":
+            continue
+        if not blank(r[ix["Retired Year"]]):
+            retired += 1
+        if str(r[ix["Status"]]).strip().lower() != "operating":
+            continue
+        # A binational project's total spans a border. Take only the India-side
+        # capacity the source itself splits out, never the whole dam.
+        if str(r[ix["Binational"]]).strip().lower() == "yes":
+            binational += 1
+            cap = number(r[ix["Country/Area 1 Capacity (MW)"]])
+            if cap is None:
+                sys.exit("FATAL: hydro: binational Indian project with no Country/Area 1 capacity")
+        else:
+            cap = number(r[ix["Capacity (MW)"]])
+        if cap is None:
+            sys.exit(f"FATAL: hydro: operating Indian row with unreadable capacity: {r[:4]}")
+        st = r[ix["State/Province 1"]]
+        s.add(None if blank(st) else str(st).strip(), year_of(r[ix["Start Year"]]), cap)
+    wb.close()
+    method = (
+        "Cumulative nameplate capacity of hydropower projects with status operating, summed "
+        "over the projects whose recorded commissioning year is the stated year or earlier. "
+        "Conventional storage, run-of-river and pumped storage are counted together; pumped "
+        "storage consumes more electricity than it returns and is a store rather than a "
+        "source, so a total that includes it is not a generation figure. "
+        + coverage_sentence(s, "project", "MW")
+        + (f"{binational} operating project crosses an international border; only the "
+           "India-side capacity the source splits out is counted, never the whole project. "
+           if binational else "")
+        + reconstruction_note(retired, "project")
+    )
+    emit(s, method, "Global Energy Monitor, Global Hydropower Tracker, March 2026 release",
+         "https://globalenergymonitor.org/projects/global-hydropower-tracker/", ind, val)
+
+
+NUCLEAR_COLS = ["Country/Area", "Capacity (MW)", "Status", "Start Year", "Retirement Year",
+                "State/Province", "Reactor Type"]
+
+
+def do_nuclear(path: str, ind: list[str], val: list[str]) -> None:
+    wb, rows, ix = open_sheet(path, "Data", NUCLEAR_COLS)
+    s = Series("nuclear-capacity-operating", "Nuclear capacity, operating", "MW", "Energy")
+    retired = 0
+    for r in rows:
+        if r[ix["Country/Area"]] != "India":
+            continue
+        if not blank(r[ix["Retirement Year"]]):
+            retired += 1
+        if str(r[ix["Status"]]).strip().lower() != "operating":
+            continue
+        cap = number(r[ix["Capacity (MW)"]])
+        if cap is None:
+            sys.exit(f"FATAL: nuclear: operating Indian row with unreadable capacity: {r[:4]}")
+        st = r[ix["State/Province"]]
+        s.add(None if blank(st) else str(st).strip(), year_of(r[ix["Start Year"]]), cap)
+    wb.close()
+    method = (
+        "Cumulative nameplate capacity of nuclear reactor units with status operating, summed "
+        "over the units whose recorded commissioning year is the stated year or earlier. The "
+        "tracker applies no capacity threshold, so every tracked Indian reactor is included. "
+        + coverage_sentence(s, "unit", "MW")
+        + "Capacity is the gross nameplate rating; the workbook also carries design net and "
+        "reference net capacity, which are smaller and are not what this series reports. "
+        + reconstruction_note(retired, "unit")
+    )
+    emit(s, method, "Global Energy Monitor, Global Nuclear Power Tracker, September 2025 release",
+         "https://globalenergymonitor.org/projects/global-nuclear-power-tracker/", ind, val)
+
+
+GOGPT_COLS = ["Country/Area", "Capacity (MW)", "Status", "Start year", "Retired year",
+              "State/Province", "Fuel"]
+
+
+def do_gas_oil(path: str, ind: list[str], val: list[str]) -> None:
+    wb, rows, ix = open_sheet(path, "Gas & Oil Units", GOGPT_COLS)
+    s = Series("gas-oil-power-capacity-operating", "Gas and oil fired power capacity, operating",
+               "MW", "Energy")
+    retired = 0
+    for r in rows:
+        if r[ix["Country/Area"]] != "India":
+            continue
+        if not blank(r[ix["Retired year"]]):
+            retired += 1
+        if str(r[ix["Status"]]).strip().lower() != "operating":
+            continue
+        cap = number(r[ix["Capacity (MW)"]])
+        if cap is None:
+            sys.exit(f"FATAL: gas/oil: operating Indian row with unreadable capacity: {r[:4]}")
+        st = r[ix["State/Province"]]
+        s.add(None if blank(st) else str(st).strip(), year_of(r[ix["Start year"]]), cap)
+    wb.close()
+    method = (
+        "Cumulative capacity of power units burning fossil gas or fossil liquids, with status "
+        "operating, summed over the units whose recorded commissioning year is the stated year "
+        "or earlier. This is generating capacity, not generation: a gas or oil fired unit is "
+        "typically run to follow demand rather than at a constant output, so capacity says what "
+        "could be produced and not what was. "
+        + coverage_sentence(s, "unit", "MW")
+        + "Every operating Indian unit carries a state, so the state values sum to the national "
+        "one. Units burning more than one fuel are counted once at their full capacity under "
+        "whichever fuels the source lists. "
+        + reconstruction_note(retired, "unit")
+    )
+    emit(s, method,
+         "Global Energy Monitor, Global Oil and Gas Plant Tracker, January 2026 release",
+         "https://globalenergymonitor.org/projects/global-oil-gas-plant-tracker/", ind, val)
 
 
 # --- iron --------------------------------------------------------------------
@@ -488,6 +650,82 @@ def do_iron(units_path: str, plants_path: str, ind: list[str], val: list[str]) -
                   "and are excluded")
 
 
+ORE_COLS = ["Country/Area", "Subnational unit", "Operating status", "Design capacity (ttpa)",
+            "Production 2024 (ttpa)", "Production 2023 (ttpa)", "Production 2022 (ttpa)",
+            "Start date"]
+ORE_YEAR = 2025  # the August 2025 (V1) release
+
+
+def do_iron_ore(path: str, ind: list[str], val: list[str]) -> None:
+    """Iron ore mine design capacity, by state, as a snapshot.
+
+    Two things in this workbook are deliberately not published. Design capacity
+    is a present-day rating, so it fails the same test the blast furnaces did
+    and cannot be laid on a commissioning axis. And the three production
+    columns are reported by a DIFFERENT number of mines each year (177 of 225
+    for 2022, 163 for 2023, 126 for 2024), so a three-point series would show
+    production falling when what is actually falling is the count of mines that
+    reported. That is a reporting artifact wearing the shape of a trend.
+    """
+    wb, rows, ix = open_sheet(path, "Main Data", ORE_COLS)
+    by_state: dict[str, float] = defaultdict(float)
+    by_state_n: dict[str, int] = defaultdict(int)
+    units = missing_cap = 0
+    total = 0.0
+    reported = {}
+    for r in rows:
+        if r[ix["Country/Area"]] != "India":
+            continue
+        if str(r[ix["Operating status"]]).strip().lower() != "operating":
+            continue
+        # Count reporting mines over the SAME population the indicator covers,
+        # so the comparison in the methodology is like for like.
+        for y in (2022, 2023, 2024):
+            if number(r[ix[f"Production {y} (ttpa)"]]) is not None:
+                reported[y] = reported.get(y, 0) + 1
+        cap = number(r[ix["Design capacity (ttpa)"]])
+        if cap is None:
+            missing_cap += 1
+            continue
+        st = r[ix["Subnational unit"]]
+        if blank(st):
+            sys.exit("FATAL: iron ore: operating Indian mine with no subnational unit")
+        units += 1
+        total += cap
+        by_state[str(st).strip()] += cap
+        by_state_n[str(st).strip()] += 1
+    wb.close()
+    bad = set(by_state) - KNOWN_STATES
+    if bad:
+        sys.exit(f"FATAL: iron ore: state name(s) not in the states table: {sorted(bad)}")
+    method = (
+        "Sum of design capacity over Indian iron ore mines with status operating, as at the "
+        f"August 2025 (V1) release. Covers {units} mines carrying a design capacity; "
+        f"{missing_cap} operating Indian mine{'s' if missing_cap != 1 else ''} record none and "
+        f"{'are' if missing_cap != 1 else 'is'} excluded. Design capacity "
+        "is what a mine is built to produce, not what it produced. The workbook's own "
+        "production columns for 2022, 2023 and 2024 are NOT published here: they are reported "
+        f"by {reported.get(2022, 0)}, {reported.get(2023, 0)} and {reported.get(2024, 0)} "
+        "Indian mines respectively, so a series across them would show the number of reporting "
+        "mines changing and read as production changing. No year-by-year capacity series is "
+        "published either, because design capacity is a present-day rating and attributing it "
+        "to the year a mine opened would state a figure the source does not support."
+    )
+    ind.append(",".join(["iron-ore-capacity-operating", q("Iron ore mine design capacity, operating"),
+                         q("ttpa"), q("Industry"), q(method)]) + "\n")
+    title = "Global Energy Monitor, Global Iron Ore Mines Tracker, August 2025 (V1) release"
+    url = "https://globalenergymonitor.org/projects/global-iron-ore-mines-tracker/"
+    for geo, value in [("India", total)] + sorted(by_state.items()):
+        n = units if geo == "India" else by_state_n[geo]
+        val.append(",".join([
+            "iron-ore-capacity-operating", q(geo), str(ORE_YEAR), fmt(value), q(title), url,
+            q("August 2025 (V1) release"), q(ORG),
+            q(f"{n} operating mine{'s' if n != 1 else ''}."), VERIFIED_ON,
+        ]) + "\n")
+    print(f"  iron-ore-capacity-operating: {len(by_state) + 1} snapshot values "
+          f"({len(by_state)} states plus India), {units} mines, {fmt(total)} ttpa")
+
+
 def main() -> None:
     out = Path(arg("--out") or ".")
     ind: list[str] = []
@@ -498,11 +736,24 @@ def main() -> None:
     if p := arg("--wind"):
         print("wind:")
         do_wind(p, ind, val)
+    if p := arg("--hydro"):
+        print("hydro:")
+        do_hydro(p, ind, val)
+    if p := arg("--nuclear"):
+        print("nuclear:")
+        do_nuclear(p, ind, val)
+    if p := arg("--gas-oil"):
+        print("gas and oil fired power:")
+        do_gas_oil(p, ind, val)
     if (u := arg("--iron-units")) and (pl := arg("--iron-plants")):
         print("iron:")
         do_iron(u, pl, ind, val)
+    if p := arg("--iron-ore"):
+        print("iron ore mines:")
+        do_iron_ore(p, ind, val)
     if not ind:
-        sys.exit("nothing to do: pass --solar, --wind, or --iron-units with --iron-plants")
+        sys.exit("nothing to do: pass at least one of --solar, --wind, --hydro, --nuclear, "
+                 "--gas-oil, --iron-ore, or --iron-units with --iron-plants")
     (out / "indicators.add.csv").write_text(OUT_IND + "".join(ind))
     (out / "indicator_values.add.csv").write_text(OUT_VAL + "".join(val))
     print(f"\nwrote {len(ind)} indicators and {len(val)} values to {out}/")

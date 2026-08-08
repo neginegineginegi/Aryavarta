@@ -288,6 +288,45 @@ Reading order gained an `Energy` band, placed after Infrastructure in
 `CATEGORY_ORDER`. That is data, not architecture: no schema change, no new
 table, two CSV files as with every other dataset.
 
+## 3e. Batch 4: the Energy band completes (2026-08-08)
+
+Hydropower (March 2026), nuclear (September 2025) and the oil and gas plant
+tracker (January 2026) join solar and wind, so the band now carries five
+generating technologies, each with its own commissioning history: hydro from
+1922, nuclear from 1981, gas and oil from 1989, wind from 1990, solar from
+2011. All three are CC BY 4.0 with no non-commercial upstream.
+
+**The nameplate test, now explicit.** Batch 3 established that a source may
+become a time series only if its capacity figure belongs to the year it is
+filed under. Batch 4 found where that test is actually decided: in the About
+sheet's own column definition. Hydro says "nameplate capacity ... of the
+project" and nuclear says "nameplate capacity ... of the unit", both meaning
+the design rating fixed at commissioning. The iron workbooks say "Current
+capacity". Read the definition; do not infer it from the numbers.
+
+**Three refinements the new files forced:**
+
+- *Sentinels are per-file and there are at least three.* Solar leaves a cell
+  empty, iron writes `unknown`, the gas and oil tracker writes `not found`.
+  Nine undated units hid behind the third spelling, which would have made a
+  hand-written "all 100 of 100 units are dated" false. Coverage sentences are
+  now generated from the counts, never written by hand.
+- *Do not assert an absence.* Solar and wind originally claimed "the source
+  records no retired Indian projects" and the extractor exited if that stopped
+  being true, which would have refused the gas and oil tracker for the crime
+  of being accurate about one retired unit. The count is read out instead.
+- *Cross-border assets need the source's own split.* One Indian hydro project
+  extends into Nepal. The file carries a per-country capacity column and only
+  the India side is counted, never the whole dam.
+
+Two further refusals, both recorded in the published methodology rather than
+hidden: iron ore mine production for 2022 to 2024, because the reporting mine
+count falls from 181 to 167 to 130 and a series across those points would show
+reporting changing while reading as production changing; and the oil and gas
+extraction tracker entirely, because 15 of its 19 India fields carry no
+subnational unit (11 being offshore) and its production sheet holds 14 rows in
+mixed units across scattered years.
+
 ## 4. Decisions that wait for the file
 
 Answered for solar and wind by batch 3; still open for any future dataset.
