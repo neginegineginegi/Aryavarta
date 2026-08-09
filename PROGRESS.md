@@ -23,6 +23,12 @@ than all the rest together), hydropower from 1922 (51,082 MW), gas and oil fired
 
 | Commit | What |
 | --- | --- |
+| `313884b` | The wordmark answers the cursor instead of standing still |
+| `e13e8c8` | Hero eyebrow goes back to capitals |
+| `41d849a` | Nothing on the site shouts any more |
+| `c506198` | Controls speak in one voice, and the buttons were never mono |
+| `6500ba3` | Hero runs unbroken from the top of the page, as the design shows |
+| `0297924` | Give the first card on a page the gap every other card already has |
 | `ef02e24` | Energy: coal completes the band, and it dwarfs the rest |
 | `eda5c9a` | Event ticks sit on the thumb, not a flat percentage of the track |
 | `b742259` | Living background: the real handoff files replace my spec-built version |
@@ -143,6 +149,18 @@ clear, the twelve national moments are published, and the scrubber's marker line
   go quiet (250ms without childList work) with a 4s cap; attribute mutations are excluded or the
   cursor field's inline styles hold it busy forever. `CursorText` carries `data-auto="skip"` so
   the blanket does not re-split letters that are already letters.
+- **The cursor field caches centres in DOCUMENT space, which is wrong for anything sticky or
+  fixed.** The masthead holds its place in the VIEWPORT while the document slides past it, so a
+  magnet registered there drifts toward wherever the header happened to be at page load and is
+  dead by the second screen. `registerMagnet(el, { sticky: true })` re-measures each frame and
+  compares in viewport coordinates instead. Only the masthead wordmark needs it today; any future
+  magnet inside a sticky or fixed container needs it too.
+- **अभिलेखः never becomes letters, so it gets its own affordance.** Devanagari conjuncts break
+  when each character is wrapped, which is why `AutoLetters` skips any string containing the
+  script. `Wordmark` (`src/components/ui/Wordmark.tsx`) is the answer the handoff prescribes: a
+  CSS `:hover` scale for the growth plus the magnet for the drift. They compose only because the
+  engine writes the standalone `translate` property; if it ever wrote `transform` the two would
+  clobber each other and the hover would look broken at random.
 - **A closed dropdown must be `display:none`, not merely hidden.** `visibility:hidden` leaves the
   box in the scroll extent, so an off-viewport panel hands every visitor a horizontal scrollbar
   with all menus shut. Below md the panel spans the nav row by making `.nav-entry` position:static
