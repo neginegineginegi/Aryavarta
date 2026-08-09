@@ -41,7 +41,11 @@ S1,The Gazette of India: Uttar Pradesh Reorganisation Act 2000,https://example.g
 ```
 
 - `id` — S1, S2, S3 … unique within this batch.
-- `title` — the document's own title, not a description of it.
+- `title` — the document's own title, not a description of it. **Wrap it in
+  double quotes if it contains a comma**, which most Act titles do (`"The Uttar
+  Pradesh Reorganisation Act, 2000"`). An unquoted comma shifts every later
+  field one place left, the year lands in the url column, the source is
+  rejected, and every row citing it is dropped.
 - `url` — must begin with `http://` or `https://`, and must resolve. Do not
   invent plausible-looking government URLs; if you cannot produce a working
   link, drop the source and every row that depended on it.
@@ -130,6 +134,12 @@ what public money:
 Skip anything you cannot source to a document. An empty batch is a valid
 answer, and better than a padded one.
 
+Do NOT return elections. Assembly and Lok Sabha polls, turnout, seat counts and
+party performance live in a separate table fed directly from Election Commission
+statistical reports, so an election row here duplicates data the archive already
+holds. A specific incident during an election (a countermand, a re-poll ordered,
+a result set aside by a court) is an event; the election itself is not.
+
 ### Do not duplicate
 
 The archive already holds these rows for this state. Do not return them again,
@@ -149,7 +159,11 @@ materially better sourced version of one, return it and prefix the title with
 4. Every `sources` id exists in block 1.
 5. Every URL starts with `http`, and you have actually seen the page.
 6. Every description is at least 40 characters and wrapped in quotes.
-7. No title duplicates the already-recorded list.
+7. Every field containing a comma is wrapped in quotes, in BOTH blocks. Count
+   the commas in each source title before you write the line.
+8. No row duplicates the already-recorded list, including under a reworded
+   title for the same underlying event.
+9. No row is an election.
 
 ---
 
