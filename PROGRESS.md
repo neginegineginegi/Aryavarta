@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `9b303d8`.
+Last updated: 2026-08-08, commit `ef02e24`.
 
 ## 1. Current state
 
@@ -13,16 +13,19 @@ party/person/promise/document pages, contribution flow, moderation queue with di
 detection, revision history, search and question answering, insights, compare, Wikidata import,
 admin, reports/disputes, media archive, manifesto promises, Development Lens.
 
-48 indicators carry 4,243 values. The Development Lens holds an **Energy** band with five
-generating technologies as multi-year series, each with its own commissioning history:
-hydropower from 1922 (51,082 MW), nuclear from 1981 (8,240 MW), gas and oil fired from 1989
-(27,363 MW), wind from 1990 (27,055 MW), solar from 2011 (92,754 MW). Everything outside Energy
-is still a snapshot.
+51 indicators carry 5,034 values. The **Energy** band holds six generating technologies as
+multi-year series, each with its own commissioning history: coal from 1965 (254,318 MW, larger
+than all the rest together), hydropower from 1922 (51,082 MW), gas and oil fired from 1989
+(27,363 MW), wind from 1990 (27,055 MW), solar from 2011 (92,754 MW), nuclear from 1981
+(8,240 MW), plus bioenergy as a snapshot. Everything outside Energy is still a snapshot.
 
 ## 2. What this session shipped (newest first)
 
 | Commit | What |
 | --- | --- |
+| `ef02e24` | Energy: coal completes the band, and it dwarfs the rest |
+| `eda5c9a` | Event ticks sit on the thumb, not a flat percentage of the track |
+| `b742259` | Living background: the real handoff files replace my spec-built version |
 | `9b303d8` | Living background: tricolor bands become reactive canvases |
 | `1794cc1` | Cursor field and nav dropdowns, built from the spec (files absent) |
 | `7603cd1` | Trend captions carry what varies, not the same source 1,425 times |
@@ -123,11 +126,23 @@ clear, the twelve national moments are published, and the scrubber's marker line
   **A `.ribbon-*` box is taller than the `.prism-*` it shadows and sits higher to compensate** so
   the wave has headroom; change one number and you must change its pair. Each canvas keeps the
   prism's gradient as a CSS background so bands survive with JavaScript off.
+- **Range ticks must sit on the THUMB's travel, not the track's width.** A thumb runs from half
+  its own width in to half from the end, so a flat percentage misses it by up to half a thumb,
+  worst at both extremes: measured -9.8px and +10.5px before the fix. `--year-thumb` is read by
+  the thumb rule and by `.year-tick` alike. Any future slider decoration has the same trap.
+- **When two GEM files hold the same asset, prefer the one whose geography is complete, and say
+  which was used.** Coal and bioenergy come from the Global Integrated Power tracker; the other
+  five technologies keep citing their dedicated trackers. The split was verified, not assumed:
+  the integrated file reproduces the dedicated ones exactly (679 wind units at 38,937 MW, 21
+  nuclear at 8,240 MW). The dedicated bioenergy tracker was set aside for naming a state for 19
+  of 158 Indian units where the integrated file names one for 149.
 - **`AutoLetters` mutates DOM React owns.** The MutationObserver heal is what makes that
-  survivable and it must ignore its own writes (`busy`). It registers everything as `ink` and
-  skips Devanagari (conjuncts break when split), prose over 420 chars, and anything inside a
-  table, form control or SVG. If letters vanish from one section, that section re-renders faster
-  than the heal: wrap it in `<CursorText>` and mark it `data-no-letters`.
+  survivable and it must ignore its own writes (`busy`). **It must also start AFTER hydration**:
+  on mount it split text React had not yet claimed and every route threw "server rendered HTML
+  didn't match the client", de-opting that tree to client rendering. It now waits for the DOM to
+  go quiet (250ms without childList work) with a 4s cap; attribute mutations are excluded or the
+  cursor field's inline styles hold it busy forever. `CursorText` carries `data-auto="skip"` so
+  the blanket does not re-split letters that are already letters.
 - **A closed dropdown must be `display:none`, not merely hidden.** `visibility:hidden` leaves the
   box in the scroll extent, so an off-viewport panel hands every visitor a horizontal scrollbar
   with all menus shut. Below md the panel spans the nav row by making `.nav-entry` position:static
@@ -156,14 +171,12 @@ clear, the twelve national moments are published, and the scrubber's marker line
    621 from wiki-solar.org's proprietary set; only 1,191 are GEM-only CC BY 4.0. What ships is a
    derived aggregate and all three upstreams are cited in the methodology, but the
    non-commercial term constrains reuse of `solar-capacity-operating`.
-3. **Six approved moments sit before the map's earliest year.** `minYear` is the earliest
-   chief-minister term in the record, floored at 1947, and term data currently starts at 1978,
-   so Independence, the Constitution, both earlier wars and the Emergency cannot appear as
-   scrubber ticks. This is data completeness, not a defect: the range extends on its own as
-   historical terms are imported, and widening the slider past the term data would only show a
-   blank map. Importing pre-1978 CM terms is the fix.
-4. **Coal fired power is the one generating technology still missing.** GEM's Global Coal Plant
-   Tracker would complete the band; the extractor takes it with one more `do_*` function.
+3. **Six approved moments show in Union mode but not in States.** `minYear` is the earliest
+   term in the record: 1947 for the Union (all 14 markers appear) but 1978 for the states, so
+   Independence, the Constitution, both earlier wars and the Emergency are missing only from the
+   States scrubber. Data completeness, not a defect: importing pre-1978 CM terms extends the
+   range on its own, and widening the slider past the term data would only show a blank map.
+   (An earlier version of this file said they appear nowhere. That was wrong.)
 
 Resolved this session: the `/review` queue (the user cleared it, so the twelve national moments
 are published and the marker line is live), the long-missing India power dataset, and four of
