@@ -80,7 +80,12 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <Header />
         <AutoLetters />
-        <main className="flex-1">{children}</main>
+        {/* The first card on a page needs the same 16px of ground above it
+            that `.section-card + .section-card` puts between every other pair.
+            Without it the hero butted straight into the translucent masthead
+            and the two read as one undivided block, which is the only card
+            boundary on the site that had no breathing room. */}
+        <main className="flex-1 pt-4">{children}</main>
         <Footer />
       </body>
     </html>
