@@ -34,6 +34,8 @@ let time = 0;
 let last = 0;
 let raf: number | null = null;
 let scroll = 0;
+let scrollEnergy = 0;   // scroll only, read by scrollWave() for body text
+let lastScrollAt = 0;   // performance.now() of the last scroll event
 let started = false;
 let reduced = false;
 let lamp: HTMLElement | null = null;
@@ -41,13 +43,43 @@ const pointer = { x: 0, y: 0, has: false };
 const ripples: { x: number; age: number }[] = [];
 let io: IntersectionObserver | null = null;
 
-/** How stirred up the page is, 0..~2.4. The cursor field multiplies its
- *  letter wave by this so scrolling ripples the type. */
+/** How stirred up the page is, 0..~2.4. Ribbons ride this: it takes scroll,
+ *  pointer travel and taps alike, and decays slowly. */
 export function fieldEnergy() {
   return energy;
 }
 export function fieldTime() {
   return time;
+}
+
+/**
+ * The scroll-only signal that body text rides, and the reason it is separate
+ * from `energy`.
+ *
+ * Type that is still moving is type you cannot read, so the wave under running
+ * text has to be over almost the moment the wheel stops. Two things follow.
+ * It ignores the pointer entirely: `energy` rises whenever the mouse moves, and
+ * a reader resting a hand on the mouse was making every paragraph on the page
+ * breathe. And it is derived from a timestamp rather than accumulated per
+ * frame, so it reads zero even when the rAF loop has parked (no ribbon on
+ * screen means no loop, and a value decayed frame by frame would freeze at
+ * whatever it held and leave the letters bent).
+ *
+ * HOLD covers the gap between wheel events during a continuous scroll. SETTLE
+ * is the ramp to a full stop after it: the wave falls to exactly zero, which
+ * is what lets the cursor field write each character back to rest and stop
+ * touching it.
+ */
+const SCROLL_HOLD = 0.09;
+const SCROLL_SETTLE = 0.24;
+
+export function scrollWave(): number {
+  if (reduced || !lastScrollAt) return 0;
+  const idle = (performance.now() - lastScrollAt) / 1000;
+  if (idle >= SCROLL_HOLD + SCROLL_SETTLE) return 0;
+  const decayed = scrollEnergy * Math.exp(-idle * 3.2);
+  if (idle <= SCROLL_HOLD) return decayed;
+  return decayed * (1 - (idle - SCROLL_HOLD) / SCROLL_SETTLE);
 }
 
 export function registerRibbon(
@@ -111,6 +143,12 @@ function start() {
     const dy = y - scroll;
     scroll = y;
     energy = Math.min(2.4, energy + Math.abs(dy) * 0.02);
+    // The text signal decays to the moment of this event before taking the new
+    // push, because nothing else advances it between scrolls.
+    const now = performance.now();
+    const idle = lastScrollAt ? (now - lastScrollAt) / 1000 : 0;
+    scrollEnergy = Math.min(2.4, scrollEnergy * Math.exp(-idle * 3.2) + Math.abs(dy) * 0.02);
+    lastScrollAt = now;
     phase += dy * 0.005;          // the crest travels with the page
     kick();
   }, { passive: true });
@@ -182,7 +220,11 @@ function tick(now: number) {
   document.documentElement.style.backgroundPosition =
     `${(50 + nx * 4).toFixed(2)}% ${(50 + Math.sin(scroll * 0.0012) * 4).toFixed(2)}%`;
 
-  if (awake) raf = requestAnimationFrame(tick);
+  // Keep going while the page is still excited even with no ribbon on screen.
+  // `energy` and `time` only advance in here, and the cursor field's letter
+  // wave reads both: parking the loop with energy still high freezes the wave
+  // mid-crest and leaves every character in the top section bent for good.
+  if (awake || energy > 0.002) raf = requestAnimationFrame(tick);
 }
 
 const TRI: [number, string][] = [

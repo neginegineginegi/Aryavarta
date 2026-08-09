@@ -17,7 +17,7 @@
  * meant to be replaced wholesale if the original turns up.
  */
 
-import { fieldEnergy, fieldTime } from "@/lib/living-field";
+import { fieldEnergy, fieldTime, scrollWave } from "@/lib/living-field";
 
 export type CursorTextMode = "chars" | "ink";
 
@@ -42,6 +42,16 @@ type CharTarget = {
   cur: Float64Array; // eased intensity, 0 at rest
   live: boolean; // was anything written last frame
   seed: number; // stable per-group phase offset for the scroll wave
+  /** Did the wave displace this group on the previous frame? The rest test
+   *  below is about the POINTER, and a character the pointer never touched
+   *  reads as already-at-rest the moment the wave stops, so the frame that
+   *  should have cleaned it up was skipped and it kept the last offset the
+   *  wave wrote. One frame of memory is what makes the cleanup run. */
+  waved: boolean;
+  /** Type in a page's top section keeps the free-running wave, because nobody
+   *  reads a masthead or a hero the way they read a paragraph. Everything
+   *  below it rides the scroll-only signal and stops when the wheel does. */
+  topSection: boolean;
 };
 
 type MagnetTarget = {
@@ -130,10 +140,14 @@ function tick() {
   frame = 0;
   let active = false;
 
-  // Read once per frame, not once per character.
-  const wave = Math.min(1, fieldEnergy() * 0.5) * 2.6;
+  // Read once per frame, not once per character. Two signals: the top section
+  // rides the whole page's excitement, running text rides scroll alone.
+  const waveTop = Math.min(1, fieldEnergy() * 0.5) * 2.6;
+  const waveBody = Math.min(1, scrollWave() * 0.5) * 2.6;
 
   for (const t of charTargets) {
+    const wave = t.topSection ? waveTop : waveBody;
+    const rippling = wave > 0.02;
     const lift = LIFT[t.mode];
     let live = false;
     for (let i = 0; i < t.chars.length; i++) {
@@ -146,9 +160,8 @@ function tick() {
       // The scroll wave: a travelling ripple driven by how excited the page
       // is, offset per character so a crest runs ALONG a line rather than
       // lifting all of it at once. At rest `wave` is 0 and this costs nothing.
-      const ripple =
-        wave > 0.02 ? Math.sin(i * 0.42 + fieldTime() * 2.4 + t.seed) * wave : 0;
-      const wasResting = t.cur[i] < REST && next < REST && ripple === 0;
+      const ripple = rippling ? Math.sin(i * 0.42 + fieldTime() * 2.4 + t.seed) * wave : 0;
+      const wasResting = t.cur[i] < REST && next < REST && !rippling && !t.waved;
       t.cur[i] = next;
       if (wasResting) continue;
       live = true;
@@ -168,6 +181,7 @@ function tick() {
       // Colour is CSS's business; the engine only reports intensity.
       el.style.setProperty("--cx-t", next.toFixed(3));
     }
+    t.waved = rippling;
     t.live = live;
     active = active || live;
   }
@@ -230,7 +244,7 @@ function tick() {
 
   // Stay alive while the page is still excited, or the wave stops mid-scroll
   // with the letters frozen wherever the last frame left them.
-  if (active || fieldEnergy() > 0.002) {
+  if (active || fieldEnergy() > 0.002 || scrollWave() > 0.002) {
     frame = requestAnimationFrame(tick);
   } else {
     running = false;
@@ -322,7 +336,12 @@ export function registerChars(el: HTMLElement, mode: CursorTextMode): () => void
     base: new Float64Array(n),
     cur: new Float64Array(n),
     live: false,
+    waved: false,
     seed: charTargets.size * 0.9,
+    // Every interior page opens with a page-level <header>, the home page with
+    // .hero-bleed, and the masthead is a <header> too. Read once at
+    // registration: none of these move between elements.
+    topSection: !!el.closest("header, .hero-bleed"),
   };
   if (mode === "chars") {
     for (let i = 0; i < n; i++) {
