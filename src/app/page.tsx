@@ -106,7 +106,11 @@ export default async function HomePage() {
         <TricolorRibbon variant="sharp" />
 
         <div className="relative flex justify-end px-6 pt-7 sm:px-9">
-          <p className="text-right font-mono text-[10px] leading-[1.7] tracking-[0.06em] text-ink-meta">
+          {/* The one label on the site still set in capitals, because the
+              design mock has it that way. Its tracking stays at 0.12em, which
+              is what capitals need; everywhere else dropped to 0.06em when it
+              went to sentence case. */}
+          <p className="text-right font-mono text-[10px] uppercase leading-[1.7] tracking-[0.12em] text-ink-meta">
             {"// the record"}
             <br />
             every state &gt; every year
