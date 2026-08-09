@@ -134,7 +134,7 @@ export function ErrorState({
 }) {
   return (
     <div className="py-2">
-      <p className="mb-3 font-mono text-[9px] uppercase tracking-[0.16em] text-accent">Error</p>
+      <p className="mb-3 font-mono text-[9px] tracking-[0.06em] text-accent">Error</p>
       <p className="text-[14px] text-ink-muted">{message}</p>
       <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-faint">{helper}</p>
       {onRetry && (

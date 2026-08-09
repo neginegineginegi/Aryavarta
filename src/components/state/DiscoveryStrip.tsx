@@ -39,7 +39,7 @@ export async function DiscoveryStrip({ stateId }: { stateId: string }) {
       aria-label="From the archive's computed insights"
       className="mt-4 rounded-sm border border-rule bg-paper-sunken/60 px-4 py-3"
     >
-      <p className="font-mono text-[9px] uppercase tracking-[0.16em] text-ink-meta">
+      <p className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
         Did you know · computed from the record
       </p>
       <ul className="mt-1.5 space-y-1">

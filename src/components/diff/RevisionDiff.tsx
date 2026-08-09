@@ -113,7 +113,7 @@ export function RevisionDiff({
       {/* Scalar fields */}
       <table className="w-full text-left text-[0.85rem]">
         <thead>
-          <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+          <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
             <th className="w-36 py-2 pr-4 font-medium">Field</th>
             {isUpdate ? (
               <>
@@ -186,7 +186,7 @@ export function RevisionDiff({
           <h3 className="section-label">Seat counts</h3>
           <table className="mt-2 w-auto min-w-72 text-left text-[0.85rem]">
             <thead>
-              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
                 <th className="py-1.5 pr-6 font-medium">Party</th>
                 {isUpdate && <th className="py-1.5 pr-6 font-medium">Current</th>}
                 <th className="py-1.5 font-medium">{isUpdate ? "Proposed" : "Seats"}</th>

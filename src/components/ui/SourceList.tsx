@@ -42,7 +42,7 @@ export function SourceList({
             <button
               type="button"
               onClick={() => setOpen(i)}
-              className="shrink-0 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta hover:text-verify"
+              className="shrink-0 font-mono text-[9px] tracking-[0.06em] text-ink-meta hover:text-verify"
               aria-label={`What else cites ${s.title}`}
             >
               {usage[s.id]?.length

@@ -106,7 +106,7 @@ export default async function HomePage() {
         <TricolorRibbon variant="sharp" />
 
         <div className="relative flex justify-end px-6 pt-7 sm:px-9">
-          <p className="text-right font-mono text-[10px] uppercase leading-[1.7] tracking-[0.12em] text-ink-meta">
+          <p className="text-right font-mono text-[10px] leading-[1.7] tracking-[0.06em] text-ink-meta">
             {"// the record"}
             <br />
             every state &gt; every year
@@ -171,7 +171,7 @@ export default async function HomePage() {
         </div>
 
         <p className="relative pb-7 text-center font-mono text-[10px] tracking-[0.2em] text-ink-meta">
-          FREE · PUBLIC · SOURCED
+          Free · Public · Sourced
         </p>
       </section>
 
@@ -242,7 +242,7 @@ export default async function HomePage() {
               Explore the map
             </Link>
             <div className="mt-1 rounded-[14px] bg-white p-5">
-              <p className="mono-micro mb-3.5">● TERMS BY DECADE</p>
+              <p className="mono-micro mb-3.5">● Terms by decade</p>
               {/* Bars are direct flex children so their percentage heights
                   resolve against the fixed track; labels sit in their own row
                   below so they never eat into it. */}
@@ -311,7 +311,7 @@ export default async function HomePage() {
                     className="flex items-center justify-between gap-3 border-b border-rule-light py-[9px] font-mono text-[10px] last:border-0"
                   >
                     <span className="truncate text-ink-muted">{r.title}</span>
-                    <span className="shrink-0 text-verify">✓ APPROVED</span>
+                    <span className="shrink-0 text-verify">✓ Approved</span>
                   </div>
                 ))
               ) : (

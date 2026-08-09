@@ -235,7 +235,7 @@ export async function PartyStateCompare({ a, b }: { a: string; b: string }) {
 
       <div className="mt-3 max-w-3xl space-y-1 text-[0.72rem] text-ink-faint">
         <p>
-          <span className="font-mono uppercase tracking-[0.08em]">Method.</span> A party counts
+          <span className="font-mono tracking-[0.08em]">Method.</span> A party counts
           as governing a state only where it held the chief ministership (the prime ministership
           for the Union). Coalition partners without the top office are not counted here. Time in
           office is the union of that party&apos;s terms, so simultaneous offices are never

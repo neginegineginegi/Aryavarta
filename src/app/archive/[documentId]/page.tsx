@@ -48,13 +48,13 @@ function PromiseEntry({ p, n }: { p: PromiseRow; n: number }) {
           {PROMISE_CATEGORY_LABELS[p.category] ?? p.category}
         </span>
         {p.scope !== "unspecified" && (
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             {PROMISE_SCOPE_LABELS[p.scope] ?? p.scope}
             {p.stateName ? ` · ${p.stateName}` : ""}
           </span>
         )}
         {p.pageRef && (
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-verify">
+          <span className="font-mono text-[9px] tracking-[0.06em] text-verify">
             {p.pageRef}
           </span>
         )}
@@ -69,7 +69,7 @@ function PromiseEntry({ p, n }: { p: PromiseRow; n: number }) {
 
       {p.plainText && (
         <div className="mt-3 pl-4">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <p className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             In plain terms, by Abhilekh
           </p>
           <p className="mt-1 text-[0.9rem] leading-relaxed text-ink-muted">{p.plainText}</p>
@@ -80,7 +80,7 @@ function PromiseEntry({ p, n }: { p: PromiseRow; n: number }) {
         <dl className="mt-3 flex flex-wrap gap-x-8 gap-y-1 pl-4 text-[0.82rem]">
           {p.statedTimeline && (
             <div>
-              <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+              <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                 Timeline as stated
               </dt>
               <dd className="text-ink-muted">{p.statedTimeline}</dd>
@@ -88,7 +88,7 @@ function PromiseEntry({ p, n }: { p: PromiseRow; n: number }) {
           )}
           {p.statedBudgetInr && (
             <div>
-              <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+              <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                 Amount as stated
               </dt>
               <dd className="rec-num text-ink-muted">₹{formatNumber(p.statedBudgetInr)}</dd>
@@ -137,7 +137,7 @@ export default async function DocumentPage({
   return (
     <article className="mx-auto max-w-[1000px] px-4 pb-4">
       <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
-        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+        <nav className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
           <Link href="/browse" className="hover:text-ink">
             Browse
           </Link>
@@ -199,19 +199,19 @@ export default async function DocumentPage({
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-[0.85rem] sm:grid-cols-4">
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Kind
             </dt>
             <dd className="mt-0.5 text-ink">{kind}</dd>
           </div>
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Language
             </dt>
             <dd className="mt-0.5 text-ink">{doc.language.toUpperCase()}</dd>
           </div>
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Pages
             </dt>
             <dd className="rec-num mt-0.5 text-ink">
@@ -219,7 +219,7 @@ export default async function DocumentPage({
             </dd>
           </div>
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Copy held
             </dt>
             <dd className="mt-0.5 text-ink">{archived ? "Yes" : "Link only"}</dd>
@@ -258,7 +258,7 @@ export default async function DocumentPage({
 
           {[...byCategory.entries()].map(([category, list]) => (
             <div key={category} className="mt-8">
-              <h3 className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+              <h3 className="font-mono text-[10px] tracking-[0.06em] text-ink-soft">
                 {PROMISE_CATEGORY_LABELS[category] ?? category}
                 <span className="ml-2 text-ink-meta">{list.length}</span>
               </h3>

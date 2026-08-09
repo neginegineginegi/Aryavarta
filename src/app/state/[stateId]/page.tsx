@@ -98,7 +98,7 @@ export default async function StatePage({
       {/* Page title block: breadcrumb, title, mono meta line, then the
           government timeline strip, all inside the first section card. */}
       <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
-        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+        <nav className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
           <Link href="/browse" className="hover:text-ink">Browse</Link>
           <span className="mx-1.5">/</span>
           <Link href="/" className="hover:text-ink">States</Link>
@@ -121,7 +121,7 @@ export default async function StatePage({
             </Link>
           </span>
         </div>
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+        <p className="mt-3 font-mono text-[10px] tracking-[0.06em] text-ink-soft">
           {state.kind === "state" ? "State" : "Union Territory"}
           {state.formedOn ? <> · since {yearOf(state.formedOn)}</> : null}
           {" · "}
@@ -167,7 +167,7 @@ export default async function StatePage({
         ) : (
           <table className="mt-4 w-full text-left text-[0.88rem]">
             <thead>
-              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
                 <th className="py-2 pr-4 font-medium">Period</th>
                 <th className="py-2 pr-4 font-medium">Chief Minister</th>
                 <th className="py-2 pr-4 font-medium">Party</th>
@@ -242,7 +242,7 @@ export default async function StatePage({
           <h2 className="font-display text-[30px] font-light leading-tight text-ink">Governors</h2>
           <table className="mt-4 w-full max-w-2xl text-left text-[0.88rem]">
             <thead>
-              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
                 <th className="py-2 pr-4 font-medium">Period</th>
                 <th className="py-2 pr-4 font-medium">Governor</th>
                 <th className="py-2 font-medium sr-only">Sources</th>

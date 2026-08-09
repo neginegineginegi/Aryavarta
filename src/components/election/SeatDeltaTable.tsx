@@ -6,7 +6,7 @@ export function SeatDeltaTable({ deltas }: { deltas: SeatDelta[] }) {
   return (
     <table className="w-full max-w-xl text-left text-[0.85rem]">
       <thead>
-        <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+        <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
           <th className="py-1.5 pr-4 font-medium">Party</th>
           <th className="py-1.5 pr-4 text-right font-medium">Previous</th>
           <th className="py-1.5 pr-4 text-right font-medium">This election</th>

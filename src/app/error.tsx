@@ -41,7 +41,7 @@ export default function Error({
               Back to the map
             </Link>
             {error.digest ? (
-              <span className="ml-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+              <span className="ml-3 font-mono text-[10px] tracking-[0.06em] text-ink-meta">
                 Ref {error.digest}
               </span>
             ) : null}

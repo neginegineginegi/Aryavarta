@@ -120,7 +120,7 @@ export default async function BrowsePage() {
           <div className="mt-4 space-y-5">
             {[...indicatorsByCategory.entries()].map(([category, defs]) => (
               <div key={category}>
-                <h3 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-ink-muted">
+                <h3 className="font-mono text-[0.62rem] tracking-[0.06em] text-ink-muted">
                   {category}
                 </h3>
                 <ul className="mt-1.5 grid gap-x-8 gap-y-1.5 text-[0.9rem] sm:grid-cols-2">

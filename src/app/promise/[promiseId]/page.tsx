@@ -73,7 +73,7 @@ export default async function PromisePage({
   return (
     <article className="mx-auto max-w-[900px] px-4 pb-4">
       <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
-        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+        <nav className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
           <Link href="/archive" className="hover:text-ink">
             Archive
           </Link>
@@ -89,12 +89,12 @@ export default async function PromisePage({
           <span className="type-badge">
             {PROMISE_CATEGORY_LABELS[p.category] ?? p.category}
           </span>
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             {PROMISE_SCOPE_LABELS[p.scope] ?? p.scope}
             {p.stateName ? ` · ${p.stateName}` : ""}
           </span>
           {p.pageRef && (
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-verify">
+            <span className="font-mono text-[9px] tracking-[0.06em] text-verify">
               {p.pageRef}
             </span>
           )}
@@ -130,7 +130,7 @@ export default async function PromisePage({
 
       {p.plainText && (
         <section className="section-card px-6 py-8 sm:px-10">
-          <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <p className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             In plain terms, by Abhilekh
           </p>
           <p className="mt-2 max-w-2xl text-[0.95rem] leading-relaxed text-ink">{p.plainText}</p>
@@ -147,13 +147,13 @@ export default async function PromisePage({
         </h2>
         <dl className="mt-4 grid grid-cols-2 gap-x-8 gap-y-4 text-[0.85rem] sm:grid-cols-3">
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Timeline
             </dt>
             <dd className="mt-0.5 text-ink">{p.statedTimeline ?? "None stated"}</dd>
           </div>
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Amount
             </dt>
             <dd className="rec-num mt-0.5 text-ink">
@@ -161,7 +161,7 @@ export default async function PromisePage({
             </dd>
           </div>
           <div>
-            <dt className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <dt className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Where in the document
             </dt>
             <dd className="mt-0.5 text-ink">{p.pageRef ?? "Not recorded"}</dd>

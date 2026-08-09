@@ -84,7 +84,7 @@ export function YearFocus({
       className="mt-6 rounded-sm border border-rule-dark bg-paper-raised p-4"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 className="font-mono text-[0.62rem] uppercase tracking-[0.12em] text-accent">
+        <h2 className="font-mono text-[0.62rem] tracking-[0.06em] text-accent">
           Year in focus · <span className="tabular-nums">{year}</span>
         </h2>
         <button

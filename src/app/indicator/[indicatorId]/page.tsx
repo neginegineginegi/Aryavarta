@@ -47,7 +47,7 @@ export default async function IndicatorPage({
         <h1 className="font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           {indicator.name}
         </h1>
-        <p className="mt-2 font-mono text-[0.72rem] uppercase tracking-[0.1em] text-ink-muted">
+        <p className="mt-2 font-mono text-[0.72rem] tracking-[0.1em] text-ink-muted">
           {indicator.category} · {indicator.unit}
         </p>
         <p className="mt-3 max-w-2xl text-[0.9rem] text-ink-muted">{indicator.methodology}</p>

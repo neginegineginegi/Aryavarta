@@ -51,7 +51,7 @@ function OfficeRow({ label, term }: { label: string; term: UnionTerm | null }) {
         style={{ backgroundColor: term ? (term.partyColor ?? "#8a8a8a") : "#e9e9e5" }}
       />
       <span>
-        <span className="block font-mono text-[0.62rem] uppercase tracking-[0.1em] text-ink-faint">
+        <span className="block font-mono text-[0.62rem] tracking-[0.1em] text-ink-faint">
           {label}
         </span>
         {term?.cmName ? (

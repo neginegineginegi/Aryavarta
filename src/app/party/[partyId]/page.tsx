@@ -68,7 +68,7 @@ export default async function PartyPage({
         ) : (
           <table className="mt-4 w-full text-left text-[0.88rem]">
             <thead>
-              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
                 <th className="py-2 pr-4 font-medium">Period</th>
                 <th className="py-2 pr-4 font-medium">Office</th>
                 <th className="py-2 pr-4 font-medium">Holder</th>
@@ -118,7 +118,7 @@ export default async function PartyPage({
         ) : (
           <table className="mt-4 w-full max-w-2xl text-left text-[0.88rem]">
             <thead>
-              <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+              <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
                 <th className="py-2 pr-4 font-medium">Election</th>
                 <th className="py-2 pr-4 font-medium">Where</th>
                 <th className="py-2 text-right font-medium">Seats won</th>

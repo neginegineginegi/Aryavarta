@@ -56,14 +56,14 @@ function DocRow({ d }: { d: DocumentRow }) {
             href={href}
             target="_blank"
             rel="nofollow noopener noreferrer"
-            className={`font-mono text-[9px] uppercase tracking-[0.14em] underline-offset-2 hover:underline ${
+            className={`font-mono text-[9px] tracking-[0.06em] underline-offset-2 hover:underline ${
               d.redistribution === "permitted" && d.archiveUrl ? "text-verify" : "text-ink-meta"
             }`}
           >
             {d.redistribution === "permitted" && d.archiveUrl ? "Archived" : "Link only"}
           </a>
         ) : (
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             No link
           </span>
         )}
@@ -88,7 +88,7 @@ function Facet({
   if (items.length === 0) return null;
   return (
     <div className="mb-6">
-      <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">{label}</p>
+      <p className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">{label}</p>
       <ul className="mt-2 space-y-1">
         {items.map((it) => {
           const qs = new URLSearchParams(base);
@@ -151,7 +151,7 @@ export default async function ArchivePage({
   return (
     <div className="mx-auto max-w-[1200px] px-4 pb-4">
       <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
-        <nav className="font-mono text-[10px] uppercase tracking-[0.14em] text-ink-meta">
+        <nav className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
           <Link href="/browse" className="hover:text-ink">
             Browse
           </Link>
@@ -164,7 +164,7 @@ export default async function ArchivePage({
         <h1 className="mt-1 font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           The media archive
         </h1>
-        <p className="mt-3 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+        <p className="mt-3 font-mono text-[10px] tracking-[0.06em] text-ink-soft">
           {formatNumber(corpus.total)} documents · {corpus.kinds} kinds ·{" "}
           {formatNumber(corpus.withText)} full-text searchable
         </p>
@@ -202,7 +202,7 @@ export default async function ArchivePage({
               {filtered && (
                 <Link
                   href="/archive"
-                  className="mb-5 inline-block font-mono text-[9px] uppercase tracking-[0.14em] text-accent"
+                  className="mb-5 inline-block font-mono text-[9px] tracking-[0.06em] text-accent"
                 >
                   Clear filters ×
                 </Link>
@@ -229,7 +229,7 @@ export default async function ArchivePage({
                 <h2 className="font-display text-[28px] font-light leading-tight text-ink">
                   {filtered ? "Matching documents" : "All documents"}
                 </h2>
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                   {formatNumber(facets.total)} of {formatNumber(corpus.total)}
                 </span>
               </div>
@@ -264,7 +264,7 @@ export default async function ArchivePage({
 
               {facets.total > facets.withText && (
                 <p className="mt-5 border-t border-rule pt-3 text-[0.74rem] leading-relaxed text-ink-faint">
-                  <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                  <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                     Coverage
                   </span>{" "}
                   {formatNumber(facets.withText)} of {formatNumber(facets.total)} documents in

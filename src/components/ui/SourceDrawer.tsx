@@ -81,7 +81,7 @@ export function SourceDrawer({
         className="anim-drawer-in fixed inset-y-4 right-4 z-50 w-[390px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[24px] bg-paper-raised px-7 py-7 shadow-[0_12px_48px_rgba(0,0,0,0.18)] outline-none"
       >
         <div className="mb-4 flex items-center justify-between">
-          <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-verify">
+          <span className="font-mono text-[10px] tracking-[0.06em] text-verify">
             Source {number}
           </span>
           <button
@@ -99,11 +99,11 @@ export function SourceDrawer({
         </h2>
 
         <dl className="mt-5 grid grid-cols-[96px_1fr] gap-x-3.5 gap-y-1.5 text-[13px]">
-          <dt className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <dt className="pt-0.5 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             Publisher
           </dt>
           <dd className="text-ink-body">{source.publisher ?? "Not recorded"}</dd>
-          <dt className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <dt className="pt-0.5 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             Published
           </dt>
           <dd className="text-ink-body">
@@ -111,7 +111,7 @@ export function SourceDrawer({
           </dd>
           {cls && (
             <>
-              <dt className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+              <dt className="pt-0.5 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                 Class
               </dt>
               <dd className="text-ink-body">{cls}</dd>
@@ -119,7 +119,7 @@ export function SourceDrawer({
           )}
           {source.accessedOn && (
             <>
-              <dt className="pt-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+              <dt className="pt-0.5 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                 Accessed
               </dt>
               <dd className="text-ink-body">{formatDate(source.accessedOn)}</dd>
@@ -129,7 +129,7 @@ export function SourceDrawer({
 
         {note && (
           <div className="mt-5 rounded-panel bg-paper-sunken px-4.5 py-4">
-            <p className="mb-2 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <p className="mb-2 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Note on this citation
             </p>
             <p className="font-display text-[14.5px] italic leading-relaxed text-ink-muted">
@@ -139,7 +139,7 @@ export function SourceDrawer({
         )}
 
         <div className="mt-5">
-          <p className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+          <p className="mb-1.5 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
             {/* Not "also cited by": the index includes records on the page
                 you are reading, and claiming otherwise would misdescribe it. */}
             {usage.length > 0
@@ -165,7 +165,7 @@ export function SourceDrawer({
             </ul>
           )}
           {usage.length > 12 && (
-            <p className="mt-2 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <p className="mt-2 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               and {usage.length - 12} more
             </p>
           )}

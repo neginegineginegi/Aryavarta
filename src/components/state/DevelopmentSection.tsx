@@ -29,7 +29,7 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
         <h2 className="font-display text-[30px] font-light leading-tight text-ink">
           Development lens
         </h2>
-        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+        <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
           Presented as published · never scored
         </span>
       </div>
@@ -106,7 +106,7 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
                           ) : (
                             // Not missing data: a point-in-time measure. Say so,
                             // rather than leaving a dash the reader has to guess at.
-                            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                            <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                               Snapshot
                             </span>
                           )}

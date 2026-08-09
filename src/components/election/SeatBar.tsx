@@ -101,7 +101,7 @@ export function SeatBar({
       {mark != null && targetMark != null && (
         <p
           aria-hidden
-          className="mt-1 font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta"
+          className="mt-1 font-mono text-[9px] tracking-[0.06em] text-ink-meta"
           style={{ marginLeft: `${Math.min(88, targetMark)}%` }}
         >
           Majority {mark}
@@ -116,7 +116,7 @@ export function SeatBar({
           </span>
         ))}
         {totalSeats ? (
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-ink-meta">
+          <span className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
             {totalSeats} seats
           </span>
         ) : null}

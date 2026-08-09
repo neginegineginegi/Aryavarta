@@ -123,7 +123,7 @@ export default async function SearchPage({
 
       {answer && (
         <div className="section-card px-6 py-8 sm:px-10">
-          <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-verify">
+          <p className="font-mono text-[10px] tracking-[0.06em] text-verify">
             Structured answer
           </p>
           <h2 className="mt-3 font-display text-[30px] font-light leading-[1.2] text-ink">
@@ -153,7 +153,7 @@ export default async function SearchPage({
             </p>
           )}
           <p className="mt-5 border-t border-rule pt-3 text-[0.74rem] leading-relaxed text-ink-faint">
-            <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+            <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
               Method
             </span>{" "}
             {answer.method}

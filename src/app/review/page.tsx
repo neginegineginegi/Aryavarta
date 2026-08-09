@@ -104,11 +104,11 @@ export default async function ReviewQueuePage({
             <li key={rev.id} className="flex flex-wrap items-start justify-between gap-x-6 gap-y-2 py-4">
               <div className="min-w-0 flex-1">
                 <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                  <span className="rounded-sm border border-rule-dark bg-paper-sunken px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-ink-muted">
+                  <span className="rounded-sm border border-rule-dark bg-paper-sunken px-1.5 text-[0.7rem] font-medium tracking-[0.04em] text-ink-muted">
                     {rev.entityType} · {rev.action}
                   </span>
                   {rev.origin === "import" && (
-                    <span className="rounded-sm border border-blue-200 bg-blue-50 px-1.5 text-[0.7rem] font-medium uppercase tracking-wide text-accent">
+                    <span className="rounded-sm border border-blue-200 bg-blue-50 px-1.5 text-[0.7rem] font-medium tracking-[0.04em] text-accent">
                       imported
                     </span>
                   )}

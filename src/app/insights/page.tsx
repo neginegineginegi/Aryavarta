@@ -23,7 +23,7 @@ export default async function InsightsPage() {
         <h1 className="mt-1 font-display text-[clamp(34px,4.5vw,48px)] font-light leading-[1.05] text-ink">
           Insights
         </h1>
-        <p className="mt-4 font-mono text-[10px] uppercase tracking-[0.14em] text-ink-soft">
+        <p className="mt-4 font-mono text-[10px] tracking-[0.06em] text-ink-soft">
           Computed from the published record · nothing hand-written · nothing scored
         </p>
         <p className="mt-4 max-w-2xl text-[0.95rem] leading-relaxed text-ink-muted">
@@ -52,7 +52,7 @@ export default async function InsightsPage() {
                 <h2 className="font-display text-[28px] font-light leading-tight text-ink">
                   {g.title}
                 </h2>
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                   {g.items.length} {g.items.length === 1 ? "entry" : "entries"}
                 </span>
               </div>
@@ -78,7 +78,7 @@ export default async function InsightsPage() {
                 ))}
               </ul>
               <p className="mt-5 border-t border-rule pt-3 text-[0.74rem] leading-relaxed text-ink-faint">
-                <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-ink-meta">
+                <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                   Method
                 </span>{" "}
                 {g.method}

@@ -193,7 +193,7 @@ export function YearScrubber({
           <>
             <a
               href={`/event/${current.eventId}`}
-              className="font-mono text-[10px] uppercase tracking-[0.14em] text-accent"
+              className="font-mono text-[10px] tracking-[0.06em] text-accent"
             >
               {current.year}
             </a>{" "}
@@ -214,7 +214,7 @@ export function YearScrubber({
         <p className="mt-1 min-h-[1.25rem] text-[0.82rem] text-ink-muted">
           {fact && (
             <>
-              <span className="mr-2 font-mono text-[9px] uppercase tracking-[0.16em] text-ink-meta">
+              <span className="mr-2 font-mono text-[9px] tracking-[0.06em] text-ink-meta">
                 From the record
               </span>
               <a

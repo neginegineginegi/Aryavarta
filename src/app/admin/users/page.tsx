@@ -53,7 +53,7 @@ export default async function AdminUsersPage({
 
       <table className="mt-6 w-full text-left text-[0.88rem]">
         <thead>
-          <tr className="border-b border-rule-dark text-[0.72rem] uppercase tracking-wider text-ink-faint">
+          <tr className="border-b border-rule-dark text-[0.72rem] tracking-[0.04em] text-ink-faint">
             <th className="py-2 pr-4 font-medium">User</th>
             <th className="py-2 pr-4 font-medium">Email</th>
             <th className="py-2 pr-4 font-medium">Joined</th>

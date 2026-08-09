@@ -162,8 +162,7 @@ button {
   font-family: var(--font-mono);
   font-size: 0.66rem;
   font-weight: 700;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--color-ink-faint);
 }
 
@@ -208,8 +207,7 @@ thead th {
   font-family: var(--font-mono);
   font-size: 0.68rem;
   font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-accent);
 }
 
@@ -231,8 +229,7 @@ thead th {
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-ink-meta);
   padding: 0 0 8px;
   border-bottom: 1px solid var(--color-rule);
@@ -278,8 +275,7 @@ thead th {
   font-family: var(--font-mono);
   font-size: 9px;
   font-weight: 500;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-ink-meta);
   background: var(--color-paper-sunken);
   padding: 7px 10px;
@@ -318,8 +314,7 @@ thead th {
   padding: 3px 8px;
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
   color: var(--color-ink-soft);
   white-space: nowrap;
 }
@@ -405,8 +400,7 @@ thead th {
   padding: 6px 12px;
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
+  letter-spacing: 0.08em;
   color: var(--color-ink-soft);
 }
 
@@ -766,7 +760,6 @@ thead th {
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.1em;
-  text-transform: uppercase;
   color: var(--color-ink-soft);
   transition: color var(--dur-card) ease;
 }
@@ -809,8 +802,7 @@ thead th {
 .stat-label {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  letter-spacing: 0.07em;
   color: var(--color-ink-meta);
   margin-top: 12px;
 }
@@ -819,7 +811,7 @@ thead th {
 .mono-micro {
   font-family: var(--font-mono);
   font-size: 10px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.06em;
   color: var(--color-ink-meta);
 }
 .card-hover {
