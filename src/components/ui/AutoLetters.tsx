@@ -77,7 +77,17 @@ export function AutoLetters({ root = "body" }: { root?: string }) {
         // Devanagari letters combine into conjuncts: splitting them breaks the script.
         if (/[\u0900-\u097F]/.test(raw)) { el.dataset.auto = "skip"; continue; }
         if (raw.length > MAX) { el.dataset.auto = "skip"; continue; }
-        const size = parseFloat(getComputedStyle(el).fontSize) || 14;
+        const cs = getComputedStyle(el);
+        // A flex or grid container with a gap puts that gap between EVERY
+        // child, and split words are children. `.btn` is inline-flex with an
+        // 8px gap, so "Explore the map" gained 8px between each word on top
+        // of the space already there and read as letterspaced mono. Leave any
+        // gapped container's own text alone.
+        if ((cs.display.includes("flex") || cs.display.includes("grid")) && parseFloat(cs.gap) > 0) {
+          el.dataset.auto = "skip";
+          continue;
+        }
+        const size = parseFloat(cs.fontSize) || 14;
         // Weight only where a width change cannot re-break a line.
         const mode = size >= 24 ? "chars" : "ink";
         split(el);

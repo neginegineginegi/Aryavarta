@@ -40,7 +40,11 @@ function AuthNavInner() {
     return (
       <Link
         href="/login"
-        className="rounded-full border border-rule-dark px-4 py-1.5 font-mono text-[0.75rem] leading-none text-ink transition-colors hover:border-ink hover:bg-paper-sunken"
+        // Body voice, like every other control. Mono is the SYSTEM voice for
+        // badges, micro-labels and readouts; a button a reader presses is not
+        // one of those, and next to the sans Contribute pill it read as a
+        // different typeface for no reason.
+        className="rounded-full border border-rule-dark px-4 py-2 text-[13px] font-medium leading-none text-ink transition-colors hover:border-ink hover:bg-paper-sunken"
       >
         Sign in
       </Link>
@@ -53,7 +57,7 @@ function AuthNavInner() {
     "flex items-center gap-1.5 rounded-full px-3 py-1.5 leading-none transition-colors";
 
   return (
-    <span className="-mr-3 flex items-center border-l border-rule pl-4 font-mono text-[0.75rem]">
+    <span className="-mr-3 flex items-center border-l border-rule pl-4 text-[13px]">
       {(user.role === "moderator" || user.role === "admin") && (
         <Link
           href="/review"

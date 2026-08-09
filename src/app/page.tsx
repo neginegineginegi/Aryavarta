@@ -136,8 +136,29 @@ export default async function HomePage() {
               Browse the archive
             </Link>
           </div>
-          <Link href="/contribute" className="mt-[18px] text-[13px] text-ink-soft">
+          {/* Reads as prose without an affordance, so it carries a chevron
+              that leans further right on hover. Drawn, not a "›" character:
+              a glyph sits on the text baseline and lands at a different size
+              and height on every platform font. */}
+          <Link
+            href="/contribute"
+            className="group mt-[18px] inline-flex items-center gap-1.5 text-[13px] text-ink-soft transition-colors hover:text-accent"
+          >
             Contribute a sourced correction
+            <svg
+              aria-hidden
+              width="7"
+              height="10"
+              viewBox="0 0 7 10"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="transition-transform duration-150 group-hover:translate-x-0.5"
+            >
+              <path d="M1.4 1.2 5.2 5l-3.8 3.8" />
+            </svg>
           </Link>
           <p className="mt-11 max-w-[520px] text-[16px] text-[#3a3a36]">
             Who governed every Indian state, union territory and the Union, year by year since{" "}
