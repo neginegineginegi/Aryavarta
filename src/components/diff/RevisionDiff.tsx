@@ -1,8 +1,9 @@
-import type {
-  AnyPayload,
-  ElectionPayload,
-  EntityType,
-  SourceSnapshot,
+import {
+  isSupportedEntityType,
+  type AnyPayload,
+  type ElectionPayload,
+  type RevisionEntityType,
+  type SourceSnapshot,
 } from "@/lib/revisions/payloads";
 import {
   diffProse,
@@ -95,12 +96,23 @@ export function RevisionDiff({
   afterData,
   labels,
 }: {
-  entityType: EntityType;
+  // The whole database enum: callers pass `revisions.entityType` from a row,
+  // and a type with no field map yet must render as an honest "cannot show
+  // this" rather than fail to compile the page it appears on.
+  entityType: RevisionEntityType;
   action: "create" | "update" | "delete";
   beforeData: AnyPayload | null;
   afterData: AnyPayload | null;
   labels: Labels;
 }) {
+  if (!isSupportedEntityType(entityType)) {
+    return (
+      <p className="rounded-sm border border-dashed border-rule-dark bg-paper-sunken px-3 py-2 text-[0.85rem] text-ink-muted">
+        This revision covers a {entityType.replace(/_/g, " ")} record. A field-by-field diff for
+        that kind of record is not built yet, so the change cannot be shown here.
+      </p>
+    );
+  }
   const rows = diffScalars(entityType, beforeData, afterData);
   const srcDiff = diffSources(
     (beforeData as AnyPayload | null)?.sources,

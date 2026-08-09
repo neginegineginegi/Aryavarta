@@ -8,7 +8,7 @@ import {
   canonicalizePromise,
   canonicalizeTerm,
   type ElectionPayload,
-  type EntityType,
+  type RevisionEntityType,
   type EventPayload,
   type PromisePayload,
   type SourceSnapshot,
@@ -143,9 +143,16 @@ async function snapshotPromise(db: DbLike, id: string): Promise<PromisePayload |
   });
 }
 
+/**
+ * Accepts the whole database enum rather than the applicable subset, because
+ * callers read `revisions.entityType` straight from a row. An entity type with
+ * no snapshot yet (the Funding and Influence layer ships its schema ahead of
+ * its pipeline) returns null, which every caller already treats as "no live
+ * row to compare against".
+ */
 export function snapshotEntity(
   db: DbLike,
-  entityType: EntityType,
+  entityType: RevisionEntityType,
   entityId: string,
 ): Promise<TermPayload | ElectionPayload | EventPayload | PromisePayload | null> {
   switch (entityType) {
@@ -157,6 +164,8 @@ export function snapshotEntity(
       return snapshotEvent(db, entityId);
     case "manifesto_promise":
       return snapshotPromise(db, entityId);
+    default:
+      return Promise.resolve(null);
   }
 }
 

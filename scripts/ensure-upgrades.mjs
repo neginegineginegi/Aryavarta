@@ -219,6 +219,476 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "promises_party_idx" ON "manifesto_promises" ("party_id")`,
   `CREATE INDEX IF NOT EXISTS "promises_election_idx" ON "manifesto_promises" ("election_id")`,
   `CREATE INDEX IF NOT EXISTS "promises_category_idx" ON "manifesto_promises" ("category")`,
+  // --- upgrade 9: India Funding and Influence Map ---------------------------
+  // Design: docs/FUNDING_INFLUENCE_ARCHITECTURE.md. Schema only; the ingest
+  // pipeline and the interface follow in later phases. Additive throughout:
+  // no existing table changes shape.
+  `DO $$ BEGIN
+     CREATE TYPE "public"."alias_kind" AS ENUM('legal_name', 'former_name', 'abbreviation', 'transliteration', 'alias', 'misspelling');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."board_role_kind" AS ENUM('founder', 'trustee', 'director', 'board_member', 'chairperson', 'editor', 'chief_executive', 'secretary', 'treasurer', 'advisor', 'employee', 'spokesperson', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."campaign_stance" AS ENUM('against', 'for', 'neutral', 'unstated');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."case_party_side" AS ENUM('petitioner', 'respondent', 'intervenor', 'amicus');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."claim_type" AS ENUM('funding', 'control', 'coordination', 'influence', 'affiliation', 'conflict_of_interest', 'outcome_attribution', 'misconduct', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."entity_ref" AS ENUM('org', 'person', 'party', 'state', 'project', 'campaign', 'legal_case', 'publication');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."evidence_status" AS ENUM('verified', 'documented', 'alleged', 'disputed', 'inferred', 'unknown');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."fcra_status" AS ENUM('active', 'suspended', 'cancelled', 'expired', 'renewed', 'unknown');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."funding_type" AS ENUM('grant', 'donation', 'csr', 'government_grant', 'contract', 'membership', 'subscription', 'advertising', 'investment', 'loan', 'in_kind', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."legal_case_kind" AS ENUM('pil', 'writ', 'civil', 'criminal', 'regulatory', 'tribunal', 'appeal', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."match_status" AS ENUM('possible', 'confirmed', 'rejected');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."org_kind" AS ENUM('ngo', 'trust', 'society', 'foundation', 'think_tank', 'advocacy', 'media', 'research', 'company', 'government_body', 'political', 'international', 'religious', 'professional_body', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."outcome_kind" AS ENUM('project_delayed', 'project_cancelled', 'project_completed', 'policy_changed', 'policy_withdrawn', 'investigation_initiated', 'court_ruling', 'regulatory_action', 'government_response', 'no_documented_outcome', 'disputed');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."project_kind" AS ENUM('infrastructure', 'policy', 'regulation', 'programme', 'industry', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."publication_kind" AS ENUM('report', 'article', 'investigation', 'statement', 'paper', 'dataset', 'other');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."relation_kind" AS ENUM('funded', 'founded', 'owns', 'sits_on_board', 'employed_by', 'partnered_with', 'member_of', 'advised', 'published', 'filed_case_against', 'targeted', 'successor_of', 'campaigned_for', 'campaigned_against', 'campaigned_regarding');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     CREATE TYPE "public"."verification_result" AS ENUM('confirmed', 'could_not_confirm', 'contradicted');
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'org'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'person_record'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'funding_transaction'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'fcra_registration'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'board_position'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'relationship'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'claim'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'campaign'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'project_record'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'publication'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'legal_case'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'outcome'`,
+  `ALTER TYPE "public"."revision_entity" ADD VALUE IF NOT EXISTS 'open_question'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'org'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'person_record'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'funding_transaction'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'fcra_registration'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'board_position'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'relationship'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'claim'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'claim_response'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'campaign'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'campaign_target'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'project_record'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'publication'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'legal_case'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'outcome'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'entity_alias'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'fcra_filing'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'regulatory_filing'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'corporate_filing'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'audited_statement'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'annual_report'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'grant_database'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'org_document'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'org_statement'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'parliamentary_record'`,
+  `ALTER TYPE "public"."source_kind" ADD VALUE IF NOT EXISTS 'social_media'`,
+  `CREATE TABLE IF NOT EXISTS "board_positions" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"person_id" uuid NOT NULL,
+	"org_id" uuid NOT NULL,
+	"role" text NOT NULL,
+	"role_kind" "board_role_kind" DEFAULT 'board_member' NOT NULL,
+	"start_on" date,
+	"end_on" date,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"retrieved_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "board_dates_ordered" CHECK (end_on IS NULL OR start_on IS NULL OR end_on >= start_on)
+)`,
+  `CREATE TABLE IF NOT EXISTS "campaign_participants" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"campaign_id" uuid NOT NULL,
+	"participant_type" "entity_ref" NOT NULL,
+	"participant_id" uuid NOT NULL,
+	"role" text,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "campaign_targets" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"campaign_id" uuid NOT NULL,
+	"target_type" "entity_ref" NOT NULL,
+	"target_id" uuid NOT NULL,
+	"stance" "campaign_stance" DEFAULT 'unstated' NOT NULL,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "campaigns" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"name" text NOT NULL,
+	"issue" text,
+	"state_id" text,
+	"start_on" date,
+	"end_on" date,
+	"summary" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "campaigns_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "claim_responses" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"claim_id" uuid NOT NULL,
+	"respondent_type" "entity_ref",
+	"respondent_id" uuid,
+	"respondent_name" text,
+	"response" text NOT NULL,
+	"responded_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "claims" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"statement" text NOT NULL,
+	"claim_type" "claim_type" NOT NULL,
+	"subject_type" "entity_ref",
+	"subject_id" uuid,
+	"object_type" "entity_ref",
+	"object_id" uuid,
+	"status" "evidence_status" NOT NULL,
+	"asserted_by_type" "entity_ref",
+	"asserted_by_id" uuid,
+	"asserted_by_name" text,
+	"asserted_on" date,
+	"rationale" text,
+	"period_start" date,
+	"period_end" date,
+	"entered_by" text,
+	"entered_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "claims_alleged_needs_asserter" CHECK (status <> 'alleged' OR asserted_by_id IS NOT NULL OR asserted_by_name IS NOT NULL),
+	CONSTRAINT "claims_inferred_needs_rationale" CHECK (status <> 'inferred' OR (rationale IS NOT NULL AND length(btrim(rationale)) > 0))
+)`,
+  `CREATE TABLE IF NOT EXISTS "entity_aliases" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"entity_type" "entity_ref" NOT NULL,
+	"entity_id" uuid NOT NULL,
+	"name" text NOT NULL,
+	"kind" "alias_kind" NOT NULL,
+	"note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "entity_match_candidates" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"entity_type" "entity_ref" NOT NULL,
+	"a_id" uuid NOT NULL,
+	"b_id" uuid NOT NULL,
+	"status" "match_status" DEFAULT 'possible' NOT NULL,
+	"rationale" text NOT NULL,
+	"reviewed_by" text,
+	"reviewed_at" timestamp with time zone,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "entity_match_distinct" CHECK (a_id <> b_id)
+)`,
+  `CREATE TABLE IF NOT EXISTS "fcra_registrations" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"org_id" uuid NOT NULL,
+	"registration_number" text,
+	"status" "fcra_status" DEFAULT 'unknown' NOT NULL,
+	"granted_on" date,
+	"valid_until" date,
+	"action_on" date,
+	"action_kind" text,
+	"action_note" text,
+	"evidence_status" "evidence_status" DEFAULT 'verified' NOT NULL,
+	"retrieved_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "funding_transactions" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"donor_type" "entity_ref" NOT NULL,
+	"donor_id" uuid NOT NULL,
+	"recipient_type" "entity_ref" NOT NULL,
+	"recipient_id" uuid NOT NULL,
+	"amount" numeric(20, 2),
+	"currency" text,
+	"financial_year" text,
+	"occurred_on" date,
+	"funding_type" "funding_type" DEFAULT 'grant' NOT NULL,
+	"stated_purpose" text,
+	"programme" text,
+	"donor_country" text,
+	"reported_under_fcra" boolean,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"notes" text,
+	"retrieved_on" date,
+	"entered_by" text,
+	"entered_on" date,
+	"verified_by" text,
+	"verified_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "funding_amount_nonneg" CHECK (amount IS NULL OR amount >= 0)
+)`,
+  `CREATE TABLE IF NOT EXISTS "legal_case_parties" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"case_id" uuid NOT NULL,
+	"party_type" "entity_ref" NOT NULL,
+	"party_id" uuid NOT NULL,
+	"side" "case_party_side" NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "legal_cases" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"title" text NOT NULL,
+	"court" text,
+	"case_number" text,
+	"kind" "legal_case_kind" DEFAULT 'writ' NOT NULL,
+	"filed_on" date,
+	"decided_on" date,
+	"state_id" text,
+	"summary" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "legal_cases_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "open_questions" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"subject_type" "entity_ref" NOT NULL,
+	"subject_id" uuid NOT NULL,
+	"question" text NOT NULL,
+	"why_it_matters" text,
+	"what_would_answer_it" text,
+	"resolved_on" date,
+	"resolution_note" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "orgs" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"name" text NOT NULL,
+	"kind" "org_kind" NOT NULL,
+	"legal_name" text,
+	"registration_number" text,
+	"registration_type" text,
+	"incorporated_on" date,
+	"dissolved_on" date,
+	"state_id" text,
+	"city" text,
+	"website" text,
+	"summary" text,
+	"parent_org_id" uuid,
+	"entered_by" text,
+	"entered_on" date,
+	"verified_by" text,
+	"verified_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "orgs_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "outcomes" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"subject_type" "entity_ref" NOT NULL,
+	"subject_id" uuid NOT NULL,
+	"kind" "outcome_kind" NOT NULL,
+	"occurred_on" date,
+	"summary" text NOT NULL,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `CREATE TABLE IF NOT EXISTS "people" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"name" text NOT NULL,
+	"public_role_basis" text NOT NULL,
+	"birth_year" integer,
+	"summary" text,
+	"state_id" text,
+	"entered_by" text,
+	"entered_on" date,
+	"verified_by" text,
+	"verified_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "people_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "projects" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"name" text NOT NULL,
+	"kind" "project_kind" NOT NULL,
+	"state_id" text,
+	"operator_org_id" uuid,
+	"announced_on" date,
+	"summary" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "projects_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "publications" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"slug" text NOT NULL,
+	"title" text NOT NULL,
+	"kind" "publication_kind" DEFAULT 'report' NOT NULL,
+	"published_on" date,
+	"url" text,
+	"publisher_org_id" uuid,
+	"summary" text,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "publications_slug_unique" UNIQUE("slug")
+)`,
+  `CREATE TABLE IF NOT EXISTS "relationships" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"kind" "relation_kind" NOT NULL,
+	"from_type" "entity_ref" NOT NULL,
+	"from_id" uuid NOT NULL,
+	"to_type" "entity_ref" NOT NULL,
+	"to_id" uuid NOT NULL,
+	"start_on" date,
+	"end_on" date,
+	"detail" text,
+	"evidence_status" "evidence_status" DEFAULT 'documented' NOT NULL,
+	"retrieved_on" date,
+	"entered_by" text,
+	"entered_on" date,
+	"verified_by" text,
+	"verified_on" date,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "relationships_dates_ordered" CHECK (end_on IS NULL OR start_on IS NULL OR end_on >= start_on)
+)`,
+  `CREATE TABLE IF NOT EXISTS "verifications" (
+	"id" uuid PRIMARY KEY NOT NULL,
+	"subject_type" "citation_subject" NOT NULL,
+	"subject_id" text NOT NULL,
+	"result" "verification_result" NOT NULL,
+	"method" text NOT NULL,
+	"note" text,
+	"verified_by" text,
+	"verified_on" date NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+)`,
+  `DO $$ BEGIN
+     ALTER TABLE "board_positions" ADD CONSTRAINT "board_positions_person_id_people_id_fk" FOREIGN KEY ("person_id") REFERENCES "public"."people"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "board_positions" ADD CONSTRAINT "board_positions_org_id_orgs_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."orgs"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "campaign_participants" ADD CONSTRAINT "campaign_participants_campaign_id_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."campaigns"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "campaign_targets" ADD CONSTRAINT "campaign_targets_campaign_id_campaigns_id_fk" FOREIGN KEY ("campaign_id") REFERENCES "public"."campaigns"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "campaigns" ADD CONSTRAINT "campaigns_state_id_states_id_fk" FOREIGN KEY ("state_id") REFERENCES "public"."states"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "claim_responses" ADD CONSTRAINT "claim_responses_claim_id_claims_id_fk" FOREIGN KEY ("claim_id") REFERENCES "public"."claims"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "claims" ADD CONSTRAINT "claims_entered_by_users_id_fk" FOREIGN KEY ("entered_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "entity_match_candidates" ADD CONSTRAINT "entity_match_candidates_reviewed_by_users_id_fk" FOREIGN KEY ("reviewed_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "fcra_registrations" ADD CONSTRAINT "fcra_registrations_org_id_orgs_id_fk" FOREIGN KEY ("org_id") REFERENCES "public"."orgs"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "funding_transactions" ADD CONSTRAINT "funding_transactions_entered_by_users_id_fk" FOREIGN KEY ("entered_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "funding_transactions" ADD CONSTRAINT "funding_transactions_verified_by_users_id_fk" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "legal_case_parties" ADD CONSTRAINT "legal_case_parties_case_id_legal_cases_id_fk" FOREIGN KEY ("case_id") REFERENCES "public"."legal_cases"("id") ON DELETE cascade ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "legal_cases" ADD CONSTRAINT "legal_cases_state_id_states_id_fk" FOREIGN KEY ("state_id") REFERENCES "public"."states"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "orgs" ADD CONSTRAINT "orgs_state_id_states_id_fk" FOREIGN KEY ("state_id") REFERENCES "public"."states"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "orgs" ADD CONSTRAINT "orgs_entered_by_users_id_fk" FOREIGN KEY ("entered_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "orgs" ADD CONSTRAINT "orgs_verified_by_users_id_fk" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "people" ADD CONSTRAINT "people_state_id_states_id_fk" FOREIGN KEY ("state_id") REFERENCES "public"."states"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "people" ADD CONSTRAINT "people_entered_by_users_id_fk" FOREIGN KEY ("entered_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "people" ADD CONSTRAINT "people_verified_by_users_id_fk" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "projects" ADD CONSTRAINT "projects_state_id_states_id_fk" FOREIGN KEY ("state_id") REFERENCES "public"."states"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "projects" ADD CONSTRAINT "projects_operator_org_id_orgs_id_fk" FOREIGN KEY ("operator_org_id") REFERENCES "public"."orgs"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "publications" ADD CONSTRAINT "publications_publisher_org_id_orgs_id_fk" FOREIGN KEY ("publisher_org_id") REFERENCES "public"."orgs"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "relationships" ADD CONSTRAINT "relationships_entered_by_users_id_fk" FOREIGN KEY ("entered_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "relationships" ADD CONSTRAINT "relationships_verified_by_users_id_fk" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `DO $$ BEGIN
+     ALTER TABLE "verifications" ADD CONSTRAINT "verifications_verified_by_users_id_fk" FOREIGN KEY ("verified_by") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `CREATE INDEX IF NOT EXISTS "board_person_idx" ON "board_positions" USING btree ("person_id")`,
+  `CREATE INDEX IF NOT EXISTS "board_org_idx" ON "board_positions" USING btree ("org_id")`,
+  `CREATE INDEX IF NOT EXISTS "campaign_participants_campaign_idx" ON "campaign_participants" USING btree ("campaign_id")`,
+  `CREATE INDEX IF NOT EXISTS "campaign_participants_entity_idx" ON "campaign_participants" USING btree ("participant_type","participant_id")`,
+  `CREATE INDEX IF NOT EXISTS "campaign_targets_campaign_idx" ON "campaign_targets" USING btree ("campaign_id")`,
+  `CREATE INDEX IF NOT EXISTS "campaign_targets_target_idx" ON "campaign_targets" USING btree ("target_type","target_id")`,
+  `CREATE INDEX IF NOT EXISTS "campaigns_state_idx" ON "campaigns" USING btree ("state_id")`,
+  `CREATE INDEX IF NOT EXISTS "claim_responses_claim_idx" ON "claim_responses" USING btree ("claim_id")`,
+  `CREATE INDEX IF NOT EXISTS "claims_subject_idx" ON "claims" USING btree ("subject_type","subject_id")`,
+  `CREATE INDEX IF NOT EXISTS "claims_object_idx" ON "claims" USING btree ("object_type","object_id")`,
+  `CREATE INDEX IF NOT EXISTS "claims_type_idx" ON "claims" USING btree ("claim_type")`,
+  `CREATE INDEX IF NOT EXISTS "entity_aliases_entity_idx" ON "entity_aliases" USING btree ("entity_type","entity_id")`,
+  `CREATE INDEX IF NOT EXISTS "entity_aliases_name_idx" ON "entity_aliases" USING btree ("name")`,
+  `CREATE UNIQUE INDEX IF NOT EXISTS "entity_match_pair_idx" ON "entity_match_candidates" USING btree ("entity_type","a_id","b_id")`,
+  `CREATE INDEX IF NOT EXISTS "fcra_org_idx" ON "fcra_registrations" USING btree ("org_id")`,
+  `CREATE INDEX IF NOT EXISTS "funding_donor_idx" ON "funding_transactions" USING btree ("donor_type","donor_id")`,
+  `CREATE INDEX IF NOT EXISTS "funding_recipient_idx" ON "funding_transactions" USING btree ("recipient_type","recipient_id")`,
+  `CREATE INDEX IF NOT EXISTS "funding_year_idx" ON "funding_transactions" USING btree ("financial_year")`,
+  `CREATE INDEX IF NOT EXISTS "funding_country_idx" ON "funding_transactions" USING btree ("donor_country")`,
+  `CREATE INDEX IF NOT EXISTS "legal_case_parties_case_idx" ON "legal_case_parties" USING btree ("case_id")`,
+  `CREATE INDEX IF NOT EXISTS "legal_case_parties_entity_idx" ON "legal_case_parties" USING btree ("party_type","party_id")`,
+  `CREATE INDEX IF NOT EXISTS "legal_cases_state_idx" ON "legal_cases" USING btree ("state_id")`,
+  `CREATE INDEX IF NOT EXISTS "open_questions_subject_idx" ON "open_questions" USING btree ("subject_type","subject_id")`,
+  `CREATE INDEX IF NOT EXISTS "orgs_kind_idx" ON "orgs" USING btree ("kind")`,
+  `CREATE INDEX IF NOT EXISTS "orgs_state_idx" ON "orgs" USING btree ("state_id")`,
+  `CREATE INDEX IF NOT EXISTS "outcomes_subject_idx" ON "outcomes" USING btree ("subject_type","subject_id")`,
+  `CREATE INDEX IF NOT EXISTS "people_name_idx" ON "people" USING btree ("name")`,
+  `CREATE INDEX IF NOT EXISTS "projects_state_idx" ON "projects" USING btree ("state_id")`,
+  `CREATE INDEX IF NOT EXISTS "publications_org_idx" ON "publications" USING btree ("publisher_org_id")`,
+  `CREATE INDEX IF NOT EXISTS "relationships_from_idx" ON "relationships" USING btree ("from_type","from_id")`,
+  `CREATE INDEX IF NOT EXISTS "relationships_to_idx" ON "relationships" USING btree ("to_type","to_id")`,
+  `CREATE INDEX IF NOT EXISTS "relationships_kind_idx" ON "relationships" USING btree ("kind")`,
+  `CREATE INDEX IF NOT EXISTS "verifications_subject_idx" ON "verifications" USING btree ("subject_type","subject_id")`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

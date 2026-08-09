@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { eventTypeEnum, promiseCategoryEnum, promiseScopeEnum } from "@/lib/db/schema";
+import {
+  eventTypeEnum,
+  promiseCategoryEnum,
+  promiseScopeEnum,
+  revisionEntityEnum,
+} from "@/lib/db/schema";
 
 /**
  * The payload contract shared by forms, snapshots, the approval transaction,
@@ -291,7 +296,25 @@ export function canonicalizeElection(p: ElectionPayload): ElectionPayload {
   };
 }
 
-export type EntityType = "term" | "election" | "event" | "manifesto_promise";
+/**
+ * Entity types the revision machinery can apply today.
+ *
+ * The database enum is deliberately wider: the Funding and Influence layer's
+ * types land with its schema so the tables and the review path are versioned
+ * together, but their payload schemas and apply branches arrive in phase 2.
+ * Anything not listed here is refused at approval with a clear message rather
+ * than half-applied by a branch that does not exist yet.
+ */
+/** Every value the database enum holds, applicable or not. */
+export type RevisionEntityType = (typeof revisionEntityEnum.enumValues)[number];
+
+export const SUPPORTED_ENTITY_TYPES = ["term", "election", "event", "manifesto_promise"] as const;
+
+export type EntityType = (typeof SUPPORTED_ENTITY_TYPES)[number];
+
+export function isSupportedEntityType(value: string): value is EntityType {
+  return (SUPPORTED_ENTITY_TYPES as readonly string[]).includes(value);
+}
 
 export type AnyPayload = TermPayload | ElectionPayload | EventPayload | PromisePayload;
 

@@ -76,6 +76,22 @@ export const revisionEntityEnum = pgEnum("revision_entity", [
   "election",
   "event",
   "manifesto_promise",
+  // Funding and Influence layer. Everything in that layer goes through the
+  // same propose/diff/approve path as the political record: nothing reaches
+  // the public archive without a moderator, least of all a funding figure.
+  "org",
+  "person_record",
+  "funding_transaction",
+  "fcra_registration",
+  "board_position",
+  "relationship",
+  "claim",
+  "campaign",
+  "project_record",
+  "publication",
+  "legal_case",
+  "outcome",
+  "open_question",
 ]);
 
 export const revisionActionEnum = pgEnum("revision_action", ["create", "update", "delete"]);
@@ -185,6 +201,22 @@ export const citationSubjectEnum = pgEnum("citation_subject", [
   "promise_status_claim",
   "promise_timeline_step",
   "entity_link",
+  // Funding and Influence layer.
+  "org",
+  "person_record",
+  "funding_transaction",
+  "fcra_registration",
+  "board_position",
+  "relationship",
+  "claim",
+  "claim_response",
+  "campaign",
+  "campaign_target",
+  "project_record",
+  "publication",
+  "legal_case",
+  "outcome",
+  "entity_alias",
 ]);
 
 // What kind of artefact a source is. Factual classification, not a quality
@@ -202,6 +234,19 @@ export const sourceKindEnum = pgEnum("source_kind", [
   "news",
   "research",
   "rti_response",
+  // Funding and Influence layer. Ordering lives in
+  // src/lib/funding/source-rank.ts, not here: this enum classifies, it does
+  // not rank, and the rank has to be revisable without a migration.
+  "fcra_filing",
+  "regulatory_filing",
+  "corporate_filing",
+  "audited_statement",
+  "annual_report",
+  "grant_database",
+  "org_document",
+  "org_statement",
+  "parliamentary_record",
+  "social_media",
   "other",
 ]);
 
@@ -824,4 +869,787 @@ export const reportsRelations = relations(reports, ({ one, many }) => ({
 export const reportCommentsRelations = relations(reportComments, ({ one }) => ({
   report: one(reports, { fields: [reportComments.reportId], references: [reports.id] }),
   author: one(users, { fields: [reportComments.authorId], references: [users.id] }),
+}));
+
+// ===========================================================================
+// India Funding and Influence Map
+//
+// Design: docs/FUNDING_INFLUENCE_ARCHITECTURE.md. Two rules govern every table
+// below and are worth repeating where they are enforced rather than only where
+// they are described:
+//
+//   1. Facts and interpretations live in different tables. `relationships`
+//      holds checkable relations; `claims` holds everything interpretive and
+//      cannot exist without recording who asserts it.
+//   2. Nothing here is ever derived and stored. Overlap between two bodies is
+//      computed on read, because a stored overlap becomes a fact-shaped object
+//      that outlives the caveat printed beside it.
+// ===========================================================================
+
+/** What an entity reference points at. Used by the polymorphic columns below. */
+export const entityRefEnum = pgEnum("entity_ref", [
+  "org",
+  "person",
+  "party",
+  "state",
+  "project",
+  "campaign",
+  "legal_case",
+  "publication",
+]);
+
+// One table for every institutional body. Kind is an attribute, not a table,
+// because bodies change kind over their lives and a table-per-type turns that
+// into a migration.
+export const orgKindEnum = pgEnum("org_kind", [
+  "ngo",
+  "trust",
+  "society",
+  "foundation",
+  "think_tank",
+  "advocacy",
+  "media",
+  "research",
+  "company",
+  "government_body",
+  "political",
+  "international",
+  "religious",
+  "professional_body",
+  "other",
+]);
+
+/**
+ * How well established an assertion is. Carried by every relationship, funding
+ * row and claim in this layer, and rendered next to each of them.
+ *
+ * `inferred` is the dangerous one: it is the only value that describes a
+ * conclusion nobody documented. It therefore requires a written rationale (see
+ * the check on `claims`) and must never be rendered like `verified`.
+ */
+export const evidenceStatusEnum = pgEnum("evidence_status", [
+  "verified",
+  "documented",
+  "alleged",
+  "disputed",
+  "inferred",
+  "unknown",
+]);
+
+export const fundingTypeEnum = pgEnum("funding_type", [
+  "grant",
+  "donation",
+  "csr",
+  "government_grant",
+  "contract",
+  "membership",
+  "subscription",
+  "advertising",
+  "investment",
+  "loan",
+  "in_kind",
+  "other",
+]);
+
+/**
+ * Factual, checkable relations only.
+ *
+ * Deliberately absent: coordinated_with, influenced, controlled_by,
+ * acted_on_behalf_of. Those are the accusations, and they have no enum value
+ * here so they cannot be stored as relationships. Where a source does
+ * establish control or coordination it is recorded in `claims`, which forces
+ * it to carry an asserter, a status and a citation.
+ */
+export const relationKindEnum = pgEnum("relation_kind", [
+  "funded",
+  "founded",
+  "owns",
+  "sits_on_board",
+  "employed_by",
+  "partnered_with",
+  "member_of",
+  "advised",
+  "published",
+  "filed_case_against",
+  "targeted",
+  "successor_of",
+  "campaigned_for",
+  "campaigned_against",
+  "campaigned_regarding",
+]);
+
+export const claimTypeEnum = pgEnum("claim_type", [
+  "funding",
+  "control",
+  "coordination",
+  "influence",
+  "affiliation",
+  "conflict_of_interest",
+  "outcome_attribution",
+  "misconduct",
+  "other",
+]);
+
+export const fcraStatusEnum = pgEnum("fcra_status", [
+  "active",
+  "suspended",
+  "cancelled",
+  "expired",
+  "renewed",
+  "unknown",
+]);
+
+export const boardRoleKindEnum = pgEnum("board_role_kind", [
+  "founder",
+  "trustee",
+  "director",
+  "board_member",
+  "chairperson",
+  "editor",
+  "chief_executive",
+  "secretary",
+  "treasurer",
+  "advisor",
+  "employee",
+  "spokesperson",
+  "other",
+]);
+
+export const aliasKindEnum = pgEnum("alias_kind", [
+  "legal_name",
+  "former_name",
+  "abbreviation",
+  "transliteration",
+  "alias",
+  "misspelling",
+]);
+
+// Two records that might be one body. There is no merge: confirming a match
+// records a confirmation, it never deletes a row, because a merge destroys the
+// evidence that the two were ever recorded separately.
+export const matchStatusEnum = pgEnum("match_status", ["possible", "confirmed", "rejected"]);
+
+export const verificationResultEnum = pgEnum("verification_result", [
+  "confirmed",
+  "could_not_confirm",
+  "contradicted",
+]);
+
+export const campaignStanceEnum = pgEnum("campaign_stance", [
+  "against",
+  "for",
+  "neutral",
+  "unstated",
+]);
+
+export const projectKindEnum = pgEnum("project_kind", [
+  "infrastructure",
+  "policy",
+  "regulation",
+  "programme",
+  "industry",
+  "other",
+]);
+
+export const legalCaseKindEnum = pgEnum("legal_case_kind", [
+  "pil",
+  "writ",
+  "civil",
+  "criminal",
+  "regulatory",
+  "tribunal",
+  "appeal",
+  "other",
+]);
+
+export const casePartySideEnum = pgEnum("case_party_side", [
+  "petitioner",
+  "respondent",
+  "intervenor",
+  "amicus",
+]);
+
+export const publicationKindEnum = pgEnum("publication_kind", [
+  "report",
+  "article",
+  "investigation",
+  "statement",
+  "paper",
+  "dataset",
+  "other",
+]);
+
+// What happened, attached to the thing it happened to. Never attached to a
+// campaign: "campaign X caused outcome Y" is an outcome_attribution claim,
+// with an asserter and a status.
+export const outcomeKindEnum = pgEnum("outcome_kind", [
+  "project_delayed",
+  "project_cancelled",
+  "project_completed",
+  "policy_changed",
+  "policy_withdrawn",
+  "investigation_initiated",
+  "court_ruling",
+  "regulatory_action",
+  "government_response",
+  "no_documented_outcome",
+  "disputed",
+]);
+
+// ---------------------------------------------------------------------------
+// Identity
+// ---------------------------------------------------------------------------
+
+export const orgs = pgTable(
+  "orgs",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(), // the name as the primary source gives it
+    kind: orgKindEnum("kind").notNull(),
+    legalName: text("legal_name"),
+    registrationNumber: text("registration_number"),
+    registrationType: text("registration_type"), // trust deed, society act, sec 8, CIN
+    incorporatedOn: date("incorporated_on"),
+    dissolvedOn: date("dissolved_on"),
+    stateId: text("state_id").references(() => states.id), // registered or head office
+    city: text("city"),
+    website: text("website"),
+    summary: text("summary"), // neutral description, sourced
+    parentOrgId: uuid("parent_org_id"), // self-reference, set in relations below
+    enteredBy: text("entered_by").references(() => users.id),
+    enteredOn: date("entered_on"),
+    verifiedBy: text("verified_by").references(() => users.id),
+    verifiedOn: date("verified_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("orgs_kind_idx").on(t.kind), index("orgs_state_idx").on(t.stateId)],
+);
+
+/**
+ * Individuals in institutional or public roles.
+ *
+ * `publicRoleBasis` is required and says why this person is in a public
+ * archive at all ("trustee of X, per the 2021 MCA filing"). Someone with no
+ * institutional role does not belong here, and a required field makes that a
+ * visible decision rather than a silent one.
+ */
+export const people = pgTable(
+  "people",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    publicRoleBasis: text("public_role_basis").notNull(),
+    birthYear: integer("birth_year"),
+    summary: text("summary"),
+    stateId: text("state_id").references(() => states.id),
+    enteredBy: text("entered_by").references(() => users.id),
+    enteredOn: date("entered_on"),
+    verifiedBy: text("verified_by").references(() => users.id),
+    verifiedOn: date("verified_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("people_name_idx").on(t.name)],
+);
+
+export const entityAliases = pgTable(
+  "entity_aliases",
+  {
+    id: uuid("id").primaryKey(),
+    entityType: entityRefEnum("entity_type").notNull(),
+    entityId: uuid("entity_id").notNull(),
+    name: text("name").notNull(),
+    kind: aliasKindEnum("kind").notNull(),
+    note: text("note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("entity_aliases_entity_idx").on(t.entityType, t.entityId),
+    index("entity_aliases_name_idx").on(t.name),
+  ],
+);
+
+export const entityMatchCandidates = pgTable(
+  "entity_match_candidates",
+  {
+    id: uuid("id").primaryKey(),
+    entityType: entityRefEnum("entity_type").notNull(),
+    aId: uuid("a_id").notNull(),
+    bId: uuid("b_id").notNull(),
+    status: matchStatusEnum("status").notNull().default("possible"),
+    rationale: text("rationale").notNull(),
+    reviewedBy: text("reviewed_by").references(() => users.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex("entity_match_pair_idx").on(t.entityType, t.aId, t.bId),
+    check("entity_match_distinct", sql`a_id <> b_id`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Money
+// ---------------------------------------------------------------------------
+
+/**
+ * One recorded payment or grant.
+ *
+ * Amounts stay in the currency the source used: converting at write time would
+ * transform an ambiguous field, and both the rate and its date are themselves
+ * claims. `statedPurpose` is verbatim from the source, never a category the
+ * archive assigns.
+ *
+ * There is no `is_foreign` column. Under FCRA a company registered in India
+ * can be a foreign source and a donor abroad may not be, so "foreign" is a
+ * determination to be recorded (`reportedUnderFcra`, `donorCountry`), never
+ * computed from a country code.
+ */
+export const fundingTransactions = pgTable(
+  "funding_transactions",
+  {
+    id: uuid("id").primaryKey(),
+    donorType: entityRefEnum("donor_type").notNull(),
+    donorId: uuid("donor_id").notNull(),
+    recipientType: entityRefEnum("recipient_type").notNull(),
+    recipientId: uuid("recipient_id").notNull(),
+    amount: numeric("amount", { precision: 20, scale: 2 }),
+    currency: text("currency"), // ISO 4217, as the source states it
+    financialYear: text("financial_year"), // '2022-23'
+    occurredOn: date("occurred_on"),
+    fundingType: fundingTypeEnum("funding_type").notNull().default("grant"),
+    statedPurpose: text("stated_purpose"), // verbatim
+    programme: text("programme"),
+    donorCountry: text("donor_country"), // ISO 3166-1 alpha-2
+    reportedUnderFcra: boolean("reported_under_fcra"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    notes: text("notes"),
+    retrievedOn: date("retrieved_on"), // when the source was fetched
+    enteredBy: text("entered_by").references(() => users.id),
+    enteredOn: date("entered_on"),
+    verifiedBy: text("verified_by").references(() => users.id),
+    verifiedOn: date("verified_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("funding_donor_idx").on(t.donorType, t.donorId),
+    index("funding_recipient_idx").on(t.recipientType, t.recipientId),
+    index("funding_year_idx").on(t.financialYear),
+    index("funding_country_idx").on(t.donorCountry),
+    check("funding_amount_nonneg", sql`amount IS NULL OR amount >= 0`),
+  ],
+);
+
+export const fcraRegistrations = pgTable(
+  "fcra_registrations",
+  {
+    id: uuid("id").primaryKey(),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    registrationNumber: text("registration_number"),
+    status: fcraStatusEnum("status").notNull().default("unknown"),
+    grantedOn: date("granted_on"),
+    validUntil: date("valid_until"),
+    // Any recorded government action, stated as the record states it.
+    actionOn: date("action_on"),
+    actionKind: text("action_kind"),
+    actionNote: text("action_note"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("verified"),
+    retrievedOn: date("retrieved_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("fcra_org_idx").on(t.orgId)],
+);
+
+// ---------------------------------------------------------------------------
+// People in organisations
+// ---------------------------------------------------------------------------
+
+export const boardPositions = pgTable(
+  "board_positions",
+  {
+    id: uuid("id").primaryKey(),
+    personId: uuid("person_id")
+      .notNull()
+      .references(() => people.id, { onDelete: "cascade" }),
+    orgId: uuid("org_id")
+      .notNull()
+      .references(() => orgs.id, { onDelete: "cascade" }),
+    role: text("role").notNull(), // as the source words it
+    roleKind: boardRoleKindEnum("role_kind").notNull().default("board_member"),
+    startOn: date("start_on"),
+    endOn: date("end_on"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    retrievedOn: date("retrieved_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("board_person_idx").on(t.personId),
+    index("board_org_idx").on(t.orgId),
+    check("board_dates_ordered", sql`end_on IS NULL OR start_on IS NULL OR end_on >= start_on`),
+  ],
+);
+
+// ---------------------------------------------------------------------------
+// Activities
+// ---------------------------------------------------------------------------
+
+export const projects = pgTable(
+  "projects",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    kind: projectKindEnum("kind").notNull(),
+    stateId: text("state_id").references(() => states.id),
+    operatorOrgId: uuid("operator_org_id").references(() => orgs.id),
+    announcedOn: date("announced_on"),
+    summary: text("summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("projects_state_idx").on(t.stateId)],
+);
+
+export const campaigns = pgTable(
+  "campaigns",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    name: text("name").notNull(),
+    issue: text("issue"),
+    stateId: text("state_id").references(() => states.id),
+    startOn: date("start_on"),
+    endOn: date("end_on"),
+    summary: text("summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("campaigns_state_idx").on(t.stateId)],
+);
+
+export const campaignParticipants = pgTable(
+  "campaign_participants",
+  {
+    id: uuid("id").primaryKey(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    participantType: entityRefEnum("participant_type").notNull(),
+    participantId: uuid("participant_id").notNull(),
+    role: text("role"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("campaign_participants_campaign_idx").on(t.campaignId),
+    index("campaign_participants_entity_idx").on(t.participantType, t.participantId),
+  ],
+);
+
+// A campaign's subject and its stated position on it. `stance` defaults to
+// 'unstated' because a campaign that has not stated a position must not be
+// recorded as opposing anything.
+export const campaignTargets = pgTable(
+  "campaign_targets",
+  {
+    id: uuid("id").primaryKey(),
+    campaignId: uuid("campaign_id")
+      .notNull()
+      .references(() => campaigns.id, { onDelete: "cascade" }),
+    targetType: entityRefEnum("target_type").notNull(),
+    targetId: uuid("target_id").notNull(),
+    stance: campaignStanceEnum("stance").notNull().default("unstated"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("campaign_targets_campaign_idx").on(t.campaignId),
+    index("campaign_targets_target_idx").on(t.targetType, t.targetId),
+  ],
+);
+
+export const publications = pgTable(
+  "publications",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    kind: publicationKindEnum("kind").notNull().default("report"),
+    publishedOn: date("published_on"),
+    url: text("url"),
+    publisherOrgId: uuid("publisher_org_id").references(() => orgs.id),
+    summary: text("summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("publications_org_idx").on(t.publisherOrgId)],
+);
+
+export const legalCases = pgTable(
+  "legal_cases",
+  {
+    id: uuid("id").primaryKey(),
+    slug: text("slug").notNull().unique(),
+    title: text("title").notNull(),
+    court: text("court"),
+    caseNumber: text("case_number"),
+    kind: legalCaseKindEnum("kind").notNull().default("writ"),
+    filedOn: date("filed_on"),
+    decidedOn: date("decided_on"),
+    stateId: text("state_id").references(() => states.id),
+    summary: text("summary"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("legal_cases_state_idx").on(t.stateId)],
+);
+
+export const legalCaseParties = pgTable(
+  "legal_case_parties",
+  {
+    id: uuid("id").primaryKey(),
+    caseId: uuid("case_id")
+      .notNull()
+      .references(() => legalCases.id, { onDelete: "cascade" }),
+    partyType: entityRefEnum("party_type").notNull(),
+    partyId: uuid("party_id").notNull(),
+    side: casePartySideEnum("side").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("legal_case_parties_case_idx").on(t.caseId),
+    index("legal_case_parties_entity_idx").on(t.partyType, t.partyId),
+  ],
+);
+
+/**
+ * What happened, attached to the thing it happened to.
+ *
+ * Never attached to a campaign. The timeline will show a campaign in 2016 and a
+ * cancellation in 2018 and let the reader see the sequence; saying one produced
+ * the other is an `outcome_attribution` claim, with an asserter and a status.
+ */
+export const outcomes = pgTable(
+  "outcomes",
+  {
+    id: uuid("id").primaryKey(),
+    subjectType: entityRefEnum("subject_type").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    kind: outcomeKindEnum("kind").notNull(),
+    occurredOn: date("occurred_on"),
+    summary: text("summary").notNull(),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("outcomes_subject_idx").on(t.subjectType, t.subjectId)],
+);
+
+// ---------------------------------------------------------------------------
+// The graph: factual edges, and interpretive claims
+// ---------------------------------------------------------------------------
+
+export const relationships = pgTable(
+  "relationships",
+  {
+    id: uuid("id").primaryKey(),
+    kind: relationKindEnum("kind").notNull(),
+    fromType: entityRefEnum("from_type").notNull(),
+    fromId: uuid("from_id").notNull(),
+    toType: entityRefEnum("to_type").notNull(),
+    toId: uuid("to_id").notNull(),
+    startOn: date("start_on"),
+    endOn: date("end_on"),
+    detail: text("detail"),
+    evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    retrievedOn: date("retrieved_on"),
+    enteredBy: text("entered_by").references(() => users.id),
+    enteredOn: date("entered_on"),
+    verifiedBy: text("verified_by").references(() => users.id),
+    verifiedOn: date("verified_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("relationships_from_idx").on(t.fromType, t.fromId),
+    index("relationships_to_idx").on(t.toType, t.toId),
+    index("relationships_kind_idx").on(t.kind),
+    check(
+      "relationships_dates_ordered",
+      sql`end_on IS NULL OR start_on IS NULL OR end_on >= start_on`,
+    ),
+  ],
+);
+
+/**
+ * Interpretation, with its author attached.
+ *
+ * Everything the relationship enum refuses to hold lives here: control,
+ * coordination, influence, attribution of an outcome. The check constraints
+ * are the point of the table. An `alleged` claim without an asserter is
+ * rejected, so "it is alleged that..." can never be recorded without recording
+ * who alleges it; an `inferred` claim without a rationale is rejected, so a
+ * conclusion nobody documented must at least explain itself.
+ */
+export const claims = pgTable(
+  "claims",
+  {
+    id: uuid("id").primaryKey(),
+    statement: text("statement").notNull(),
+    claimType: claimTypeEnum("claim_type").notNull(),
+    subjectType: entityRefEnum("subject_type"),
+    subjectId: uuid("subject_id"),
+    objectType: entityRefEnum("object_type"),
+    objectId: uuid("object_id"),
+    status: evidenceStatusEnum("status").notNull(),
+    // Who makes the claim. An entity reference where the asserter is in the
+    // archive, a plain name where they are not (a named official, a court).
+    assertedByType: entityRefEnum("asserted_by_type"),
+    assertedById: uuid("asserted_by_id"),
+    assertedByName: text("asserted_by_name"),
+    assertedOn: date("asserted_on"),
+    rationale: text("rationale"), // required when status = 'inferred'
+    periodStart: date("period_start"),
+    periodEnd: date("period_end"),
+    enteredBy: text("entered_by").references(() => users.id),
+    enteredOn: date("entered_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("claims_subject_idx").on(t.subjectType, t.subjectId),
+    index("claims_object_idx").on(t.objectType, t.objectId),
+    index("claims_type_idx").on(t.claimType),
+    check(
+      "claims_alleged_needs_asserter",
+      sql`status <> 'alleged' OR asserted_by_id IS NOT NULL OR asserted_by_name IS NOT NULL`,
+    ),
+    check(
+      "claims_inferred_needs_rationale",
+      sql`status <> 'inferred' OR (rationale IS NOT NULL AND length(btrim(rationale)) > 0)`,
+    ),
+  ],
+);
+
+// Rebuttals. Section 25 requires responses where they exist; a table is how
+// they stop being optional in practice.
+export const claimResponses = pgTable(
+  "claim_responses",
+  {
+    id: uuid("id").primaryKey(),
+    claimId: uuid("claim_id")
+      .notNull()
+      .references(() => claims.id, { onDelete: "cascade" }),
+    respondentType: entityRefEnum("respondent_type"),
+    respondentId: uuid("respondent_id"),
+    respondentName: text("respondent_name"),
+    response: text("response").notNull(),
+    respondedOn: date("responded_on"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("claim_responses_claim_idx").on(t.claimId)],
+);
+
+// ---------------------------------------------------------------------------
+// Provenance and honesty about gaps
+// ---------------------------------------------------------------------------
+
+// Append-only. A 'contradicted' verification does not delete the row it
+// concerns: it lowers that row's status and stays on the record.
+export const verifications = pgTable(
+  "verifications",
+  {
+    id: uuid("id").primaryKey(),
+    subjectType: citationSubjectEnum("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    result: verificationResultEnum("result").notNull(),
+    method: text("method").notNull(),
+    note: text("note"),
+    verifiedBy: text("verified_by").references(() => users.id),
+    verifiedOn: date("verified_on").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("verifications_subject_idx").on(t.subjectType, t.subjectId)],
+);
+
+// "What we don't know", as data rather than as a rendering of missing joins.
+export const openQuestions = pgTable(
+  "open_questions",
+  {
+    id: uuid("id").primaryKey(),
+    subjectType: entityRefEnum("subject_type").notNull(),
+    subjectId: uuid("subject_id").notNull(),
+    question: text("question").notNull(),
+    whyItMatters: text("why_it_matters"),
+    whatWouldAnswerIt: text("what_would_answer_it"),
+    resolvedOn: date("resolved_on"),
+    resolutionNote: text("resolution_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("open_questions_subject_idx").on(t.subjectType, t.subjectId)],
+);
+
+// ---------------------------------------------------------------------------
+// Relations
+// ---------------------------------------------------------------------------
+
+export const orgsRelations = relations(orgs, ({ one, many }) => ({
+  state: one(states, { fields: [orgs.stateId], references: [states.id] }),
+  parent: one(orgs, { fields: [orgs.parentOrgId], references: [orgs.id], relationName: "parent" }),
+  subsidiaries: many(orgs, { relationName: "parent" }),
+  fcra: many(fcraRegistrations),
+  boardPositions: many(boardPositions),
+}));
+
+export const peopleRelations = relations(people, ({ one, many }) => ({
+  state: one(states, { fields: [people.stateId], references: [states.id] }),
+  boardPositions: many(boardPositions),
+}));
+
+export const boardPositionsRelations = relations(boardPositions, ({ one }) => ({
+  person: one(people, { fields: [boardPositions.personId], references: [people.id] }),
+  org: one(orgs, { fields: [boardPositions.orgId], references: [orgs.id] }),
+}));
+
+export const fcraRegistrationsRelations = relations(fcraRegistrations, ({ one }) => ({
+  org: one(orgs, { fields: [fcraRegistrations.orgId], references: [orgs.id] }),
+}));
+
+export const claimsRelations = relations(claims, ({ many }) => ({
+  responses: many(claimResponses),
+}));
+
+export const claimResponsesRelations = relations(claimResponses, ({ one }) => ({
+  claim: one(claims, { fields: [claimResponses.claimId], references: [claims.id] }),
+}));
+
+export const campaignsRelations = relations(campaigns, ({ one, many }) => ({
+  state: one(states, { fields: [campaigns.stateId], references: [states.id] }),
+  participants: many(campaignParticipants),
+  targets: many(campaignTargets),
+}));
+
+export const campaignParticipantsRelations = relations(campaignParticipants, ({ one }) => ({
+  campaign: one(campaigns, {
+    fields: [campaignParticipants.campaignId],
+    references: [campaigns.id],
+  }),
+}));
+
+export const campaignTargetsRelations = relations(campaignTargets, ({ one }) => ({
+  campaign: one(campaigns, { fields: [campaignTargets.campaignId], references: [campaigns.id] }),
+}));
+
+export const legalCasesRelations = relations(legalCases, ({ one, many }) => ({
+  state: one(states, { fields: [legalCases.stateId], references: [states.id] }),
+  parties: many(legalCaseParties),
+}));
+
+export const legalCasePartiesRelations = relations(legalCaseParties, ({ one }) => ({
+  legalCase: one(legalCases, { fields: [legalCaseParties.caseId], references: [legalCases.id] }),
+}));
+
+export const projectsRelations = relations(projects, ({ one }) => ({
+  state: one(states, { fields: [projects.stateId], references: [states.id] }),
+  operator: one(orgs, { fields: [projects.operatorOrgId], references: [orgs.id] }),
+}));
+
+export const publicationsRelations = relations(publications, ({ one }) => ({
+  publisher: one(orgs, { fields: [publications.publisherOrgId], references: [orgs.id] }),
 }));

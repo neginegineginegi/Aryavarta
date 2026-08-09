@@ -10,16 +10,17 @@ import {
   events,
   eventSources,
   manifestoPromises,
+  revisionEntityEnum,
   revisions,
   sources,
   terms,
   termSources,
 } from "@/lib/db/schema";
 import {
+  isSupportedEntityType,
   payloadSchemaFor,
   type AnyPayload,
   type ElectionPayload,
-  type EntityType,
   type EventPayload,
   type PromisePayload,
   type SourceSnapshot,
@@ -46,7 +47,10 @@ export class ApplyError extends Error {
 
 export type ApprovedRevision = {
   revisionId: string;
-  entityType: EntityType;
+  // The database enum, not the narrower applicable set: a revision of a type
+  // this pipeline cannot yet apply can still be rejected, and rejection needs
+  // to say what it rejected.
+  entityType: (typeof revisionEntityEnum.enumValues)[number];
   entityId: string;
   stateId: string;
 };
@@ -162,6 +166,16 @@ export async function approveRevision(input: {
     if (!rev) throw new ApplyError("NOT_FOUND", "Revision not found.");
     if (rev.status !== "pending")
       throw new ApplyError("NOT_PENDING", `This revision is already ${rev.status}.`);
+    // The database enum carries entity types whose apply branch is not written
+    // yet (the Funding and Influence layer ships its schema before its
+    // pipeline). Refuse them outright rather than fall through a chain of
+    // if/else that would silently do nothing and then mark the revision
+    // approved.
+    if (!isSupportedEntityType(rev.entityType))
+      throw new ApplyError(
+        "INVALID",
+        `Revisions of type "${rev.entityType}" cannot be approved yet.`,
+      );
 
     // Re-validate the payload against the current schema — defense in depth
     // (the sources>=1 rule is enforced here as well as at proposal time).
