@@ -95,9 +95,13 @@ export default async function HomePage() {
   const peak = Math.max(1, ...perDecade.map((d) => d.n));
 
   return (
-    <div className="mx-auto max-w-[1440px] px-4 pb-4">
-      {/* ---------------------------------------------------------------- HERO */}
-      <section className="section-card section-tint-hero relative flex min-h-[82vh] flex-col">
+    <>
+      {/* ---------------------------------------------------------------- HERO
+          Outside the max-width container on purpose: the tricolor reaches the
+          viewport edges and the surface runs unbroken from the top of the
+          page, through the masthead, into the headline. Every later section
+          resumes the inset card rhythm below. */}
+      <section className="hero-bleed section-card section-tint-hero relative flex min-h-[82vh] flex-col">
         <TricolorRibbon variant="wide" />
         <TricolorRibbon variant="sharp" />
 
@@ -150,6 +154,7 @@ export default async function HomePage() {
         </p>
       </section>
 
+      <div className="mx-auto max-w-[1440px] px-4 pb-4 pt-4">
       {/* ----------------------------------------------------------------- MAP */}
       <section id="map" className="section-card scroll-mt-24 px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto mb-12 max-w-[640px] text-center">
@@ -369,6 +374,7 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
-    </div>
+      </div>
+    </>
   );
 }

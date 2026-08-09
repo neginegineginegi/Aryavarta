@@ -931,6 +931,20 @@ input[type="range"].year-slider::-moz-range-thumb {
   left: calc(var(--year-thumb) / 2 + var(--p, 0) * (100% - var(--year-thumb)));
 }
 
+/* The hero is one unbroken surface with the masthead: full width, square at
+   the top, and pulled up through the space the sticky header occupies so its
+   gradient starts at the very top of the viewport. The header is transparent
+   at rest (see MastheadShell), so the wordmark and nav sit on this rather
+   than in a band above it.
+
+   --masthead-h is written by MastheadShell from its measured height; the
+   fallback only matters for the frame before that effect runs. */
+.hero-bleed {
+  margin-top: calc(-1 * var(--masthead-h, 71px));
+  padding-top: var(--masthead-h, 71px);
+  border-radius: 0;
+}
+
 /* ---------------------------------------------------------------------------
    Interior page furniture (shared shell revision).
    --------------------------------------------------------------------------- */
