@@ -40,12 +40,15 @@ export function useCursorText<T extends HTMLElement = HTMLElement>(mode: CursorT
   return ref;
 }
 
-export function useMagnetic<T extends HTMLElement = HTMLElement>() {
+export function useMagnetic<T extends HTMLElement = HTMLElement>(
+  opts: { sticky?: boolean } = {},
+) {
   const ref = useRef<T>(null);
+  const sticky = opts.sticky ?? false;
   useEffect(() => {
     if (!ref.current) return;
-    return registerMagnet(ref.current);
-  }, []);
+    return registerMagnet(ref.current, { sticky });
+  }, [sticky]);
   return ref;
 }
 

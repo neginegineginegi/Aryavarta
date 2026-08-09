@@ -3,6 +3,7 @@ import Link from "next/link";
 import { AuthNav } from "@/components/layout/AuthNav";
 import { ContributeButton, NavLinks } from "@/components/layout/HeaderNav";
 import { MastheadShell } from "@/components/layout/MastheadShell";
+import { Wordmark } from "@/components/ui/Wordmark";
 
 /**
  * Masthead. Three zones on one centerline: brand at the left edge, primary
@@ -17,9 +18,7 @@ export function Header() {
       <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-6 py-4 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         {/* The wordmark stands alone: no lockup text beside it. */}
         <Link href="/" className="justify-self-start" aria-label="Abhilekh, home">
-          <span lang="sa" className="font-brand text-[26px] leading-none text-ink">
-            अभिलेखः
-          </span>
+          <Wordmark sticky className="text-[26px] leading-none text-ink" />
         </Link>
         <nav className="nav-root flex flex-wrap items-center gap-x-6 gap-y-1 justify-self-center">
           <NavLinks />

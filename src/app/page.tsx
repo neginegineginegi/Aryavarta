@@ -9,6 +9,7 @@ import { revisions } from "@/lib/db/schema";
 import { formatNumber } from "@/lib/format";
 import { and, desc, eq } from "drizzle-orm";
 import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
+import { Wordmark } from "@/components/ui/Wordmark";
 
 /**
  * The landing page, built to the Abhilekh design handoff: every section is a
@@ -124,8 +125,8 @@ export default async function HomePage() {
         </div>
 
         <div className="relative flex flex-1 flex-col items-center justify-center px-6 pb-16 text-center">
-          <p lang="sa" className="mb-3.5 font-brand text-[22px] text-ink-muted">
-            अभिलेखः
+          <p className="mb-3.5">
+            <Wordmark className="text-[22px] text-ink-muted" />
           </p>
           <h1 className="display-1 m-0 mb-9 text-ink">
             The public record

@@ -52,6 +52,12 @@ type MagnetTarget = {
   curX: number;
   curY: number;
   live: boolean;
+  /** Sticky and fixed elements do not keep a document position: the masthead
+   *  stays at the top of the VIEWPORT while the document slides past it, so a
+   *  centre cached in document space is wrong the moment you scroll. These
+   *  measure fresh each frame and compare against the pointer in viewport
+   *  coordinates instead. There are only ever a handful. */
+  sticky: boolean;
 };
 
 type GlowTarget = {
@@ -167,8 +173,16 @@ function tick() {
   }
 
   for (const t of magnetTargets) {
-    const dx = px - t.cx;
-    const dy = py - t.cy;
+    if (t.sticky) {
+      const r = t.el.getBoundingClientRect();
+      t.cx = r.left + r.width / 2;
+      t.cy = r.top + r.height / 2;
+      t.reach = MAGNET_REACH + r.width / 2;
+    }
+    // A sticky magnet compares in viewport space; everything else in the
+    // document space its centre was cached in.
+    const dx = (t.sticky ? px - window.scrollX : px) - t.cx;
+    const dy = (t.sticky ? py - window.scrollY : py) - t.cy;
     const d = Math.hypot(dx, dy);
     let tx = 0;
     let ty = 0;
@@ -329,9 +343,21 @@ export function registerChars(el: HTMLElement, mode: CursorTextMode): () => void
 }
 
 /** Register an element that should drift toward the pointer. */
-export function registerMagnet(el: HTMLElement): () => void {
+export function registerMagnet(
+  el: HTMLElement,
+  opts: { sticky?: boolean } = {},
+): () => void {
   listen();
-  const t: MagnetTarget = { el, cx: 0, cy: 0, reach: MAGNET_REACH, curX: 0, curY: 0, live: false };
+  const t: MagnetTarget = {
+    el,
+    cx: 0,
+    cy: 0,
+    reach: MAGNET_REACH,
+    curX: 0,
+    curY: 0,
+    live: false,
+    sticky: opts.sticky ?? false,
+  };
   measureMagnet(t);
   magnetTargets.add(t);
   return () => {

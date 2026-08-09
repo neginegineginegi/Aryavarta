@@ -937,6 +937,23 @@ input[type="range"].year-slider::-moz-range-thumb {
   border-radius: 0;
 }
 
+/* अभिलेखः. Never split into letters, because Devanagari conjuncts break when
+   you do, so it answers the cursor by growing under it and drifting toward it
+   instead. `transform` for the growth, and the engine writes the standalone
+   `translate` for the drift, so neither overwrites the other. */
+.wordmark {
+  display: inline-block;
+  transform-origin: left center;
+  transition:
+    transform var(--dur-card) var(--ease-spring),
+    color var(--dur-card) ease;
+}
+.wordmark:hover,
+a:hover .wordmark {
+  transform: scale(1.09);
+  color: var(--color-accent);
+}
+
 /* ---------------------------------------------------------------------------
    Interior page furniture (shared shell revision).
    --------------------------------------------------------------------------- */
@@ -1172,5 +1189,11 @@ input[type="range"].year-slider::-moz-range-thumb {
      listeners under this query. From the handoff's own additions. */
   .lamp-row {
     background: none;
+  }
+  .wordmark,
+  .wordmark:hover,
+  a:hover .wordmark {
+    transform: none;
+    transition: none;
   }
 }
