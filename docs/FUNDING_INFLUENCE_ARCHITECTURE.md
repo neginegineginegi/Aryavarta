@@ -191,6 +191,67 @@ Specific relations get their own tables where they have their own fields:
 `board_positions` (role, role kind, start, end), `campaign_participants`,
 `campaign_targets` (with an explicit `stance`), `legal_case_parties` (side).
 
+## 8a. The graph
+
+Edges live in nine specific tables, each with fields of its own. The graph
+needs one shape, so two Postgres views supply it: `graph_nodes` and
+`graph_edges`.
+
+**The views project stored columns. They never join two facts to invent a
+third**, which is what keeps rule 1 (no derived relationship is ever written)
+true even though the graph reads across the whole layer. Every projected edge
+carries the citation handle of the row it came from, so an edge can always say
+where it came from; an edge that cannot has no business being drawn.
+
+Ten edge sources: `relationships`, `funding_transactions`, `board_positions`,
+`campaign_participants`, `campaign_targets`, `legal_case_parties`,
+`publications`, `projects` (operator), `outcomes`, and `claims`.
+
+**`interpretive` is the column that keeps the two halves apart.** False for the
+nine factual sources, true for claims. The renderer reads it and can never draw
+an asserted relationship the way it draws a documented one, and traversal
+excludes claims unless a caller asks for them by name.
+
+**Entity ids are text, not uuid.** Orgs, people, projects and campaigns carry
+UUIDs, but party ids are slugs and state ids are two-letter codes. With uuid
+columns the graph could not reach a party or a state at all, and those are
+exactly the nodes that join this layer to the political record beside it.
+`citations.subject_id` had already made this choice for the same reason.
+
+### Traversal
+
+`src/lib/funding/graph.ts` holds the read primitives. `graph-types.ts` holds
+the shapes and the row mapper, separately, because the query module opens a
+database connection at import time and these types travel into client
+components.
+
+- `neighbourhood(root, { depth, yearFrom, yearTo, includeInterpretive, maxNodes })`
+  returns everything within N hops, each node tagged with its distance from the
+  root. Depth is clamped to 4 and the node budget is enforced; a result says
+  whether it was **truncated** rather than quietly returning part of the
+  picture.
+- `findPaths(a, b, { depth, limit })` returns documented paths, shortest first,
+  with no node repeated. A path is a chain of recorded relationships and
+  nothing more: it does not mean the two ends are connected in any sense beyond
+  the links it lists.
+- `sharedConnections(a, b)` returns **documented overlap**, computed on read
+  every time, with each side's edges kept separate so the reader sees the two
+  halves rather than a merged conclusion.
+
+Traversal is undirected: money flows one way, but a researcher following it
+needs to walk back up. Each edge keeps its own direction for rendering.
+
+### Time
+
+Every edge carries `year_from` and `year_to`, which is what makes "what did
+this network look like in 2014?" a filter rather than a separate dataset.
+
+Two decisions. **An edge with no dates survives every window**, because the
+archive not knowing when a relation ran is not evidence that it had ended. And
+an Indian financial year spans two calendar years, so `2016-17` yields the
+window 2016 to 2017; collapsing it to 2016 would make a grant vanish from half
+the period it actually covers.
+
 ## 9. Claims
 
 **`claims`** is where interpretation lives.
@@ -284,12 +345,20 @@ its failure modes on the same page as its output.
 | Phase | Deliverable | Status |
 | --- | --- | --- |
 | 1 | Architecture, schema, migrations, evidence vocabulary | **done** |
-| 2 | Ingest: CSV sheets, loader, validation, the moderation path | next |
-| 3 | Entity pages: org, person, donor, with know / do-not-know sections | |
-| 4 | Timeline with overlay tracks | |
-| 5 | Network graph and Follow the Money | |
-| 6 | Search, comparison, overlap | |
-| 7 | Map and analytics | |
+| A | Graph data model: text entity ids, edge/node views, traversal primitives | **done** |
+| B | The interactive graph itself | next |
+| C | Click to expand | |
+| D | Edge evidence panels | |
+| E | Path finder (query layer done; interface outstanding) | |
+| F | Common connections (query layer done; interface outstanding) | |
+| G | Timeline-aware graph (edges carry their years; slider outstanding) | |
+| H | Clustering and bridge detection | |
+| I | Investigation workspace | |
+| J | Natural-language graph search | |
+| K | Pattern detection, as research leads and never as findings | |
+| L | Large-dataset optimisation | |
+| — | Ingest: CSV sheets, loader, validation, the moderation path | required before B shows real data |
+| — | Entity pages, map, analytics | |
 
 Each phase ships behind the existing review flow, so nothing reaches the public
 record unapproved.

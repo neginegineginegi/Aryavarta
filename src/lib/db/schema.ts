@@ -211,7 +211,9 @@ export const citationSubjectEnum = pgEnum("citation_subject", [
   "claim",
   "claim_response",
   "campaign",
+  "campaign_participant",
   "campaign_target",
+  "legal_case_party",
   "project_record",
   "publication",
   "legal_case",
@@ -886,6 +888,18 @@ export const reportCommentsRelations = relations(reportComments, ({ one }) => ({
 //      that outlives the caveat printed beside it.
 // ===========================================================================
 
+/**
+ * A polymorphic entity-reference id.
+ *
+ * `text`, not `uuid`, and deliberately so: orgs, people, projects and campaigns
+ * carry UUIDs, but party ids are slugs ('indian-national-congress') and state
+ * ids are two-letter codes. `citations.subject_id` already made this choice for
+ * exactly this reason. With uuid columns the graph could not reach a party or a
+ * state at all, and those are the nodes that join this layer to the political
+ * record it sits beside.
+ */
+const entityRefId = (name: string) => text(name);
+
 /** What an entity reference points at. Used by the polymorphic columns below. */
 export const entityRefEnum = pgEnum("entity_ref", [
   "org",
@@ -896,6 +910,7 @@ export const entityRefEnum = pgEnum("entity_ref", [
   "campaign",
   "legal_case",
   "publication",
+  "outcome",
 ]);
 
 // One table for every institutional body. Kind is an attribute, not a table,
@@ -1158,7 +1173,7 @@ export const entityAliases = pgTable(
   {
     id: uuid("id").primaryKey(),
     entityType: entityRefEnum("entity_type").notNull(),
-    entityId: uuid("entity_id").notNull(),
+    entityId: entityRefId("entity_id").notNull(),
     name: text("name").notNull(),
     kind: aliasKindEnum("kind").notNull(),
     note: text("note"),
@@ -1175,8 +1190,8 @@ export const entityMatchCandidates = pgTable(
   {
     id: uuid("id").primaryKey(),
     entityType: entityRefEnum("entity_type").notNull(),
-    aId: uuid("a_id").notNull(),
-    bId: uuid("b_id").notNull(),
+    aId: entityRefId("a_id").notNull(),
+    bId: entityRefId("b_id").notNull(),
     status: matchStatusEnum("status").notNull().default("possible"),
     rationale: text("rationale").notNull(),
     reviewedBy: text("reviewed_by").references(() => users.id),
@@ -1211,9 +1226,9 @@ export const fundingTransactions = pgTable(
   {
     id: uuid("id").primaryKey(),
     donorType: entityRefEnum("donor_type").notNull(),
-    donorId: uuid("donor_id").notNull(),
+    donorId: entityRefId("donor_id").notNull(),
     recipientType: entityRefEnum("recipient_type").notNull(),
-    recipientId: uuid("recipient_id").notNull(),
+    recipientId: entityRefId("recipient_id").notNull(),
     amount: numeric("amount", { precision: 20, scale: 2 }),
     currency: text("currency"), // ISO 4217, as the source states it
     financialYear: text("financial_year"), // '2022-23'
@@ -1336,7 +1351,7 @@ export const campaignParticipants = pgTable(
       .notNull()
       .references(() => campaigns.id, { onDelete: "cascade" }),
     participantType: entityRefEnum("participant_type").notNull(),
-    participantId: uuid("participant_id").notNull(),
+    participantId: entityRefId("participant_id").notNull(),
     role: text("role"),
     evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1358,7 +1373,7 @@ export const campaignTargets = pgTable(
       .notNull()
       .references(() => campaigns.id, { onDelete: "cascade" }),
     targetType: entityRefEnum("target_type").notNull(),
-    targetId: uuid("target_id").notNull(),
+    targetId: entityRefId("target_id").notNull(),
     stance: campaignStanceEnum("stance").notNull().default("unstated"),
     evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -1411,7 +1426,7 @@ export const legalCaseParties = pgTable(
       .notNull()
       .references(() => legalCases.id, { onDelete: "cascade" }),
     partyType: entityRefEnum("party_type").notNull(),
-    partyId: uuid("party_id").notNull(),
+    partyId: entityRefId("party_id").notNull(),
     side: casePartySideEnum("side").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
@@ -1433,7 +1448,7 @@ export const outcomes = pgTable(
   {
     id: uuid("id").primaryKey(),
     subjectType: entityRefEnum("subject_type").notNull(),
-    subjectId: uuid("subject_id").notNull(),
+    subjectId: entityRefId("subject_id").notNull(),
     kind: outcomeKindEnum("kind").notNull(),
     occurredOn: date("occurred_on"),
     summary: text("summary").notNull(),
@@ -1453,19 +1468,36 @@ export const relationships = pgTable(
     id: uuid("id").primaryKey(),
     kind: relationKindEnum("kind").notNull(),
     fromType: entityRefEnum("from_type").notNull(),
-    fromId: uuid("from_id").notNull(),
+    fromId: entityRefId("from_id").notNull(),
     toType: entityRefEnum("to_type").notNull(),
-    toId: uuid("to_id").notNull(),
+    toId: entityRefId("to_id").notNull(),
     startOn: date("start_on"),
     endOn: date("end_on"),
     detail: text("detail"),
+    // Some relations carry a figure of their own (a shareholding, a contract
+    // value) without being a funding transaction. Same rule as funding: the
+    // currency the source used, no conversion at write time.
+    amount: numeric("amount", { precision: 20, scale: 2 }),
+    currency: text("currency"),
     evidenceStatus: evidenceStatusEnum("evidence_status").notNull().default("documented"),
+    /**
+     * The recorder's stated confidence, 0 to 100, and nothing more.
+     *
+     * It is never computed, never averaged across relationships, and never
+     * shown as a score for a path, a cluster or an entity. Evidence status is
+     * what the interface reads; this exists so a recorder can say "the filing
+     * is clear but the name match is not" without weakening the status of the
+     * whole row. A number that gets aggregated becomes an influence score, and
+     * that is the one output this layer must not produce.
+     */
+    confidence: smallint("confidence"),
     retrievedOn: date("retrieved_on"),
     enteredBy: text("entered_by").references(() => users.id),
     enteredOn: date("entered_on"),
     verifiedBy: text("verified_by").references(() => users.id),
     verifiedOn: date("verified_on"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("relationships_from_idx").on(t.fromType, t.fromId),
@@ -1475,6 +1507,7 @@ export const relationships = pgTable(
       "relationships_dates_ordered",
       sql`end_on IS NULL OR start_on IS NULL OR end_on >= start_on`,
     ),
+    check("relationships_confidence_range", sql`confidence IS NULL OR (confidence BETWEEN 0 AND 100)`),
   ],
 );
 
@@ -1495,14 +1528,14 @@ export const claims = pgTable(
     statement: text("statement").notNull(),
     claimType: claimTypeEnum("claim_type").notNull(),
     subjectType: entityRefEnum("subject_type"),
-    subjectId: uuid("subject_id"),
+    subjectId: entityRefId("subject_id"),
     objectType: entityRefEnum("object_type"),
-    objectId: uuid("object_id"),
+    objectId: entityRefId("object_id"),
     status: evidenceStatusEnum("status").notNull(),
     // Who makes the claim. An entity reference where the asserter is in the
     // archive, a plain name where they are not (a named official, a court).
     assertedByType: entityRefEnum("asserted_by_type"),
-    assertedById: uuid("asserted_by_id"),
+    assertedById: entityRefId("asserted_by_id"),
     assertedByName: text("asserted_by_name"),
     assertedOn: date("asserted_on"),
     rationale: text("rationale"), // required when status = 'inferred'
@@ -1537,7 +1570,7 @@ export const claimResponses = pgTable(
       .notNull()
       .references(() => claims.id, { onDelete: "cascade" }),
     respondentType: entityRefEnum("respondent_type"),
-    respondentId: uuid("respondent_id"),
+    respondentId: entityRefId("respondent_id"),
     respondentName: text("respondent_name"),
     response: text("response").notNull(),
     respondedOn: date("responded_on"),
@@ -1574,7 +1607,7 @@ export const openQuestions = pgTable(
   {
     id: uuid("id").primaryKey(),
     subjectType: entityRefEnum("subject_type").notNull(),
-    subjectId: uuid("subject_id").notNull(),
+    subjectId: entityRefId("subject_id").notNull(),
     question: text("question").notNull(),
     whyItMatters: text("why_it_matters"),
     whatWouldAnswerIt: text("what_would_answer_it"),

@@ -689,6 +689,196 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "relationships_to_idx" ON "relationships" USING btree ("to_type","to_id")`,
   `CREATE INDEX IF NOT EXISTS "relationships_kind_idx" ON "relationships" USING btree ("kind")`,
   `CREATE INDEX IF NOT EXISTS "verifications_subject_idx" ON "verifications" USING btree ("subject_type","subject_id")`,
+
+  // --- upgrade 10: graph phase A -------------------------------------------
+  // The views must go first and be rebuilt at the end. A view that selects a
+  // column pins that column's type, so on the SECOND run of this file (it runs
+  // before every build) the ALTER COLUMNs below would fail with "cannot alter
+  // type of a column used by a view". Views hold no data, so dropping and
+  // recreating them costs nothing.
+  `DROP VIEW IF EXISTS graph_edges`,
+  `DROP VIEW IF EXISTS graph_nodes`,
+  // Polymorphic entity ids become text. Orgs and people carry UUIDs but party
+  // ids are slugs and state ids are two-letter codes, so uuid columns put both
+  // out of the graph's reach: exactly the nodes that join this layer to the
+  // political record. `citations.subject_id` already made this choice.
+  `ALTER TABLE "entity_aliases" ALTER COLUMN "entity_id" TYPE text USING "entity_id"::text`,
+  // The a_id <> b_id check compares the two columns, so it has to come off
+  // before the first one changes type and go back on after the second.
+  `ALTER TABLE "entity_match_candidates" DROP CONSTRAINT IF EXISTS "entity_match_distinct"`,
+  `ALTER TABLE "entity_match_candidates" ALTER COLUMN "a_id" TYPE text USING "a_id"::text`,
+  `ALTER TABLE "entity_match_candidates" ALTER COLUMN "b_id" TYPE text USING "b_id"::text`,
+  `DO $$ BEGIN
+     ALTER TABLE "entity_match_candidates" ADD CONSTRAINT "entity_match_distinct" CHECK (a_id <> b_id);
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+  `ALTER TABLE "funding_transactions" ALTER COLUMN "donor_id" TYPE text USING "donor_id"::text`,
+  `ALTER TABLE "funding_transactions" ALTER COLUMN "recipient_id" TYPE text USING "recipient_id"::text`,
+  `ALTER TABLE "campaign_participants" ALTER COLUMN "participant_id" TYPE text USING "participant_id"::text`,
+  `ALTER TABLE "campaign_targets" ALTER COLUMN "target_id" TYPE text USING "target_id"::text`,
+  `ALTER TABLE "legal_case_parties" ALTER COLUMN "party_id" TYPE text USING "party_id"::text`,
+  `ALTER TABLE "outcomes" ALTER COLUMN "subject_id" TYPE text USING "subject_id"::text`,
+  `ALTER TABLE "relationships" ALTER COLUMN "from_id" TYPE text USING "from_id"::text`,
+  `ALTER TABLE "relationships" ALTER COLUMN "to_id" TYPE text USING "to_id"::text`,
+  `ALTER TABLE "claims" ALTER COLUMN "subject_id" TYPE text USING "subject_id"::text`,
+  `ALTER TABLE "claims" ALTER COLUMN "object_id" TYPE text USING "object_id"::text`,
+  `ALTER TABLE "claims" ALTER COLUMN "asserted_by_id" TYPE text USING "asserted_by_id"::text`,
+  `ALTER TABLE "claim_responses" ALTER COLUMN "respondent_id" TYPE text USING "respondent_id"::text`,
+  `ALTER TABLE "open_questions" ALTER COLUMN "subject_id" TYPE text USING "subject_id"::text`,
+  // Outcomes become nodes, so a documented result can sit at the end of a path.
+  `ALTER TYPE "public"."entity_ref" ADD VALUE IF NOT EXISTS 'outcome'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'campaign_participant'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'legal_case_party'`,
+  // A relation may carry its own figure (a shareholding, a contract value)
+  // without being a funding transaction.
+  `ALTER TABLE "relationships" ADD COLUMN IF NOT EXISTS "amount" numeric(20, 2)`,
+  `ALTER TABLE "relationships" ADD COLUMN IF NOT EXISTS "currency" text`,
+  `ALTER TABLE "relationships" ADD COLUMN IF NOT EXISTS "confidence" smallint`,
+  `ALTER TABLE "relationships" ADD COLUMN IF NOT EXISTS "updated_at" timestamp with time zone DEFAULT now() NOT NULL`,
+  `DO $$ BEGIN
+     ALTER TABLE "relationships" ADD CONSTRAINT "relationships_confidence_range"
+       CHECK (confidence IS NULL OR (confidence BETWEEN 0 AND 100));
+   EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
+
+  // --- upgrade 10b: the unified edge and node projection --------------------
+  // Edges live in nine specific tables, each with fields of its own. The graph
+  // needs one shape. These views PROJECT stored columns; they never join two
+  // facts to invent a third, so nothing here is a derived relationship.
+  //
+  // `interpretive` separates the two halves of the layer. False for the
+  // factual tables, true for claims, so the renderer can never draw an
+  // asserted relationship the way it draws a documented one.
+  `CREATE VIEW graph_nodes AS
+     SELECT 'org'::text AS node_type, o.id::text AS node_id, o.name AS label,
+            o.kind::text AS sub_kind, o.state_id, o.incorporated_on AS started_on,
+            o.dissolved_on AS ended_on
+       FROM orgs o
+     UNION ALL
+     SELECT 'person', p.id::text, p.name, NULL, p.state_id, NULL, NULL FROM people p
+     UNION ALL
+     SELECT 'project', pr.id::text, pr.name, pr.kind::text, pr.state_id, pr.announced_on, NULL
+       FROM projects pr
+     UNION ALL
+     SELECT 'campaign', c.id::text, c.name, NULL, c.state_id, c.start_on, c.end_on
+       FROM campaigns c
+     UNION ALL
+     SELECT 'legal_case', lc.id::text, lc.title, lc.kind::text, lc.state_id, lc.filed_on,
+            lc.decided_on
+       FROM legal_cases lc
+     UNION ALL
+     SELECT 'publication', pb.id::text, pb.title, pb.kind::text, NULL, pb.published_on, NULL
+       FROM publications pb
+     UNION ALL
+     SELECT 'outcome', oc.id::text, oc.summary, oc.kind::text, NULL, oc.occurred_on, NULL
+       FROM outcomes oc
+     UNION ALL
+     SELECT 'party', pa.id, pa.name, NULL, NULL, NULL, NULL FROM parties pa
+     UNION ALL
+     SELECT 'state', st.id, st.name, st.kind::text, st.id, st.formed_on, st.dissolved_on
+       FROM states st`,
+  `CREATE VIEW graph_edges AS
+     SELECT 'relationship:' || r.id::text AS edge_id, 'relationships'::text AS edge_table,
+            r.id::text AS row_id, r.kind::text AS kind, false AS interpretive,
+            r.from_type::text AS from_type, r.from_id, r.to_type::text AS to_type, r.to_id,
+            r.start_on, r.end_on,
+            EXTRACT(YEAR FROM r.start_on)::int AS year_from,
+            EXTRACT(YEAR FROM r.end_on)::int AS year_to,
+            r.amount, r.currency, r.evidence_status::text AS evidence_status,
+            'relationship'::text AS citation_subject, r.id::text AS citation_subject_id,
+            r.detail
+       FROM relationships r
+     UNION ALL
+     -- '2022-23' is the source's own label. An Indian financial year runs April
+     -- to March, so that label spans two calendar years and the window has to
+     -- be 2022..2023: collapsing it to 2022 makes a grant vanish from half the
+     -- period it actually covers. Reading the label is mechanical; the span is
+     -- what the label means, not a guess about the payment date.
+     SELECT 'funding:' || f.id::text, 'funding_transactions', f.id::text, 'funded', false,
+            f.donor_type::text, f.donor_id, f.recipient_type::text, f.recipient_id,
+            f.occurred_on, f.occurred_on,
+            COALESCE(EXTRACT(YEAR FROM f.occurred_on)::int,
+                     NULLIF(substring(f.financial_year from 1 for 4), '')::int),
+            COALESCE(EXTRACT(YEAR FROM f.occurred_on)::int,
+                     CASE WHEN f.financial_year ~ '^[0-9]{4}-[0-9]{2}$'
+                          THEN substring(f.financial_year from 1 for 4)::int + 1
+                          ELSE NULLIF(substring(f.financial_year from 1 for 4), '')::int END),
+            f.amount, f.currency, f.evidence_status::text,
+            'funding_transaction', f.id::text, f.stated_purpose
+       FROM funding_transactions f
+     UNION ALL
+     SELECT 'board:' || b.id::text, 'board_positions', b.id::text, b.role_kind::text, false,
+            'person', b.person_id::text, 'org', b.org_id::text,
+            b.start_on, b.end_on,
+            EXTRACT(YEAR FROM b.start_on)::int, EXTRACT(YEAR FROM b.end_on)::int,
+            NULL, NULL, b.evidence_status::text,
+            'board_position', b.id::text, b.role
+       FROM board_positions b
+     UNION ALL
+     SELECT 'cparticipant:' || cp.id::text, 'campaign_participants', cp.id::text,
+            'participated_in', false,
+            cp.participant_type::text, cp.participant_id, 'campaign', cp.campaign_id::text,
+            ca.start_on, ca.end_on,
+            EXTRACT(YEAR FROM ca.start_on)::int, EXTRACT(YEAR FROM ca.end_on)::int,
+            NULL, NULL, cp.evidence_status::text,
+            'campaign_participant', cp.id::text, cp.role
+       FROM campaign_participants cp JOIN campaigns ca ON ca.id = cp.campaign_id
+     UNION ALL
+     -- The kind restates the campaign's own recorded stance. A campaign that
+     -- has stated no position reads 'campaigned_regarding', never 'against'.
+     SELECT 'ctarget:' || ct.id::text, 'campaign_targets', ct.id::text,
+            CASE ct.stance WHEN 'against' THEN 'campaigned_against'
+                           WHEN 'for' THEN 'campaigned_for'
+                           ELSE 'campaigned_regarding' END,
+            false,
+            'campaign', ct.campaign_id::text, ct.target_type::text, ct.target_id,
+            ca.start_on, ca.end_on,
+            EXTRACT(YEAR FROM ca.start_on)::int, EXTRACT(YEAR FROM ca.end_on)::int,
+            NULL, NULL, ct.evidence_status::text,
+            'campaign_target', ct.id::text, ct.stance::text
+       FROM campaign_targets ct JOIN campaigns ca ON ca.id = ct.campaign_id
+     UNION ALL
+     SELECT 'caseparty:' || lp.id::text, 'legal_case_parties', lp.id::text,
+            'party_to_case', false,
+            lp.party_type::text, lp.party_id, 'legal_case', lp.case_id::text,
+            lc.filed_on, lc.decided_on,
+            EXTRACT(YEAR FROM lc.filed_on)::int, EXTRACT(YEAR FROM lc.decided_on)::int,
+            NULL, NULL, 'documented',
+            'legal_case_party', lp.id::text, lp.side::text
+       FROM legal_case_parties lp JOIN legal_cases lc ON lc.id = lp.case_id
+     UNION ALL
+     SELECT 'published:' || pb.id::text, 'publications', pb.id::text, 'published', false,
+            'org', pb.publisher_org_id::text, 'publication', pb.id::text,
+            pb.published_on, pb.published_on,
+            EXTRACT(YEAR FROM pb.published_on)::int, EXTRACT(YEAR FROM pb.published_on)::int,
+            NULL, NULL, 'documented',
+            'publication', pb.id::text, pb.kind::text
+       FROM publications pb WHERE pb.publisher_org_id IS NOT NULL
+     UNION ALL
+     SELECT 'operates:' || pr.id::text, 'projects', pr.id::text, 'operates', false,
+            'org', pr.operator_org_id::text, 'project', pr.id::text,
+            pr.announced_on, NULL,
+            EXTRACT(YEAR FROM pr.announced_on)::int, NULL,
+            NULL, NULL, 'documented',
+            'project_record', pr.id::text, pr.kind::text
+       FROM projects pr WHERE pr.operator_org_id IS NOT NULL
+     UNION ALL
+     SELECT 'outcome:' || oc.id::text, 'outcomes', oc.id::text, 'outcome_recorded_for', false,
+            oc.subject_type::text, oc.subject_id, 'outcome', oc.id::text,
+            oc.occurred_on, oc.occurred_on,
+            EXTRACT(YEAR FROM oc.occurred_on)::int, EXTRACT(YEAR FROM oc.occurred_on)::int,
+            NULL, NULL, oc.evidence_status::text,
+            'outcome', oc.id::text, oc.kind::text
+       FROM outcomes oc
+     UNION ALL
+     -- Interpretation. Always flagged, so the renderer cannot draw an asserted
+     -- relationship the way it draws a documented one.
+     SELECT 'claim:' || cl.id::text, 'claims', cl.id::text, cl.claim_type::text, true,
+            cl.subject_type::text, cl.subject_id, cl.object_type::text, cl.object_id,
+            cl.period_start, cl.period_end,
+            EXTRACT(YEAR FROM cl.period_start)::int, EXTRACT(YEAR FROM cl.period_end)::int,
+            NULL, NULL, cl.status::text,
+            'claim', cl.id::text, cl.statement
+       FROM claims cl
+      WHERE cl.subject_id IS NOT NULL AND cl.object_id IS NOT NULL`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
