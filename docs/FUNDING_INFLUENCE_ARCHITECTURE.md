@@ -303,6 +303,52 @@ timeline will happily show a campaign in 2016 and a cancellation in 2018 and
 let the reader see the sequence. The database will not say one produced the
 other unless a source does, and then it will say which source.
 
+## 10a. Structure, and why it is only ever a description
+
+`src/lib/funding/analysis.ts` answers three questions about the drawn network,
+and only about the drawn network.
+
+- **Bridges** are articulation points: entities whose removal would leave named
+  groups with no recorded relationship path to each other. The result carries
+  those groups, so the finding is checkable against the diagram by eye.
+- **Convergences** are entities that more than one shortest chain from the root
+  reaches, reported with the last entity on each route.
+- **Separate groups** is the count of connected components, which stops a
+  reader taking one canvas for one network.
+
+Every result is recomputed from the current view and nothing is stored. A shape
+that outlived the view it described would become an assertion.
+
+The vocabulary is deliberately flat. "Holds two groups together", not "network
+bridge": the second sounds like a role somebody plays, the first describes a
+picture. Each section carries the caveat that a bridge in a diagram of forty
+relationships is a bridge in what has been recorded so far, and can stop being
+one the moment somebody files a source.
+
+Bridges are drawn with a second ring rather than a colour, because a colour
+would read as a status, and this is not one.
+
+## 10b. The investigation workspace
+
+Notes, flags and pinned positions, stored in the browser and nowhere else
+(`src/lib/funding/investigation.ts`).
+
+**The graph has no write path into the archive, and an investigation must not
+become one.** A note is a researcher's own reasoning: unreviewed, uncited, and
+frequently wrong on the way to being right. Stored beside the record it would
+eventually be read as part of it. Keeping it local also means no account is
+needed to start work, and a half-formed investigation about named organisations
+never leaves the machine it was typed on.
+
+The cost is stated in the interface: it does not follow you to another browser,
+and clearing site data clears it. Carrying an investigation between devices
+needs a table, an owner, and a decision about who may read it. That is a
+different piece of work and should be taken deliberately.
+
+Read through `useSyncExternalStore`, not mirrored into component state: the
+browser store is exactly what that hook is for, writes never leave a stale
+copy, and two tabs on one investigation stay in step for free.
+
 ## 11. Overlap is a query
 
 Section 11 asks for network overlap; section 25 forbids inferring coordination
@@ -361,9 +407,9 @@ its failure modes on the same page as its output.
 | E | Path finder | **done** |
 | F | Common connections, as documented overlap | **done** |
 | G | Timeline-aware graph | **done** |
-| H | Clustering and bridge detection | next |
-| I | Investigation workspace | |
-| J | Natural-language graph search | |
+| H | Structure: bridges, convergence, separate groups | **done** |
+| I | Investigation workspace, in the browser | **done** |
+| J | Natural-language graph search | next |
 | K | Pattern detection, as research leads and never as findings | |
 | L | Large-dataset optimisation | |
 | — | Ingest: CSV sheets, loader, validation, the moderation path | required before B shows real data |

@@ -1403,6 +1403,50 @@ a:hover .wordmark {
   border-left: 2px solid var(--color-accent); background: var(--color-paper-sunken);
 }
 
+/* --- structure and the investigation workspace ---------------------------- */
+
+/* A bridge gets a second ring rather than a colour of its own: it is a
+   description of the diagram, not a category of entity, and colouring it like
+   a status would make it look like one. */
+.net-node.is-bridge .net-dot { stroke-dasharray: 4 2.5; stroke-width: 2.2; }
+.net-node.is-flag-needs_source .net-dot { stroke: var(--color-disputed); }
+.net-node.is-flag-follow_up .net-dot { stroke: var(--color-verify); }
+
+.net-work-status { display: inline-flex; align-items: center; gap: 0.5rem; color: var(--color-ink-soft); }
+.net-work-status button { color: var(--color-accent); border-bottom: 1px solid currentColor; }
+
+.net-structure { margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.7rem; }
+.net-structure > li > button {
+  color: var(--color-ink); border-bottom: 1px solid var(--color-rule-dark);
+}
+.net-structure > li > button:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+.net-structure-why { margin-top: 0.2rem; font-size: 0.82rem; color: var(--color-ink-muted); line-height: 1.45; }
+.net-structure-why em { font-style: normal; color: var(--color-ink-body); }
+.net-structure-caveat {
+  margin-top: 0.5rem; padding: 0.45rem 0.6rem; font-size: 0.8rem;
+  border-left: 2px solid var(--color-rule-dark); color: var(--color-ink-soft);
+}
+
+.net-notes { margin-top: 0.4rem; }
+.net-note-box {
+  width: 100%; margin-top: 0.35rem; padding: 0.45rem 0.55rem;
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  background: var(--color-paper-raised); font: inherit; font-size: 0.85rem;
+  resize: vertical;
+}
+.net-note-box:focus { outline: 2px solid var(--color-accent); outline-offset: -1px; }
+.net-note-flags { display: flex; gap: 0.5rem; margin-top: 0.4rem; }
+.net-note-flags button {
+  font-size: 0.76rem; padding: 0.15rem 0.45rem;
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  color: var(--color-ink-muted); background: var(--color-paper-raised);
+}
+.net-note-flags button:hover { border-color: var(--color-accent); color: var(--color-accent); }
+.net-note-flags button.is-on {
+  border-color: var(--color-accent); color: var(--color-accent); background: var(--color-accent-wash);
+}
+.net-note-scope { margin-top: 0.4rem; font-size: 0.76rem; color: var(--color-ink-faint); }
+
 @media (prefers-reduced-motion: reduce) {
   .prism-wide {
     animation: none;

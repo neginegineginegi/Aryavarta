@@ -1,14 +1,17 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { edgeEvidenceAction, expandNodeAction } from "@/actions/network";
 import type { EdgeEvidence } from "@/lib/db/queries/network";
 import type { GraphEdge, GraphNode } from "@/lib/funding/graph-types";
 import { edgeLabel, EVIDENCE_LABELS, NODE_TYPE_LABELS } from "@/lib/funding/labels";
+import { adjacency, bridges, componentOf, convergences } from "@/lib/funding/analysis";
+import * as investigation from "@/lib/funding/investigation";
 import { bounds, seedNodes, step, type LayoutNode } from "@/lib/funding/layout";
 
 import { EvidencePanel } from "@/components/network/EvidencePanel";
+import { StructurePanel } from "@/components/network/StructurePanel";
 
 /**
  * The network graph.
@@ -72,6 +75,11 @@ export function NetworkGraph({
   // year, because opening on a window would hide relationships without saying
   // it had.
   const [year, setYear] = useState<number | null>(null);
+  const [showStructure, setShowStructure] = useState(false);
+  // Bumped when a drag ends after the layout has settled, to restart the frame
+  // loop. State rather than a ref-held callback, because a ref that a hook has
+  // captured cannot then be reassigned.
+  const [wake, setWake] = useState(0);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const layoutRef = useRef<Map<string, LayoutNode>>(new Map());
@@ -79,7 +87,7 @@ export function NetworkGraph({
   const edgeEls = useRef<Map<string, SVGLineElement>>(new Map());
   const frame = useRef(0);
   const alpha = useRef(1);
-  const drag = useRef<{ key: string; dx: number; dy: number } | null>(null);
+  const drag = useRef<{ key: string; moved: boolean } | null>(null);
 
   /** The years the current network actually spans. */
   const span = useMemo(() => {
@@ -113,6 +121,25 @@ export function NetworkGraph({
     return nodes.filter((n) => live.has(keyOf(n)));
   }, [nodes, visibleEdges, year, rootKey]);
 
+  /** Structure of what is currently drawn. Recomputed, never stored: a shape
+   *  that outlived the view it described would be an assertion. */
+  const structure = useMemo(() => {
+    const adj = adjacency(
+      visibleNodes.map(keyOf),
+      visibleEdges.map((e) => ({ from: keyOf(e.from), to: keyOf(e.to) })),
+    );
+    return {
+      bridges: bridges(adj),
+      convergences: convergences(adj, rootKey),
+      componentCount: new Set(componentOf(adj).values()).size,
+    };
+  }, [visibleNodes, visibleEdges, rootKey]);
+
+  const bridgeKeys = useMemo(
+    () => new Set(structure.bridges.map((b) => b.key)),
+    [structure.bridges],
+  );
+
   /** Which nodes and edges touch the hovered or selected node. */
   const focus = useMemo(() => {
     const key = hover ?? (sel?.kind === "node" ? sel.key : null);
@@ -131,13 +158,57 @@ export function NetworkGraph({
     return { nodeKeys, edgeIds };
   }, [hover, sel, visibleEdges]);
 
+  // --- the researcher's own working state ------------------------------------
+  // Read straight from the browser store. It lives there and nowhere else; see
+  // src/lib/funding/investigation.ts for why.
+  const stored = useSyncExternalStore(
+    investigation.subscribe,
+    useCallback(() => investigation.snapshot(rootKey), [rootKey]),
+    investigation.serverSnapshot,
+  );
+  const empty = useMemo(() => investigation.emptyInvestigation(rootKey, ""), [rootKey]);
+  const work = stored ?? empty;
+
+  const edit = useCallback(
+    (fn: (draft: investigation.Investigation) => investigation.Investigation) => {
+      const base = investigation.snapshot(rootKey) ?? investigation.emptyInvestigation(rootKey, "");
+      investigation.save({ ...fn(base), updatedAt: new Date().toISOString() });
+    },
+    [rootKey],
+  );
+
+  const setNote = useCallback(
+    (key: string, text: string) =>
+      edit((d) => {
+        const notes = { ...d.notes };
+        if (text.trim()) notes[key] = text;
+        else delete notes[key];
+        return { ...d, notes };
+      }),
+    [edit],
+  );
+
+  const toggleFlag = useCallback(
+    (key: string, flag: "needs_source" | "follow_up") =>
+      edit((d) => {
+        const flags = { ...d.flags };
+        if (flags[key] === flag) delete flags[key];
+        else flags[key] = flag;
+        return { ...d, flags };
+      }),
+    [edit],
+  );
+
+  const clearWork = useCallback(() => {
+    investigation.clear(rootKey);
+  }, [rootKey]);
+
   // --- layout ---------------------------------------------------------------
   // One effect owns both the layout map and the frame loop. They were split in
   // two and sequenced with a `ready` flag, which meant setting state inside an
   // effect purely to tell the next effect to start: cascading renders for no
   // reason. Positions never appear in the JSX, so there is nothing for the
   // server to mismatch on either.
-  const restart = useRef<() => void>(() => {});
 
   useEffect(() => {
     const existing = layoutRef.current;
@@ -152,7 +223,18 @@ export function NetworkGraph({
       // expansion would throw the whole picture away, and the reader would lose
       // the thing they were looking at.
       const prev = existing.get(seed.key);
-      next.set(seed.key, prev ? { ...prev, depth: seed.depth, radius: seed.radius } : seed);
+      const base = prev ? { ...prev, depth: seed.depth, radius: seed.radius } : seed;
+      // A position the researcher dragged a node to outranks the solver.
+      const pin = work.pins[seed.key];
+      // `pinned` is derived from the saved pins every time, so clearing an
+      // investigation genuinely releases the nodes rather than leaving them
+      // stuck wherever they were dropped.
+      next.set(seed.key, {
+        ...base,
+        x: pin?.x ?? base.x,
+        y: pin?.y ?? base.y,
+        pinned: pin ? true : seed.pinned,
+      });
     }
     layoutRef.current = next;
     alpha.current = 1;
@@ -206,7 +288,6 @@ export function NetworkGraph({
       const list = [...layoutRef.current.values()];
       for (let i = 0; i < 300; i++) step(list, links, { width: W, height: H, alpha: 0.6 });
       paint();
-      restart.current = paint;
       return;
     }
 
@@ -222,25 +303,22 @@ export function NetworkGraph({
         frame.current = 0;
       }
     };
-    // Dragging wakes the loop back up without touching state.
-    restart.current = () => {
-      if (!frame.current) frame.current = requestAnimationFrame(tick);
-    };
     frame.current = requestAnimationFrame(tick);
     return () => {
       if (frame.current) cancelAnimationFrame(frame.current);
       frame.current = 0;
-      restart.current = () => {};
     };
-  }, [visibleNodes, visibleEdges]);
+  }, [visibleNodes, visibleEdges, work.pins, wake]);
 
   // --- dragging: a pinned node stops moving, which is where section 12 starts -
   const onPointerDown = useCallback((key: string, e: React.PointerEvent) => {
     const n = layoutRef.current.get(key);
     if (!n) return;
     (e.target as Element).setPointerCapture?.(e.pointerId);
-    drag.current = { key, dx: 0, dy: 0 };
-    n.pinned = true;
+    // Not pinned yet. A click that never moves is someone reading the entity,
+    // and pinning it there would quietly freeze a node the reader only looked
+    // at. Pinning happens on the first movement.
+    drag.current = { key, moved: false };
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -250,17 +328,23 @@ export function NetworkGraph({
     const r = svg.getBoundingClientRect();
     const n = layoutRef.current.get(d.key);
     if (!n) return;
+    d.moved = true;
+    n.pinned = true;
     n.x = ((e.clientX - r.left) / r.width) * W;
     n.y = ((e.clientY - r.top) / r.height) * H;
     n.vx = 0;
     n.vy = 0;
     alpha.current = Math.max(alpha.current, 0.5);
-    restart.current();
+    if (frame.current === 0) setWake((w) => w + 1);
   }, []);
 
   const onPointerUp = useCallback(() => {
+    const d = drag.current;
     drag.current = null;
-  }, []);
+    if (!d?.moved) return;
+    const n = layoutRef.current.get(d.key);
+    if (n) edit((draft) => ({ ...draft, pins: { ...draft.pins, [d.key]: { x: n.x, y: n.y } } }));
+  }, [edit]);
 
   // --- expansion ------------------------------------------------------------
   const expand = useCallback(
@@ -327,6 +411,22 @@ export function NetworkGraph({
             />
             Show {hiddenClaims} asserted {hiddenClaims === 1 ? "claim" : "claims"}
           </label>
+        )}
+        <label className="net-toggle">
+          <input
+            type="checkbox"
+            checked={showStructure}
+            onChange={(e) => setShowStructure(e.target.checked)}
+          />
+          Show structure
+        </label>
+        {investigation.countEntries(work) > 0 && (
+          <span className="net-work-status">
+            {investigation.countEntries(work)} saved in this browser
+            <button type="button" onClick={clearWork}>
+              Clear
+            </button>
+          </span>
         )}
         {wasTruncated && (
           <span className="net-warn">
@@ -417,6 +517,8 @@ export function NetworkGraph({
                     `is-${n.type}`,
                     dim ? "is-dim" : "",
                     key === rootKey ? "is-root" : "",
+                    showStructure && bridgeKeys.has(key) ? "is-bridge" : "",
+                    work.flags[key] ? `is-flag-${work.flags[key]}` : "",
                     sel?.kind === "node" && sel.key === key ? "is-sel" : "",
                     busy === key ? "is-busy" : "",
                   ]
@@ -455,7 +557,16 @@ export function NetworkGraph({
         </svg>
 
         <aside className="net-panel" aria-live="polite">
-          {!sel && (
+          {!sel && showStructure && (
+            <StructurePanel
+              bridges={structure.bridges}
+              convergences={structure.convergences}
+              componentCount={structure.componentCount}
+              labelOf={(k) => visibleNodes.find((n) => keyOf(n) === k)?.label ?? k}
+              onSelect={(k) => setSel({ kind: "node", key: k })}
+            />
+          )}
+          {!sel && !showStructure && (
             <div className="net-panel-empty">
               <h3>Follow the evidence</h3>
               <p>
@@ -486,10 +597,23 @@ export function NetworkGraph({
               )}
               nodes={nodes}
               onPickEdge={selectEdge}
+              note={work.notes[keyOf(selectedNode)] ?? ""}
+              flag={work.flags[keyOf(selectedNode)]}
+              onNote={setNote}
+              onFlag={toggleFlag}
             />
           )}
           {selectedEdge && (
-            <EvidencePanel edge={selectedEdge} nodes={nodes} evidence={evidence} />
+            <>
+              <EvidencePanel edge={selectedEdge} nodes={nodes} evidence={evidence} />
+              <WorkNotes
+                subjectKey={selectedEdge.edgeId}
+                note={work.notes[selectedEdge.edgeId] ?? ""}
+                flag={work.flags[selectedEdge.edgeId]}
+                onNote={setNote}
+                onFlag={toggleFlag}
+              />
+            </>
           )}
         </aside>
       </div>
@@ -519,6 +643,61 @@ export function NetworkGraph({
   );
 }
 
+/**
+ * A researcher's note on one entity or one relationship.
+ *
+ * Deliberately plain, and deliberately labelled. The line under the box is the
+ * important part: a note sits beside the record and is never part of it, and
+ * somebody returning to an investigation months later needs to know at a glance
+ * which of the words on their screen are the archive's and which are their own.
+ */
+function WorkNotes({
+  subjectKey,
+  note,
+  flag,
+  onNote,
+  onFlag,
+}: {
+  subjectKey: string;
+  note: string;
+  flag: "needs_source" | "follow_up" | undefined;
+  onNote: (key: string, text: string) => void;
+  onFlag: (key: string, flag: "needs_source" | "follow_up") => void;
+}) {
+  return (
+    <div className="net-notes">
+      <h4 className="net-card-h">Your note</h4>
+      <textarea
+        className="net-note-box"
+        rows={3}
+        value={note}
+        placeholder="What you want to remember about this"
+        onChange={(e) => onNote(subjectKey, e.target.value)}
+      />
+      <div className="net-note-flags">
+        <button
+          type="button"
+          className={flag === "needs_source" ? "is-on" : ""}
+          onClick={() => onFlag(subjectKey, "needs_source")}
+        >
+          Needs a source
+        </button>
+        <button
+          type="button"
+          className={flag === "follow_up" ? "is-on" : ""}
+          onClick={() => onFlag(subjectKey, "follow_up")}
+        >
+          Follow up
+        </button>
+      </div>
+      <p className="net-note-scope">
+        Notes and flags stay in this browser. They are never sent anywhere and are not part of the
+        archive.
+      </p>
+    </div>
+  );
+}
+
 function NodeCard({
   node,
   hidden,
@@ -527,6 +706,10 @@ function NodeCard({
   edges,
   nodes,
   onPickEdge,
+  note,
+  flag,
+  onNote,
+  onFlag,
 }: {
   node: GraphNode;
   hidden: number;
@@ -535,6 +718,10 @@ function NodeCard({
   edges: GraphEdge[];
   nodes: GraphNode[];
   onPickEdge: (e: GraphEdge) => void;
+  note: string;
+  flag: "needs_source" | "follow_up" | undefined;
+  onNote: (key: string, text: string) => void;
+  onFlag: (key: string, flag: "needs_source" | "follow_up") => void;
 }) {
   return (
     <div className="net-card">
@@ -568,6 +755,13 @@ function NodeCard({
         })}
       </ul>
       {edges.length === 0 && <p className="net-card-sub">No relationships in the current view.</p>}
+      <WorkNotes
+        subjectKey={keyOf(node)}
+        note={note}
+        flag={flag}
+        onNote={onNote}
+        onFlag={onFlag}
+      />
     </div>
   );
 }
