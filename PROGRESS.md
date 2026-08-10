@@ -1,6 +1,6 @@
 # PROGRESS — session handoff
 
-Last updated: 2026-08-08, commit `ef02e24`.
+Last updated: 2026-08-10, commit `40cdec5`.
 
 ## 1. Current state
 
@@ -23,7 +23,7 @@ than all the rest together), hydropower from 1922 (51,082 MW), gas and oil fired
 
 | Commit | What |
 | --- | --- |
-| `TBD-B`   | The network graph: nodes, expansion, and the evidence behind every line |
+| `40cdec5` | The network graph: nodes, expansion, and the evidence behind every line |
 | `4f5b363` | Graph phase A: one edge shape, and ids the graph can actually reach |
 | `61d996b` | Funding and Influence Map: the evidence spine |
 | `1fe0757` | Type stops moving when you stop scrolling |
