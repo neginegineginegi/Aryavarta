@@ -1125,6 +1125,191 @@ a:hover .wordmark {
    on source order alone. Sitting mid-file, `.map-state { transition: ... }`
    below it silently kept its 600ms fill and the setting did nothing.
    --------------------------------------------------------------------------- */
+/* ---------------------------------------------------------------------------
+   The network graph.
+
+   Same palette, same type, same card language as the rest of the archive; the
+   only new vocabulary is what a graph genuinely needs, which is a way to say
+   how well established a line is. Evidence status is carried by dash pattern
+   and weight as well as colour, because a reader who cannot separate the hues
+   still has to be able to separate a verified relationship from an alleged one.
+   --------------------------------------------------------------------------- */
+
+.net-wrap { display: flex; flex-direction: column; gap: 0.75rem; }
+
+.net-toolbar {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+  font-size: 0.82rem; color: var(--color-ink-muted);
+}
+.net-count { font-variant-numeric: tabular-nums; }
+.net-toggle { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
+.net-warn { color: var(--color-disputed); }
+
+.net-stage {
+  display: grid; gap: 0.75rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 1024px) {
+  .net-stage { grid-template-columns: minmax(0, 1fr) 21rem; }
+}
+
+.net-svg {
+  width: 100%; height: auto; display: block;
+  background: var(--color-paper-sunken);
+  border: 1px solid var(--color-rule);
+  border-radius: 2px;
+  touch-action: none;
+}
+
+/* --- edges ---------------------------------------------------------------- */
+.net-edge {
+  stroke: var(--color-ink-ghost);
+  stroke-width: 1.4;
+  cursor: pointer;
+  transition: stroke var(--dur-row) ease, stroke-width var(--dur-row) ease,
+              opacity var(--dur-row) ease;
+}
+.net-edge:hover { stroke: var(--color-accent); stroke-width: 2.4; }
+.net-edge.is-sel { stroke: var(--color-accent); stroke-width: 2.8; }
+/* An assertion is dashed and never solid, whatever else is true of it. */
+.net-edge.is-claim { stroke-dasharray: 5 4; stroke: var(--color-ink-meta); }
+.net-edge.is-dim { opacity: 0.2; }
+
+/* --- nodes ---------------------------------------------------------------- */
+.net-node { cursor: pointer; transition: opacity var(--dur-row) ease; }
+.net-node.is-dim { opacity: 0.34; }
+.net-node:focus { outline: none; }
+
+.net-halo {
+  fill: none; stroke: var(--color-accent); stroke-width: 0;
+  opacity: 0; transition: stroke-width var(--dur-press) var(--ease-glide),
+                          opacity var(--dur-press) ease;
+}
+.net-node:hover .net-halo,
+.net-node:focus-visible .net-halo,
+.net-node.is-sel .net-halo { stroke-width: 1.5; opacity: 0.85; }
+
+.net-dot {
+  fill: var(--color-paper-raised);
+  stroke: var(--color-ink-soft);
+  stroke-width: 1.6;
+  transition: transform var(--dur-press) var(--ease-glide),
+              fill var(--dur-row) ease, stroke var(--dur-row) ease;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+.net-node:hover .net-dot,
+.net-node:focus-visible .net-dot { transform: scale(1.12); }
+.net-node.is-root .net-dot { stroke: var(--color-ink); stroke-width: 2.4; }
+.net-node.is-sel .net-dot { fill: var(--color-accent-wash); stroke: var(--color-accent); }
+.net-node.is-busy .net-dot { stroke-dasharray: 3 3; }
+
+/* Entity kind reads from the fill, quietly. Nothing here is a severity scale. */
+.net-node.is-org .net-dot { fill: #ececeb; }
+.net-node.is-person .net-dot { fill: var(--color-paper-raised); stroke-dasharray: 0; }
+.net-node.is-campaign .net-dot { fill: #fdf3e9; }
+.net-node.is-project .net-dot { fill: #eef3ee; }
+.net-node.is-legal_case .net-dot { fill: #eef2f7; }
+.net-node.is-publication .net-dot { fill: #f4f1ea; }
+.net-node.is-outcome .net-dot { fill: #f7efe9; stroke-dasharray: 2 2; }
+.net-node.is-party .net-dot,
+.net-node.is-state .net-dot { fill: #f1f1ee; }
+
+/* A node with more relationships than are drawn says so, so an unexpanded
+   node never reads as a dead end. */
+.net-more { fill: var(--color-accent); }
+
+.net-label {
+  text-anchor: middle;
+  font-size: 11px;
+  fill: var(--color-ink-body);
+  paint-order: stroke;
+  stroke: var(--color-paper-sunken);
+  stroke-width: 3px;
+  pointer-events: none;
+}
+
+/* --- panel ---------------------------------------------------------------- */
+.net-panel {
+  border: 1px solid var(--color-rule);
+  border-radius: 2px;
+  background: var(--color-paper-raised);
+  padding: 1rem 1.1rem;
+  max-height: 780px;
+  overflow-y: auto;
+  font-size: 0.88rem;
+}
+.net-panel-empty h3 { font-family: var(--font-display), serif; font-weight: 300; font-size: 1.15rem; }
+.net-panel-empty p { margin-top: 0.6rem; color: var(--color-ink-muted); }
+.net-panel-note { border-top: 1px solid var(--color-rule-light); padding-top: 0.6rem; }
+
+.net-card-kind {
+  font-size: 0.72rem; letter-spacing: 0.06em; color: var(--color-ink-faint);
+}
+.net-card-title { font-family: var(--font-display), serif; font-weight: 300; font-size: 1.2rem; line-height: 1.2; }
+.net-card-sub { color: var(--color-ink-muted); margin-top: 0.35rem; }
+.net-card-h {
+  margin-top: 1.1rem; padding-top: 0.5rem; border-top: 1px solid var(--color-rule-light);
+  font-size: 0.78rem; color: var(--color-ink-faint);
+}
+.net-expand { margin-top: 0.85rem; width: 100%; }
+.net-edge-statement { margin-top: 0.5rem; line-height: 1.45; }
+
+.net-card-edges { margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.net-card-edges li { display: flex; align-items: baseline; justify-content: space-between; gap: 0.5rem; }
+.net-card-edges button, .net-list button {
+  text-align: left; color: var(--color-ink-body); border-bottom: 1px solid transparent;
+}
+.net-card-edges button:hover, .net-list button:hover {
+  color: var(--color-accent); border-bottom-color: var(--color-accent);
+}
+
+.net-facts { margin-top: 0.7rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.net-facts dt { font-size: 0.75rem; color: var(--color-ink-faint); }
+.net-facts dd { margin-top: 0.15rem; }
+.net-facts-note { display: block; margin-top: 0.2rem; font-size: 0.78rem; color: var(--color-ink-soft); }
+
+.net-sources { margin-top: 0.5rem; display: flex; flex-direction: column; gap: 0.7rem; }
+.net-sources a { border-bottom: 1px solid var(--color-rule-dark); }
+.net-sources a:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+.net-source-meta, .net-source-note {
+  display: block; font-size: 0.78rem; color: var(--color-ink-soft); margin-top: 0.15rem;
+}
+.net-source-note.is-missing { color: var(--color-disputed); }
+.net-nosource {
+  margin-top: 0.5rem; padding: 0.55rem 0.7rem;
+  border: 1px dashed var(--color-disputed); color: var(--color-disputed); border-radius: 2px;
+}
+
+/* --- evidence status ------------------------------------------------------ */
+.ev {
+  font-size: 0.72rem; letter-spacing: 0.03em; white-space: nowrap;
+  padding: 0.05rem 0.4rem; border-radius: 2px; border: 1px solid var(--color-rule-dark);
+  color: var(--color-ink-muted); background: var(--color-paper-badge);
+}
+.ev-verified { color: var(--color-approved); border-color: #b7d3bd; background: #f0f6f1; }
+.ev-documented { color: var(--color-verify); border-color: #bcd4e4; background: #eff5f9; }
+.ev-alleged { color: var(--color-disputed); border-color: #e2c79a; background: #fbf4e9; }
+.ev-disputed { color: var(--color-danger); border-color: #e0b6b6; background: #fbf0f0; }
+.ev-inferred { color: var(--color-ink-soft); border-style: dashed; }
+.ev-unknown { color: var(--color-ink-faint); }
+
+/* --- entry points and list fallback --------------------------------------- */
+.net-entry {
+  display: block; padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-rule); border-radius: 2px;
+  background: var(--color-paper-raised);
+  transition: border-color var(--dur-row) ease, transform var(--dur-row) var(--ease-glide);
+}
+.net-entry:hover { border-color: var(--color-accent); transform: translateY(-1px); }
+.net-entry-name { display: block; color: var(--color-ink); }
+.net-entry-meta { display: block; font-size: 0.78rem; color: var(--color-ink-faint); margin-top: 0.15rem; }
+
+.net-list { font-size: 0.85rem; }
+.net-list summary { cursor: pointer; color: var(--color-ink-muted); }
+.net-list ul { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.net-list li { display: flex; align-items: baseline; gap: 0.5rem; }
+
 @media (prefers-reduced-motion: reduce) {
   .prism-wide {
     animation: none;
@@ -1195,5 +1380,19 @@ a:hover .wordmark {
   a:hover .wordmark {
     transform: none;
     transition: none;
+  }
+  /* The graph still solves its layout (see NetworkGraph), it just does not
+     animate its way there, and nothing grows under the pointer. */
+  .net-edge,
+  .net-node,
+  .net-dot,
+  .net-halo,
+  .net-entry {
+    transition: none;
+  }
+  .net-node:hover .net-dot,
+  .net-node:focus-visible .net-dot,
+  .net-entry:hover {
+    transform: none;
   }
 }

@@ -23,6 +23,10 @@ than all the rest together), hydropower from 1922 (51,082 MW), gas and oil fired
 
 | Commit | What |
 | --- | --- |
+| `TBD-B`   | The network graph: nodes, expansion, and the evidence behind every line |
+| `4f5b363` | Graph phase A: one edge shape, and ids the graph can actually reach |
+| `61d996b` | Funding and Influence Map: the evidence spine |
+| `1fe0757` | Type stops moving when you stop scrolling |
 | `313884b` | The wordmark answers the cursor instead of standing still |
 | `e13e8c8` | Hero eyebrow goes back to capitals |
 | `41d849a` | Nothing on the site shouts any more |
@@ -149,6 +153,16 @@ clear, the twelve national moments are published, and the scrubber's marker line
   go quiet (250ms without childList work) with a 4s cap; attribute mutations are excluded or the
   cursor field's inline styles hold it busy forever. `CursorText` carries `data-auto="skip"` so
   the blanket does not re-split letters that are already letters.
+- **`AutoLetters` freezes any text React later PATCHES rather than replaces.** It swaps a
+  text node for per-character spans; React still holds the reference to the node it created,
+  writes the new text there, and the write lands on a node no longer in the document. The
+  network's evidence panel showed every relationship as "funded" because that was the first edge
+  selected, while the same `edgeLabel()` call rendered correctly in the list beside it (a keyed
+  list mounts a fresh element per row, so there is nothing to patch). `data-auto="skip"` on an
+  ancestor protects a whole subtree. Any surface whose text changes under the reader needs it.
+  Checked the rest of the site for the same freeze: on the home page all 71 split elements do
+  update when the year moves, so this was not a pre-existing defect, only a trap for anything
+  built the way that panel was.
 - **The cursor field caches centres in DOCUMENT space, which is wrong for anything sticky or
   fixed.** The masthead holds its place in the VIEWPORT while the document slides past it, so a
   magnet registered there drifts toward wherever the header happened to be at page load and is

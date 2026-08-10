@@ -1,6 +1,6 @@
 import type { sourceKindEnum } from "@/lib/db/schema";
 
-type SourceKind = (typeof sourceKindEnum.enumValues)[number];
+export type SourceKind = (typeof sourceKindEnum.enumValues)[number];
 
 /**
  * The source hierarchy, as a function rather than a stored column.

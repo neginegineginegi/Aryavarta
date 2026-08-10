@@ -346,10 +346,10 @@ its failure modes on the same page as its output.
 | --- | --- | --- |
 | 1 | Architecture, schema, migrations, evidence vocabulary | **done** |
 | A | Graph data model: text entity ids, edge/node views, traversal primitives | **done** |
-| B | The interactive graph itself | next |
-| C | Click to expand | |
-| D | Edge evidence panels | |
-| E | Path finder (query layer done; interface outstanding) | |
+| B | The interactive graph itself | **done** |
+| C | Click to expand | **done** |
+| D | Edge evidence panels | **done** |
+| E | Path finder (query layer done; interface outstanding) | next |
 | F | Common connections (query layer done; interface outstanding) | |
 | G | Timeline-aware graph (edges carry their years; slider outstanding) | |
 | H | Clustering and bridge detection | |

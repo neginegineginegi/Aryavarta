@@ -22,6 +22,8 @@
   DELETE FROM campaigns WHERE id = '77777777-7777-4777-8777-777777777777';
   DELETE FROM projects WHERE id = '66666666-6666-4666-8666-666666666666';
   DELETE FROM people WHERE id = '55555555-5555-4555-8555-555555555555';
+  DELETE FROM citations WHERE source_id::text LIKE 'dddddddd-%';
+  DELETE FROM sources WHERE id::text LIKE 'dddddddd-%';
   DELETE FROM orgs WHERE id::text ~ '^(1111|2222|3333|4444)';
 \else
 -- A deliberately awkward shape: Foundation funds an NGO; the NGO campaigns
@@ -50,4 +52,17 @@ INSERT INTO campaign_targets (id, campaign_id, target_type, target_id, stance) V
  ('bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbb1','77777777-7777-4777-8777-777777777777','project','66666666-6666-4666-8666-666666666666','against');
 INSERT INTO outcomes (id, subject_type, subject_id, kind, occurred_on, summary) VALUES
  ('cccccccc-cccc-4ccc-8ccc-ccccccccccc1','project','66666666-6666-4666-8666-666666666666','project_delayed','2018-11-20','Environmental clearance remanded; work paused.');
+-- Sources, so the evidence panel has something to open. Three of the eight
+-- relationships are cited and five are not, deliberately: the panel has to be
+-- honest about an uncited edge, and that path needs testing too.
+INSERT INTO sources (id, title, url, publisher, published_on, kind, is_official, is_primary) VALUES
+ ('dddddddd-dddd-4ddd-8ddd-ddddddddddd1','Foundation X Annual Report 2016-17','https://example.org/fx-annual-2016-17.pdf','Foundation X','2017-08-01','annual_report',false,true),
+ ('dddddddd-dddd-4ddd-8ddd-ddddddddddd2','Register of Trustees, NGO Y','https://example.org/ngoy-trustees','NGO Y','2014-04-01','org_document',false,true),
+ ('dddddddd-dddd-4ddd-8ddd-ddddddddddd3','Order in Project C clearance appeal','https://example.gov.in/orders/2018/project-c','National Green Tribunal','2018-11-20','court_judgment',true,true)
+ ON CONFLICT (url) DO NOTHING;
+INSERT INTO citations (subject_type, subject_id, source_id, note) VALUES
+ ('funding_transaction','88888888-8888-4888-8888-888888888881','dddddddd-dddd-4ddd-8ddd-ddddddddddd1','Schedule of grants, page 42'),
+ ('board_position','99999999-9999-4999-8999-999999999991','dddddddd-dddd-4ddd-8ddd-ddddddddddd2',NULL),
+ ('outcome','cccccccc-cccc-4ccc-8ccc-ccccccccccc1','dddddddd-dddd-4ddd-8ddd-ddddddddddd3','Paragraph 31')
+ ON CONFLICT DO NOTHING;
 \endif
