@@ -186,3 +186,82 @@ export async function evidenceForEdges(edges: GraphEdge[]): Promise<Map<string, 
   }
   return out;
 }
+
+
+export type NodeHit = {
+  type: string;
+  id: string;
+  label: string;
+  subKind: string | null;
+  degree: number;
+};
+
+/**
+ * Typeahead over graph entities, including the names a body has been known by.
+ *
+ * Aliases are searched alongside the current name, because a researcher
+ * arriving from a 2011 filing will type the name that filing used. The hit
+ * still reports the canonical label, so two spellings never look like two
+ * organisations.
+ */
+export async function searchGraphNodes(query: string, limit = 12): Promise<NodeHit[]> {
+  const q = query.trim();
+  if (q.length < 2) return [];
+  const like = `%${q.replace(/[%_\\]/g, (m) => `\\${m}`)}%`;
+  const res = await db.execute(sql`
+    SELECT n.node_type, n.node_id, n.label, n.sub_kind,
+           (SELECT count(*) FROM graph_edges e
+             WHERE (e.from_type = n.node_type AND e.from_id = n.node_id)
+                OR (e.to_type = n.node_type AND e.to_id = n.node_id)) AS degree
+      FROM graph_nodes n
+     WHERE n.label ILIKE ${like}
+        OR EXISTS (
+          SELECT 1 FROM entity_aliases a
+           WHERE a.entity_type::text = n.node_type
+             AND a.entity_id = n.node_id
+             AND a.name ILIKE ${like}
+        )
+     ORDER BY (lower(n.label) = lower(${q})) DESC,
+              position(lower(${q}) in lower(n.label)),
+              n.label
+     LIMIT ${limit}
+  `);
+  return (res.rows as Array<Record<string, unknown>>).map((r) => ({
+    type: String(r.node_type),
+    id: String(r.node_id),
+    label: String(r.label ?? ""),
+    subKind: (r.sub_kind as string) ?? null,
+    degree: Number(r.degree ?? 0),
+  }));
+}
+
+/** Labels for node keys, so a path renders without a second round trip. */
+export async function labelsFor(
+  keys: string[],
+): Promise<Map<string, { label: string; type: string }>> {
+  if (keys.length === 0) return new Map();
+  const joined = keys.join("\u0001");
+  const res = await db.execute(sql`
+    SELECT node_type, node_id, label FROM graph_nodes
+     WHERE node_type || ':' || node_id = ANY(string_to_array(${joined}, chr(1)))
+  `);
+  return new Map(
+    (res.rows as Array<Record<string, unknown>>).map((r) => [
+      `${r.node_type}:${r.node_id}`,
+      { label: String(r.label ?? ""), type: String(r.node_type) },
+    ]),
+  );
+}
+
+/** Edges by their projected ids, so every step of a path can show its evidence. */
+export async function edgesByIds(ids: string[]): Promise<Map<string, GraphEdge>> {
+  if (ids.length === 0) return new Map();
+  const joined = ids.join("\u0001");
+  const res = await db.execute(sql`
+    SELECT * FROM graph_edges
+     WHERE edge_id = ANY(string_to_array(${joined}, chr(1)))
+  `);
+  return new Map(
+    (res.rows as Array<Record<string, unknown>>).map((r) => [String(r.edge_id), toEdge(r)]),
+  );
+}

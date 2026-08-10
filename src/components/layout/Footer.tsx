@@ -7,6 +7,7 @@ const EXPLORE_LINKS = [
   { href: "/browse", label: "Browse" },
   { href: "/insights", label: "Insights" },
   { href: "/compare", label: "Compare" },
+  { href: "/network", label: "Network" },
 ];
 
 const PROJECT_LINKS = [

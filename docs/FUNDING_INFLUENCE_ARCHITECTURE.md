@@ -241,10 +241,19 @@ components.
 Traversal is undirected: money flows one way, but a researcher following it
 needs to walk back up. Each edge keeps its own direction for rendering.
 
+**A path reports its weakest step.** A five-step chain is only as good as its
+worst-evidenced link, and a path whose four solid steps hang off one `alleged`
+one must not read as a finding. The weakest status is shown beside the hop
+count, before any of the steps.
+
 ### Time
 
 Every edge carries `year_from` and `year_to`, which is what makes "what did
 this network look like in 2014?" a filter rather than a separate dataset.
+
+The slider filters on the client rather than refetching per year. Edges already
+carry their years, the whole neighbourhood is in memory, and a round trip per
+step of a slider is both slower and jerkier than the thing it replaces.
 
 Two decisions. **An edge with no dates survives every window**, because the
 archive not knowing when a relation ran is not evidence that it had ended. And
@@ -349,10 +358,10 @@ its failure modes on the same page as its output.
 | B | The interactive graph itself | **done** |
 | C | Click to expand | **done** |
 | D | Edge evidence panels | **done** |
-| E | Path finder (query layer done; interface outstanding) | next |
-| F | Common connections (query layer done; interface outstanding) | |
-| G | Timeline-aware graph (edges carry their years; slider outstanding) | |
-| H | Clustering and bridge detection | |
+| E | Path finder | **done** |
+| F | Common connections, as documented overlap | **done** |
+| G | Timeline-aware graph | **done** |
+| H | Clustering and bridge detection | next |
 | I | Investigation workspace | |
 | J | Natural-language graph search | |
 | K | Pattern detection, as research leads and never as findings | |

@@ -68,6 +68,10 @@ export function NetworkGraph({
   const [evidence, setEvidence] = useState<EdgeEvidence[] | null>(null);
   const [showClaims, setShowClaims] = useState(false);
   const [wasTruncated, setWasTruncated] = useState(truncated);
+  // Null means "every year". The slider starts there rather than at the latest
+  // year, because opening on a window would hide relationships without saying
+  // it had.
+  const [year, setYear] = useState<number | null>(null);
 
   const svgRef = useRef<SVGSVGElement>(null);
   const layoutRef = useRef<Map<string, LayoutNode>>(new Map());
@@ -77,10 +81,37 @@ export function NetworkGraph({
   const alpha = useRef(1);
   const drag = useRef<{ key: string; dx: number; dy: number } | null>(null);
 
-  const visibleEdges = useMemo(
-    () => (showClaims ? edges : edges.filter((e) => !e.interpretive)),
-    [edges, showClaims],
-  );
+  /** The years the current network actually spans. */
+  const span = useMemo(() => {
+    const ys = edges.flatMap((e) => [e.yearFrom, e.yearTo]).filter((y): y is number => y != null);
+    return ys.length ? { min: Math.min(...ys), max: Math.max(...ys) } : null;
+  }, [edges]);
+
+  const visibleEdges = useMemo(() => {
+    let list = showClaims ? edges : edges.filter((e) => !e.interpretive);
+    if (year != null) {
+      // Same rule as the server-side window: an edge with no dates survives
+      // every year, because the archive not knowing when a relation ran is not
+      // evidence that it had ended.
+      list = list.filter(
+        (e) =>
+          (e.yearFrom == null && e.yearTo == null) ||
+          ((e.yearFrom == null || e.yearFrom <= year) && (e.yearTo == null || e.yearTo >= year)),
+      );
+    }
+    return list;
+  }, [edges, showClaims, year]);
+
+  /** Nodes still attached to something in this window, plus the root. */
+  const visibleNodes = useMemo(() => {
+    if (year == null) return nodes;
+    const live = new Set<string>([rootKey]);
+    for (const e of visibleEdges) {
+      live.add(keyOf(e.from));
+      live.add(keyOf(e.to));
+    }
+    return nodes.filter((n) => live.has(keyOf(n)));
+  }, [nodes, visibleEdges, year, rootKey]);
 
   /** Which nodes and edges touch the hovered or selected node. */
   const focus = useMemo(() => {
@@ -111,7 +142,7 @@ export function NetworkGraph({
   useEffect(() => {
     const existing = layoutRef.current;
     const seeded = seedNodes(
-      nodes.map((n) => ({ key: keyOf(n), depth: n.depth, radius: NODE_R[n.type] ?? 16 })),
+      visibleNodes.map((n) => ({ key: keyOf(n), depth: n.depth, radius: NODE_R[n.type] ?? 16 })),
       W,
       H,
     );
@@ -201,7 +232,7 @@ export function NetworkGraph({
       frame.current = 0;
       restart.current = () => {};
     };
-  }, [nodes, visibleEdges]);
+  }, [visibleNodes, visibleEdges]);
 
   // --- dragging: a pinned node stops moving, which is where section 12 starts -
   const onPointerDown = useCallback((key: string, e: React.PointerEvent) => {
@@ -284,7 +315,7 @@ export function NetworkGraph({
     <div className="net-wrap" data-auto="skip">
       <div className="net-toolbar">
         <span className="net-count">
-          {nodes.length} {nodes.length === 1 ? "entity" : "entities"}, {visibleEdges.length}{" "}
+          {visibleNodes.length} {visibleNodes.length === 1 ? "entity" : "entities"}, {visibleEdges.length}{" "}
           {visibleEdges.length === 1 ? "relationship" : "relationships"}
         </span>
         {hiddenClaims > 0 && (
@@ -303,6 +334,34 @@ export function NetworkGraph({
           </span>
         )}
       </div>
+
+      {span && span.min !== span.max && (
+        <div className="net-time">
+          <label htmlFor="net-year">
+            {year == null ? "Every recorded year" : `As recorded in ${year}`}
+          </label>
+          <input
+            id="net-year"
+            type="range"
+            className="year-slider"
+            min={span.min}
+            max={span.max}
+            value={year ?? span.max}
+            onChange={(e) => setYear(Number(e.target.value))}
+          />
+          {year != null && (
+            <button type="button" onClick={() => setYear(null)}>
+              Show every year
+            </button>
+          )}
+          {year != null && (
+            <span className="net-time-note">
+              Relationships the archive holds no dates for stay on screen: a missing date is a gap
+              in the record, not a relationship that had ended.
+            </span>
+          )}
+        </div>
+      )}
 
       <div className="net-stage">
         <svg
@@ -339,7 +398,7 @@ export function NetworkGraph({
             })}
           </g>
           <g className="net-nodes">
-            {nodes.map((n) => {
+            {visibleNodes.map((n) => {
               const key = keyOf(n);
               const dim = focus ? !focus.nodeKeys.has(key) : false;
               const shown = visibleEdges.filter(

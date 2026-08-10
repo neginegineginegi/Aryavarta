@@ -1310,6 +1310,99 @@ a:hover .wordmark {
 .net-list ul { margin-top: 0.6rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .net-list li { display: flex; align-items: baseline; gap: 0.5rem; }
 
+/* --- timeline, pickers and the connections page --------------------------- */
+.net-time {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem 1rem;
+  font-size: 0.82rem; color: var(--color-ink-muted);
+}
+.net-time label { min-width: 12rem; }
+.net-time input[type="range"] { flex: 1 1 16rem; }
+.net-time button { color: var(--color-accent); border-bottom: 1px solid currentColor; }
+.net-time-note { flex-basis: 100%; color: var(--color-ink-soft); }
+
+.net-connect { display: flex; flex-direction: column; gap: 1.5rem; }
+.net-connect-controls {
+  display: grid; gap: 0.9rem;
+  grid-template-columns: minmax(0, 1fr);
+}
+@media (min-width: 800px) {
+  .net-connect-controls { grid-template-columns: 1fr 1fr; }
+  .net-connect-opts { grid-column: 1 / -1; }
+}
+.net-connect-opts {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem;
+  font-size: 0.85rem; color: var(--color-ink-muted);
+}
+.net-connect-opts label { display: inline-flex; align-items: center; gap: 0.4rem; }
+.net-connect-opts select {
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  padding: 0.2rem 0.35rem; background: var(--color-paper-raised);
+}
+
+.net-pick { position: relative; display: flex; flex-direction: column; gap: 0.3rem; }
+.net-pick-label { font-size: 0.75rem; color: var(--color-ink-faint); }
+.net-pick-input {
+  width: 100%; padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  background: var(--color-paper-raised);
+}
+.net-pick-input:focus { outline: 2px solid var(--color-accent); outline-offset: -1px; }
+.net-pick-chosen {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  background: var(--color-paper-sunken);
+}
+.net-pick-chosen button { font-size: 0.8rem; color: var(--color-accent); border-bottom: 1px solid currentColor; }
+.net-pick-meta { display: block; font-size: 0.76rem; color: var(--color-ink-faint); }
+.net-pick-list {
+  position: absolute; z-index: 30; top: 100%; left: 0; right: 0; margin-top: 0.2rem;
+  max-height: 17rem; overflow-y: auto;
+  border: 1px solid var(--color-rule-dark); border-radius: 2px;
+  background: var(--color-paper-raised);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 0.08);
+}
+.net-pick-list li + li { border-top: 1px solid var(--color-rule-light); }
+.net-pick-list button { display: block; width: 100%; text-align: left; padding: 0.45rem 0.65rem; }
+.net-pick-list button:hover { background: var(--color-paper-sunken); }
+.net-pick-note { padding: 0.45rem 0.65rem; color: var(--color-ink-faint); font-size: 0.82rem; }
+
+.net-claim-warning {
+  padding: 0.5rem 0.7rem; font-size: 0.84rem;
+  border: 1px dashed var(--color-disputed); color: var(--color-disputed); border-radius: 2px;
+}
+
+.net-result h2 {
+  font-family: var(--font-display), serif; font-weight: 300; font-size: 1.3rem;
+  padding-bottom: 0.4rem; border-bottom: 1px solid var(--color-rule);
+}
+.net-result + .net-result { margin-top: 0.5rem; }
+
+.net-paths { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 1rem; }
+.net-path-head { display: flex; align-items: center; gap: 0.6rem; }
+.net-path-hops { font-size: 0.78rem; color: var(--color-ink-faint); }
+.net-path-steps {
+  margin-top: 0.4rem; border-left: 2px solid var(--color-rule-dark); padding-left: 0.85rem;
+  display: flex; flex-direction: column; gap: 0.45rem;
+}
+.net-path-steps li { font-size: 0.9rem; }
+.net-path-steps button { color: var(--color-accent); border-bottom: 1px solid transparent; }
+.net-path-steps button:hover { border-bottom-color: var(--color-accent); }
+.net-path-from, .net-path-to { font-weight: 500; }
+
+.net-overlap { margin-top: 0.8rem; display: flex; flex-direction: column; gap: 1rem; }
+.net-overlap-name { font-family: var(--font-display), serif; font-size: 1.05rem; }
+.net-overlap-sides { display: grid; gap: 0.75rem; margin-top: 0.35rem; }
+@media (min-width: 700px) { .net-overlap-sides { grid-template-columns: 1fr 1fr; } }
+.net-overlap-side-title { font-size: 0.75rem; color: var(--color-ink-faint); }
+.net-overlap-sides button { color: var(--color-ink-body); border-bottom: 1px solid var(--color-rule-dark); }
+.net-overlap-sides button:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+
+.net-step-evidence {
+  margin-top: 0.4rem; padding: 0.5rem 0.7rem;
+  border-left: 2px solid var(--color-accent); background: var(--color-paper-sunken);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .prism-wide {
     animation: none;
