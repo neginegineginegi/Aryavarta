@@ -51,10 +51,41 @@ export default async function NetworkPage({
         <section className="section-card mt-4 px-6 py-8 sm:px-10">
           <h2 className="font-display text-[1.35rem] font-light">Start from an entity</h2>
           {entries.length === 0 ? (
-            <p className="mt-3 text-ink-muted">
-              No relationships have been recorded yet. The layer is built and the graph is ready;
-              what it holds is a question of what has been sourced and approved so far.
-            </p>
+            <div className="mt-3 space-y-4 text-ink-muted">
+              <p className="max-w-[62ch]">
+                <strong className="text-ink">No relationships have been recorded yet.</strong> The
+                graph, the evidence panels and the connection finder are all built and working;
+                they have nothing to draw. Records enter this layer the same way every other record
+                does, by being proposed with a source and approved in review.
+              </p>
+              <div>
+                <h3 className="text-[0.95rem] text-ink">What will be here</h3>
+                <ul className="mt-2 max-w-[62ch] list-disc space-y-1 pl-5">
+                  <li>
+                    A network you can follow outward from any organisation, person, campaign,
+                    project or case, one hop at a time.
+                  </li>
+                  <li>
+                    A panel on every line showing the document behind it, its page reference, and
+                    what the relationship does not say.
+                  </li>
+                  <li>A year slider, so you can ask what the network looked like in 2014.</li>
+                  <li>
+                    Structure: which entities hold two groups together, and which are reached by
+                    more than one route.
+                  </li>
+                  <li>Notes and flags of your own, kept in your browser and nowhere else.</li>
+                </ul>
+              </div>
+              <p className="max-w-[62ch]">
+                <Link href="/network/connect" className="underline hover:text-accent">
+                  The connection finder
+                </Link>{" "}
+                is open now and will answer as soon as there are records to answer with. The design,
+                and the reasons behind every safeguard in it, are in the architecture note in the
+                repository.
+              </p>
+            </div>
           ) : (
             <ul className="mt-4 grid gap-2 sm:grid-cols-2">
               {entries.map((e) => (
@@ -95,7 +126,13 @@ export default async function NetworkPage({
         </h1>
         <p className="mt-2 max-w-[68ch] text-[0.92rem] text-ink-muted">
           Two hops from here, drawn from what has been recorded and cited. Lines are relationships,
-          not conclusions: click one to see the document it rests on.
+          not conclusions: click one to see the document it rests on. Double click an entity to
+          pull in one more hop.
+        </p>
+        <p className="mt-2 text-[0.85rem]">
+          <Link href={`/network/connect?a=${parsed.type}:${parsed.id}`} className="underline hover:text-accent">
+            Find what connects this to something else
+          </Link>
         </p>
       </header>
 

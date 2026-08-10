@@ -46,10 +46,20 @@ const NAV: NavItem[] = [
     panel: [
       { href: "/insights", label: "Patterns in the record", blurb: "Computed, not written" },
       { href: "/compare", label: "Compare", blurb: "Two elections side by side" },
-      { href: "/network", label: "Network", blurb: "Documented relationships, with their sources" },
     ],
   },
-  { href: "/compare", label: "Compare" },
+  {
+    href: "/network",
+    label: "Network",
+    panel: [
+      { href: "/network", label: "Explore the network", blurb: "Follow a relationship outward" },
+      {
+        href: "/network/connect",
+        label: "What connects two entities",
+        blurb: "Paths and shared connections",
+      },
+    ],
+  },
   {
     href: "/search",
     label: "Search",
