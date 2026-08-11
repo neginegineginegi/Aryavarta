@@ -25,6 +25,7 @@ than all the rest together), hydropower from 1922 (51,082 MW), gas and oil fired
 | --- | --- |
 | `40cdec5` | The network graph: nodes, expansion, and the evidence behind every line |
 | `4f5b363` | Graph phase A: one edge shape, and ids the graph can actually reach |
+| (see git) | Graph B-I: renderer, evidence panels, paths, overlap, timeline, structure, workspace, nav |
 | `61d996b` | Funding and Influence Map: the evidence spine |
 | `1fe0757` | Type stops moving when you stop scrolling |
 | `313884b` | The wordmark answers the cursor instead of standing still |

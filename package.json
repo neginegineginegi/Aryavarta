@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/ensure-upgrades.mjs && tsx scripts/supersede-wikidata.ts && tsx scripts/load-inbox.ts && next build",
+    "build": "node scripts/ensure-upgrades.mjs && tsx scripts/supersede-wikidata.ts && tsx scripts/load-inbox.ts && tsx scripts/load-funding-inbox.ts && next build",
     "start": "next start",
     "lint": "eslint",
     "db:generate": "drizzle-kit generate",

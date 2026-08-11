@@ -395,6 +395,35 @@ inference presented as a measurement, and every safeguard above exists to stop
 exactly that. Any index added later must publish its inputs, its weights and
 its failure modes on the same page as its output.
 
+## 14a. Ingest, and why it inserts directly
+
+`scripts/load-funding-inbox.ts` loads seven optional sheets from `data/inbox`
+on every build (formats in `docs/DATA_FORMAT.md`, a gathering prompt in
+`docs/RESEARCH_PROMPT_FUNDING.md`).
+
+Rows insert directly, the way indicator values do, rather than staging as
+revisions. The reasoning, stated so it can be argued with: there is no public
+contribution form for this layer, so the only way a row arrives is this
+loader, run by whoever curates the sheets — the same person who would be
+approving their own rows in a queue. Review earns its keep when proposer and
+reviewer are different people. **When public contribution forms for this layer
+exist, they must go through revisions like everything else**; the revision
+enum already carries the entity types, and approval currently refuses them by
+name so nothing can arrive half-built.
+
+What the loader enforces, per row, skipping loudly and repairing nothing:
+
+- at least one citation, with optional page notes (`FS1|Schedule 2 row 14`);
+- evidence status `verified` or `documented` only — the other three are
+  claims, and a CSV column cannot carry an asserter or a rationale;
+- `verified` requires a primary-tier source kind;
+- amounts are plain numbers carrying their ISO currency, financial years are
+  the Indian filing form and must be internally consistent;
+- people require `public_role_basis`;
+- relationship kinds outside the factual enum are refused, and the message
+  says why when the kind smells like an accusation;
+- inserts are idempotent and rows are never updated in place.
+
 ## 15. Build order
 
 | Phase | Deliverable | Status |
@@ -412,7 +441,7 @@ its failure modes on the same page as its output.
 | J | Natural-language graph search | next |
 | K | Pattern detection, as research leads and never as findings | |
 | L | Large-dataset optimisation | |
-| — | Ingest: CSV sheets, loader, validation, the moderation path | required before B shows real data |
+| — | Ingest: CSV sheets, loader, validation | **done** — see the note on review below |
 | — | Entity pages, map, analytics | |
 
 Each phase ships behind the existing review flow, so nothing reaches the public
