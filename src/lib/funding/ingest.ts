@@ -103,6 +103,19 @@ export function verifiedStatusAllowed(
   };
 }
 
+/**
+ * The one string that is both a month and a financial year.
+ *
+ * "2011-12" is December 2011 to a date parser and FY 2011-12 to anyone who
+ * reads Indian filings, and only the sheet's author knows which they meant.
+ * The second Amnesty batch wrote exactly this, meaning the FY, and the loader
+ * would have silently recorded a December. Any YYYY-MM whose second half is
+ * the following year is refused rather than guessed at.
+ */
+export function ambiguousFyDate(raw: string): boolean {
+  return /^\d{4}-\d{2}$/.test(raw.trim()) && validFinancialYear(raw);
+}
+
 /** Reject reversed ranges before the database check does, with a better message. */
 export function datesOrdered(start: string | null, end: string | null): boolean {
   if (!start || !end) return true;

@@ -74,6 +74,7 @@ async function main() {
   const { and, eq, sql } = await import("drizzle-orm");
   const { normalizeSourceUrl } = await import("../src/lib/revisions/payloads");
   const {
+    ambiguousFyDate,
     datesOrdered,
     parseRef,
     validAmount,
@@ -87,6 +88,21 @@ async function main() {
   const report = { created: {} as Record<string, number>, skipped: [] as string[] };
   const bump = (k: string) => (report.created[k] = (report.created[k] ?? 0) + 1);
   const skip = (s: string) => report.skipped.push(s);
+
+  /** null = blank or fine; the sentinel string means refuse the row. */
+  const AMBIGUOUS = "__ambiguous__";
+  const readDate = (raw: string | undefined, label: string, field: string): string | null => {
+    const v = (raw ?? "").trim();
+    if (!v) return null;
+    if (ambiguousFyDate(v)) {
+      skip(
+        `${label}: ${field} "${v}" reads as both a calendar month and a financial year; ` +
+          "write a full date, or leave it blank and put the FY in the note",
+      );
+      return AMBIGUOUS;
+    }
+    return normalizeDate(v);
+  };
 
   // --- states, for org/people geography -------------------------------------
   const stateRows = await db.select().from(schema.states);
@@ -452,7 +468,8 @@ async function main() {
     if (!status) continue;
 
     const amount = r.amount?.trim() ? Number(r.amount).toFixed(2) : null;
-    const occurred = normalizeDate(r.date ?? "");
+    const occurred = readDate(r.date, label, "date");
+    if (occurred === "__ambiguous__") continue;
     const key = `${donor.id}|${recipient.id}|${r.financial_year?.trim() ?? ""}|${occurred ?? ""}|${amount ?? ""}|${r.stated_purpose?.trim() ?? ""}`;
     if (existingTx.has(key)) {
       skip(`${label}: an identical transaction already exists`);
@@ -518,8 +535,9 @@ async function main() {
       skip(`${label}: unknown role kind "${roleKind}"`);
       continue;
     }
-    const start = normalizeDate(r.start_date ?? "");
-    const end = normalizeDate(r.end_date ?? "");
+    const start = readDate(r.start_date, label, "start_date");
+    const end = readDate(r.end_date, label, "end_date");
+    if (start === "__ambiguous__" || end === "__ambiguous__") continue;
     if (!datesOrdered(start, end)) {
       skip(`${label}: end date before start date`);
       continue;
@@ -580,8 +598,9 @@ async function main() {
     if (!from) continue;
     const to = resolveEntity(r.to, label);
     if (!to) continue;
-    const start = normalizeDate(r.start_date ?? "");
-    const end = normalizeDate(r.end_date ?? "");
+    const start = readDate(r.start_date, label, "start_date");
+    const end = readDate(r.end_date, label, "end_date");
+    if (start === "__ambiguous__" || end === "__ambiguous__") continue;
     if (!datesOrdered(start, end)) {
       skip(`${label}: end date before start date`);
       continue;
@@ -649,7 +668,10 @@ async function main() {
     // without one (a watch-list placement known only from reporting) is keyed
     // by the action itself, or a re-run would insert it again.
     const regNo = r.registration_number?.trim() || null;
-    const actionOn = normalizeDate(r.action_on ?? "");
+    const grantedOn = readDate(r.granted_on, label, "granted_on");
+    const validUntil = readDate(r.valid_until, label, "valid_until");
+    const actionOn = readDate(r.action_on, label, "action_on");
+    if (grantedOn === "__ambiguous__" || validUntil === "__ambiguous__" || actionOn === "__ambiguous__") continue;
     const dupRows = await db
       .select({
         id: schema.fcraRegistrations.id,
@@ -676,9 +698,9 @@ async function main() {
       registrationNumber: regNo,
       status: status as "active",
       evidenceStatus: evStatus,
-      grantedOn: normalizeDate(r.granted_on ?? ""),
-      validUntil: normalizeDate(r.valid_until ?? ""),
-      actionOn: actionOn,
+      grantedOn,
+      validUntil,
+      actionOn,
       actionKind: r.action_kind?.trim() || null,
       actionNote: r.action_note?.trim() || null,
       retrievedOn: today,

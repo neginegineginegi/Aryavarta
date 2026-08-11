@@ -62,6 +62,7 @@ export const EDGE_KIND_LABELS: Record<string, string> = {
   participated_in: "took part in",
   party_to_case: "is a party to",
   outcome_recorded_for: "has a recorded outcome",
+  parent_of: "is the parent organisation of",
   // board roles, projected from board_positions
   founder: "founded",
   trustee: "is a trustee of",

@@ -869,6 +869,16 @@ const STATEMENTS = [
             'outcome', oc.id::text, oc.kind::text
        FROM outcomes oc
      UNION ALL
+     -- Org parentage is a stored, cited column on the child row; projecting it
+     -- is not deriving it. The citation handle points at the child org, where
+     -- the sources for the parentage live.
+     SELECT 'parent:' || c.id::text, 'orgs', c.id::text, 'parent_of', false,
+            'org', c.parent_org_id::text, 'org', c.id::text,
+            NULL, NULL, NULL, NULL,
+            NULL, NULL, 'documented',
+            'org', c.id::text, NULL
+       FROM orgs c WHERE c.parent_org_id IS NOT NULL
+     UNION ALL
      -- Interpretation. Always flagged, so the renderer cannot draw an asserted
      -- relationship the way it draws a documented one.
      SELECT 'claim:' || cl.id::text, 'claims', cl.id::text, cl.claim_type::text, true,

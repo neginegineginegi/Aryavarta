@@ -203,7 +203,7 @@ true even though the graph reads across the whole layer. Every projected edge
 carries the citation handle of the row it came from, so an edge can always say
 where it came from; an edge that cannot has no business being drawn.
 
-Ten edge sources: `relationships`, `funding_transactions`, `board_positions`,
+Eleven edge sources: `relationships`, `funding_transactions`, `board_positions`, org parentage,
 `campaign_participants`, `campaign_targets`, `legal_case_parties`,
 `publications`, `projects` (operator), `outcomes`, and `claims`.
 

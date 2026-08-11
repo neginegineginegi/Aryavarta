@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  ambiguousFyDate,
   datesOrdered,
   parseRef,
   validAmount,
@@ -93,6 +94,19 @@ describe("bulk evidence status", () => {
     expect(allowed.ok).toBe(true);
     const documented = verifiedStatusAllowed("documented", ["news"]);
     expect(documented.ok).toBe(true);
+  });
+});
+
+describe("ambiguousFyDate", () => {
+  it("catches the December that is also a financial year", () => {
+    expect(ambiguousFyDate("2011-12")).toBe(true); // Dec 2011, or FY 2011-12?
+  });
+
+  it("lets every unambiguous month through", () => {
+    expect(ambiguousFyDate("2022-04")).toBe(false); // April 2022; FY would be 2022-23
+    expect(ambiguousFyDate("2011-11")).toBe(false);
+    expect(ambiguousFyDate("2011-12-01")).toBe(false); // a full date is explicit
+    expect(ambiguousFyDate("2011")).toBe(false);
   });
 });
 
