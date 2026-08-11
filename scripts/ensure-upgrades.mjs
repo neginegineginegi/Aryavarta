@@ -750,30 +750,32 @@ const STATEMENTS = [
   `CREATE VIEW graph_nodes AS
      SELECT 'org'::text AS node_type, o.id::text AS node_id, o.name AS label,
             o.kind::text AS sub_kind, o.state_id, o.incorporated_on AS started_on,
-            o.dissolved_on AS ended_on
+            o.dissolved_on AS ended_on, o.slug
        FROM orgs o
      UNION ALL
-     SELECT 'person', p.id::text, p.name, NULL, p.state_id, NULL, NULL FROM people p
+     SELECT 'person', p.id::text, p.name, NULL, p.state_id, NULL, NULL, p.slug FROM people p
      UNION ALL
-     SELECT 'project', pr.id::text, pr.name, pr.kind::text, pr.state_id, pr.announced_on, NULL
+     SELECT 'project', pr.id::text, pr.name, pr.kind::text, pr.state_id, pr.announced_on, NULL,
+            pr.slug
        FROM projects pr
      UNION ALL
-     SELECT 'campaign', c.id::text, c.name, NULL, c.state_id, c.start_on, c.end_on
+     SELECT 'campaign', c.id::text, c.name, NULL, c.state_id, c.start_on, c.end_on, c.slug
        FROM campaigns c
      UNION ALL
      SELECT 'legal_case', lc.id::text, lc.title, lc.kind::text, lc.state_id, lc.filed_on,
-            lc.decided_on
+            lc.decided_on, lc.slug
        FROM legal_cases lc
      UNION ALL
-     SELECT 'publication', pb.id::text, pb.title, pb.kind::text, NULL, pb.published_on, NULL
+     SELECT 'publication', pb.id::text, pb.title, pb.kind::text, NULL, pb.published_on, NULL,
+            pb.slug
        FROM publications pb
      UNION ALL
-     SELECT 'outcome', oc.id::text, oc.summary, oc.kind::text, NULL, oc.occurred_on, NULL
+     SELECT 'outcome', oc.id::text, oc.summary, oc.kind::text, NULL, oc.occurred_on, NULL, NULL
        FROM outcomes oc
      UNION ALL
-     SELECT 'party', pa.id, pa.name, NULL, NULL, NULL, NULL FROM parties pa
+     SELECT 'party', pa.id, pa.name, NULL, NULL, NULL, NULL, pa.id FROM parties pa
      UNION ALL
-     SELECT 'state', st.id, st.name, st.kind::text, st.id, st.formed_on, st.dissolved_on
+     SELECT 'state', st.id, st.name, st.kind::text, st.id, st.formed_on, st.dissolved_on, st.id
        FROM states st`,
   `CREATE VIEW graph_edges AS
      SELECT 'relationship:' || r.id::text AS edge_id, 'relationships'::text AS edge_table,

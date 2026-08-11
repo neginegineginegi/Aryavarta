@@ -18,6 +18,8 @@ export type GraphNode = {
   stateId: string | null;
   startedOn: string | null;
   endedOn: string | null;
+  /** The public identifier a record page keys on; null for kinds with none. */
+  slug: string | null;
   /** Hops from the root. 0 is the root itself. */
   depth: number;
 };

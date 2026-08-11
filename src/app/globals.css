@@ -1447,6 +1447,41 @@ a:hover .wordmark {
 }
 .net-note-scope { margin-top: 0.4rem; font-size: 0.76rem; color: var(--color-ink-faint); }
 
+/* --- entity record pages --------------------------------------------------- */
+.rec-facts {
+  display: grid; gap: 0.7rem 2rem;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  margin-bottom: 1rem;
+}
+.rec-facts dt { font-size: 0.75rem; color: var(--color-ink-faint); }
+.rec-facts dd { margin-top: 0.1rem; font-size: 0.92rem; }
+
+.rec-item { border-top: 1px solid var(--color-rule-light); padding-top: 0.8rem; }
+.rec-item:first-child { border-top: 0; padding-top: 0; }
+.rec-item-head { font-size: 0.95rem; line-height: 1.5; }
+.rec-item-quote { margin-top: 0.3rem; font-size: 0.9rem; color: var(--color-ink-body); }
+.rec-item-quote q { font-style: italic; }
+.rec-item-note {
+  margin-top: 0.3rem; max-width: 75ch;
+  font-size: 0.85rem; color: var(--color-ink-muted); line-height: 1.55;
+}
+.rec-link { color: var(--color-ink); border-bottom: 1px solid var(--color-rule-dark); }
+.rec-link:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+
+.rec-sources { margin-top: 0.45rem; display: flex; flex-direction: column; gap: 0.3rem; }
+.rec-sources a {
+  font-size: 0.85rem; border-bottom: 1px solid var(--color-rule-dark);
+}
+.rec-sources a:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
+
+.rec-nothing {
+  padding-left: 0.9rem; position: relative;
+}
+.rec-nothing::before {
+  content: ""; position: absolute; left: 0; top: 0.55em;
+  width: 0.4rem; height: 1px; background: var(--color-ink-ghost);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .prism-wide {
     animation: none;

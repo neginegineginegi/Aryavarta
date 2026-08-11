@@ -442,7 +442,8 @@ What the loader enforces, per row, skipping loudly and repairing nothing:
 | K | Pattern detection, as research leads and never as findings | |
 | L | Large-dataset optimisation | |
 | — | Ingest: CSV sheets, loader, validation | **done** — see the note on review below |
-| — | Entity pages, map, analytics | |
+| — | Entity pages: /network/org/[slug] and /network/person/[slug], with the not-held section | **done** |
+| — | Map and analytics | |
 
 Each phase ships behind the existing review flow, so nothing reaches the public
 record unapproved.

@@ -106,7 +106,7 @@ export async function neighbourhood(
 
   const [nodeRes, edgeRes] = await Promise.all([
     db.execute(sql`
-      SELECT node_type, node_id, label, sub_kind, state_id, started_on, ended_on
+      SELECT node_type, node_id, label, sub_kind, state_id, started_on, ended_on, slug
         FROM graph_nodes
        WHERE node_type || ':' || node_id = ANY(string_to_array(${keys}, chr(1)))
     `),
@@ -126,6 +126,7 @@ export async function neighbourhood(
     stateId: (r.state_id as string) ?? null,
     startedOn: (r.started_on as string) ?? null,
     endedOn: (r.ended_on as string) ?? null,
+    slug: (r.slug as string) ?? null,
     depth: depthOf.get(`${r.node_type}:${r.node_id}`) ?? 0,
   }));
 

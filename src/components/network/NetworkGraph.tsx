@@ -698,6 +698,15 @@ function WorkNotes({
   );
 }
 
+/** The full record behind a node, where one exists. */
+function recordHref(node: GraphNode): string | null {
+  if (node.type === "org" && node.slug) return `/network/org/${node.slug}`;
+  if (node.type === "person" && node.slug) return `/network/person/${node.slug}`;
+  if (node.type === "party") return `/party/${node.id}`;
+  if (node.type === "state") return `/state/${node.id}`;
+  return null;
+}
+
 function NodeCard({
   node,
   hidden,
@@ -736,6 +745,13 @@ function NodeCard({
             ? "Nothing further recorded"
             : `Expand: ${hidden} more ${hidden === 1 ? "relationship" : "relationships"}`}
       </button>
+      {recordHref(node) && (
+        <p className="net-card-sub">
+          <a href={recordHref(node)!} className="rec-link">
+            Open the full record
+          </a>
+        </p>
+      )}
 
       <h4 className="net-card-h">Shown here</h4>
       <ul className="net-card-edges">
