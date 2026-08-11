@@ -252,3 +252,18 @@ Any government action is recorded as the record states it, with its date.
 primary-tier source; blank means `documented`. An action known only from
 reporting (the underlying order not retrieved) is `documented`, and the
 `action_note` should say the order was not retrieved.
+
+### funding_outcomes.csv
+
+```csv
+subject,kind,date,summary,evidence_status,sources
+example-ngo,regulatory_action,2015-11-04,"Registration under the state Societies Act cancelled by the District Registrar, citing unfiled annual returns.",documented,FS3
+```
+
+`kind`: `project_delayed`, `project_cancelled`, `project_completed`,
+`policy_changed`, `policy_withdrawn`, `investigation_initiated`,
+`court_ruling`, `regulatory_action`, `government_response`,
+`no_documented_outcome`, `disputed`. An outcome attaches to the thing it
+happened to, never to whoever is said to have caused it: attribution is a
+claim. Actions under laws other than the FCRA belong here, not in
+`funding_fcra.csv`.

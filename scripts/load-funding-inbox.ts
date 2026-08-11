@@ -63,6 +63,7 @@ async function main() {
     "funding_board.csv",
     "funding_relationships.csv",
     "funding_fcra.csv",
+    "funding_outcomes.csv",
   ];
   if (!sheets.some((s) => existsSync(join(INBOX, s)))) {
     console.log("[load-funding] no funding sheets in the inbox — nothing to load.");
@@ -640,6 +641,60 @@ async function main() {
     await cite("relationship", id, refs);
     existingRel.add(key);
     bump("relationships");
+  }
+
+  // --- outcomes --------------------------------------------------------------
+  // subject,kind,date,summary,evidence_status,sources
+  // What happened, attached to the thing it happened to: a registration
+  // cancelled under a state Act, a court ruling, a regulatory action. Never
+  // attached to whoever is said to have caused it; that is a claim.
+  const OUTCOME_KINDS = new Set(schema.outcomeKindEnum.enumValues as readonly string[]);
+  const existingOutcomes = new Set(
+    (
+      await db.execute(
+        sql`SELECT subject_type::text || ':' || subject_id || '|' || kind::text || '|' || COALESCE(occurred_on::text,'') AS k FROM outcomes`,
+      )
+    ).rows.map((r) => String((r as { k: string }).k)),
+  );
+
+  for (const r of readSheet("funding_outcomes.csv")) {
+    const label = `outcome ${r.kind} for ${r.subject}`;
+    const subject = resolveEntity(r.subject, label);
+    if (!subject) continue;
+    if (!OUTCOME_KINDS.has(r.kind ?? "")) {
+      skip(`${label}: unknown outcome kind "${r.kind}"`);
+      continue;
+    }
+    if ((r.summary?.trim().length ?? 0) < 20) {
+      skip(`${label}: a summary stating what happened is required`);
+      continue;
+    }
+    const occurred = readDate(r.date, label, "date");
+    if (occurred === "__ambiguous__") continue;
+    const refs = parseSourceRefs(r.sources, label);
+    if (!refs) continue;
+    const status = evidenceStatus(r.evidence_status, refs, label);
+    if (!status) continue;
+
+    const key = `${subject.type}:${subject.id}|${r.kind}|${occurred ?? ""}`;
+    if (existingOutcomes.has(key)) {
+      skip(`${label}: already recorded`);
+      continue;
+    }
+
+    const id = uuidv7();
+    await db.insert(schema.outcomes).values({
+      id,
+      subjectType: subject.type as "org",
+      subjectId: subject.id,
+      kind: r.kind as "regulatory_action",
+      occurredOn: occurred,
+      summary: r.summary.trim(),
+      evidenceStatus: status,
+    });
+    await cite("outcome", id, refs);
+    existingOutcomes.add(key);
+    bump("outcomes");
   }
 
   // --- FCRA ------------------------------------------------------------------
