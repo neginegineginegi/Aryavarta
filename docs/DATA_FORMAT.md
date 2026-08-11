@@ -242,9 +242,13 @@ tell you so.
 ### funding_fcra.csv
 
 ```csv
-org,registration_number,status,granted_on,valid_until,action_on,action_kind,action_note,sources
-example-ngo,083780001,active,2010-06-01,2026-06-01,,,,FS1
+org,registration_number,status,granted_on,valid_until,action_on,action_kind,action_note,evidence_status,sources
+example-ngo,083780001,active,2010-06-01,2026-06-01,,,,verified,FS1
 ```
 
 `status`: `active`, `suspended`, `cancelled`, `expired`, `renewed`, `unknown`.
 Any government action is recorded as the record states it, with its date.
+`evidence_status` follows the same rule as every sheet: `verified` only with a
+primary-tier source; blank means `documented`. An action known only from
+reporting (the underlying order not retrieved) is `documented`, and the
+`action_note` should say the order was not retrieved.

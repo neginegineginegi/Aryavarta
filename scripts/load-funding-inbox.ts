@@ -403,10 +403,14 @@ async function main() {
   // donor,recipient,amount,currency,financial_year,date,funding_type,
   // stated_purpose,programme,donor_country,reported_under_fcra,evidence_status,notes,sources
   const FUNDING_TYPES = new Set(schema.fundingTypeEnum.enumValues as readonly string[]);
+  // The key carries every distinguishing field the sheet can hold. The first
+  // real batch was four grants from one donor to one recipient, all the same
+  // amount, distinguished only by their stated purposes and award years: a
+  // key of donor|recipient|fy|amount refused three real grants as duplicates.
   const existingTx = new Set(
     (
       await db.execute(
-        sql`SELECT donor_id || '|' || recipient_id || '|' || COALESCE(financial_year,'') || '|' || COALESCE(amount::text,'') AS k FROM funding_transactions`,
+        sql`SELECT donor_id || '|' || recipient_id || '|' || COALESCE(financial_year,'') || '|' || COALESCE(occurred_on::text,'') || '|' || COALESCE(amount::text,'') || '|' || COALESCE(stated_purpose,'') AS k FROM funding_transactions`,
       )
     ).rows.map((r) => String((r as { k: string }).k)),
   );
@@ -448,7 +452,8 @@ async function main() {
     if (!status) continue;
 
     const amount = r.amount?.trim() ? Number(r.amount).toFixed(2) : null;
-    const key = `${donor.id}|${recipient.id}|${r.financial_year?.trim() ?? ""}|${amount ?? ""}`;
+    const occurred = normalizeDate(r.date ?? "");
+    const key = `${donor.id}|${recipient.id}|${r.financial_year?.trim() ?? ""}|${occurred ?? ""}|${amount ?? ""}|${r.stated_purpose?.trim() ?? ""}`;
     if (existingTx.has(key)) {
       skip(`${label}: an identical transaction already exists`);
       continue;
@@ -464,7 +469,7 @@ async function main() {
       amount,
       currency: r.currency?.trim() || null,
       financialYear: r.financial_year?.trim() || null,
-      occurredOn: normalizeDate(r.date ?? ""),
+      occurredOn: occurred,
       fundingType: fundingType as "grant",
       statedPurpose: r.stated_purpose?.trim() || null,
       programme: r.programme?.trim() || null,
@@ -635,18 +640,32 @@ async function main() {
     }
     const refs = parseSourceRefs(r.sources, label);
     if (!refs) continue;
+    // The schema column defaults to 'verified', which is exactly the wrong
+    // default for a bulk row: gate it like every other sheet.
+    const evStatus = evidenceStatus(r.evidence_status, refs, label);
+    if (!evStatus) continue;
 
-    const [dup] = await db
-      .select({ id: schema.fcraRegistrations.id })
+    // A registration row is keyed by its number; an action row recorded
+    // without one (a watch-list placement known only from reporting) is keyed
+    // by the action itself, or a re-run would insert it again.
+    const regNo = r.registration_number?.trim() || null;
+    const actionOn = normalizeDate(r.action_on ?? "");
+    const dupRows = await db
+      .select({
+        id: schema.fcraRegistrations.id,
+        registrationNumber: schema.fcraRegistrations.registrationNumber,
+        actionOn: schema.fcraRegistrations.actionOn,
+        actionKind: schema.fcraRegistrations.actionKind,
+      })
       .from(schema.fcraRegistrations)
-      .where(
-        and(
-          eq(schema.fcraRegistrations.orgId, orgId),
-          eq(schema.fcraRegistrations.registrationNumber, r.registration_number?.trim() ?? ""),
-        ),
-      );
+      .where(eq(schema.fcraRegistrations.orgId, orgId));
+    const dup = dupRows.some((d) =>
+      regNo
+        ? d.registrationNumber === regNo
+        : d.actionOn === actionOn && d.actionKind === (r.action_kind?.trim() || null),
+    );
     if (dup) {
-      skip(`${label}: registration already recorded`);
+      skip(`${label}: already recorded`);
       continue;
     }
 
@@ -654,11 +673,12 @@ async function main() {
     await db.insert(schema.fcraRegistrations).values({
       id,
       orgId,
-      registrationNumber: r.registration_number?.trim() || null,
+      registrationNumber: regNo,
       status: status as "active",
+      evidenceStatus: evStatus,
       grantedOn: normalizeDate(r.granted_on ?? ""),
       validUntil: normalizeDate(r.valid_until ?? ""),
-      actionOn: normalizeDate(r.action_on ?? ""),
+      actionOn: actionOn,
       actionKind: r.action_kind?.trim() || null,
       actionNote: r.action_note?.trim() || null,
       retrievedOn: today,
@@ -668,6 +688,11 @@ async function main() {
   }
 
   // --- report ----------------------------------------------------------------
+  const citedUrls = new Set(sourceIdByUrl.keys());
+  const unused = [...srcById.entries()].filter(([, s]) => !citedUrls.has(s.url)).map(([id]) => id);
+  if (unused.length) {
+    console.log(`[load-funding] note: source ids cited by no row (not inserted): ${unused.join(", ")}`);
+  }
   console.log("[load-funding] created:", JSON.stringify(report.created));
   if (report.skipped.length) {
     console.log(`[load-funding] skipped ${report.skipped.length}:`);
