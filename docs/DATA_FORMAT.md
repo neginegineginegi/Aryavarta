@@ -153,8 +153,11 @@ build. Unlike terms and events these insert directly (there is no public
 contribution form for this layer yet, so the sheet's curator and a queue's
 reviewer would be the same person); every row still requires at least one
 source, and the loader skips any row that fails a check, printing the reason.
-Rows are never updated in place: to correct one, fix it in the database
-deliberately, never by re-running a changed sheet.
+Rows are never updated in place, with one additive exception: an org row whose
+slug already exists fills only fields that are currently EMPTY (formation
+date, website, location, registration) and attaches its citations. Name, kind
+and summary never change this way; correcting those is a deliberate act, not a
+side effect of loading a sheet.
 
 Entity references: a bare value is an org slug (`ford-foundation`); people
 must be prefixed (`person:jane-doe`); parties and states use their public ids

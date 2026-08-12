@@ -271,8 +271,44 @@ async function main() {
       skip(`${label}: ${"error" in ref ? ref.error : "not an org slug"}`);
       continue;
     }
-    if (orgIdBySlug.has(ref.slug)) {
-      skip(`${label}: already exists (rows are never updated in place)`);
+    const existingId = orgIdBySlug.get(ref.slug);
+    if (existingId) {
+      // Null-only enrichment. A later batch often knows more about a body an
+      // earlier one only named in passing; fields that are EMPTY take the new
+      // value and its citations, and nothing recorded is ever overwritten.
+      // Name, kind and summary never change here: correcting those is a
+      // deliberate act, not a side effect of loading a sheet.
+      const refs = parseSourceRefs(r.sources, label);
+      if (!refs) continue;
+      const [cur] = await db.select().from(schema.orgs).where(eq(schema.orgs.id, existingId));
+      const inc = readDate(r.incorporated_on, label, "incorporated_on");
+      const dis = readDate(r.dissolved_on, label, "dissolved_on");
+      if (inc === AMBIGUOUS || dis === AMBIGUOUS) continue;
+      const stateId = resolveState(r.state ?? "");
+      if (stateId === undefined) {
+        skip(`${label}: unknown state "${r.state}"`);
+        continue;
+      }
+      const fill: Partial<typeof cur> = {};
+      if (!cur.legalName && r.legal_name?.trim()) fill.legalName = r.legal_name.trim();
+      if (!cur.registrationNumber && r.registration_number?.trim())
+        fill.registrationNumber = r.registration_number.trim();
+      if (!cur.registrationType && r.registration_type?.trim())
+        fill.registrationType = r.registration_type.trim();
+      if (!cur.incorporatedOn && inc) fill.incorporatedOn = inc;
+      if (!cur.dissolvedOn && dis) fill.dissolvedOn = dis;
+      if (!cur.stateId && stateId) fill.stateId = stateId;
+      if (!cur.city && r.city?.trim()) fill.city = r.city.trim();
+      if (!cur.website && r.website?.trim()) fill.website = r.website.trim();
+      if (Object.keys(fill).length > 0) {
+        await db.update(schema.orgs).set(fill).where(eq(schema.orgs.id, existingId));
+        bump("orgs_enriched");
+      } else {
+        skip(`${label}: already exists and nothing new to fill`);
+      }
+      await cite("org", existingId, refs);
+      if (!cur.parentOrgId && r.parent?.trim())
+        parentLinks.push({ slug: ref.slug, parent: r.parent.trim().toLowerCase() });
       continue;
     }
     if (!r.name?.trim()) {
