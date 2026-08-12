@@ -319,6 +319,32 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
         </RecordSection>
       )}
 
+      {rec.matches.length > 0 && (
+        <RecordSection
+          title="Unresolved identity"
+          intro="The archive records these as open questions, not as findings. There is no merge: two records that turn out to be one body stay two records, joined by a reviewed match."
+        >
+          <ul className="space-y-4">
+            {rec.matches.map((m) => (
+              <li key={m.id} className="rec-item">
+                <p className="rec-item-head">
+                  May be the same body as{" "}
+                  {m.otherSlug ? (
+                    <Link href={`/network/org/${m.otherSlug}`} className="rec-link">
+                      {m.otherName}
+                    </Link>
+                  ) : (
+                    <strong>{m.otherName}</strong>
+                  )}
+                  <span className="text-ink-muted"> · status: {m.status}</span>
+                </p>
+                <p className="rec-item-note">{m.rationale}</p>
+              </li>
+            ))}
+          </ul>
+        </RecordSection>
+      )}
+
       <NotHeldSection lines={notHeld} questions={rec.questions} />
     </div>
   );

@@ -64,6 +64,7 @@ async function main() {
     "funding_relationships.csv",
     "funding_fcra.csv",
     "funding_outcomes.csv",
+    "funding_matches.csv",
   ];
   if (!sheets.some((s) => existsSync(join(INBOX, s)))) {
     console.log("[load-funding] no funding sheets in the inbox — nothing to load.");
@@ -762,6 +763,55 @@ async function main() {
     });
     await cite("fcra_registration", id, refs);
     bump("fcra_registrations");
+  }
+
+  // --- possible matches -------------------------------------------------------
+  // a,b,rationale
+  // Two recorded entities that might be one body. Recording the question is
+  // the whole point: there is no merge, and confirming or rejecting is a
+  // reviewer's act, never a sheet's. Both sides must already be recorded;
+  // a match against a body the archive does not hold is a summary's job.
+  const existingMatches = new Set(
+    (
+      await db.execute(
+        sql`SELECT entity_type::text || '|' || least(a_id, b_id) || '|' || greatest(a_id, b_id) AS k FROM entity_match_candidates`,
+      )
+    ).rows.map((r) => String((r as { k: string }).k)),
+  );
+
+  for (const r of readSheet("funding_matches.csv")) {
+    const label = `match ${r.a} ~ ${r.b}`;
+    const a = resolveEntity(r.a, label);
+    if (!a) continue;
+    const b = resolveEntity(r.b, label);
+    if (!b) continue;
+    if (a.type !== b.type || (a.type !== "org" && a.type !== "person")) {
+      skip(`${label}: a match candidate pairs two orgs or two people`);
+      continue;
+    }
+    if (a.id === b.id) {
+      skip(`${label}: the two sides are the same record`);
+      continue;
+    }
+    if ((r.rationale?.trim().length ?? 0) < 20) {
+      skip(`${label}: a rationale saying why these might be one body is required`);
+      continue;
+    }
+    const key = `${a.type}|${[a.id, b.id].sort()[0]}|${[a.id, b.id].sort()[1]}`;
+    if (existingMatches.has(key)) {
+      skip(`${label}: already recorded`);
+      continue;
+    }
+    await db.insert(schema.entityMatchCandidates).values({
+      id: uuidv7(),
+      entityType: a.type as "org",
+      aId: a.id,
+      bId: b.id,
+      status: "possible",
+      rationale: r.rationale.trim(),
+    });
+    existingMatches.add(key);
+    bump("match_candidates");
   }
 
   // --- report ----------------------------------------------------------------

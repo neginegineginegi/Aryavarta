@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import {
   boardPositions,
   citations,
+  entityMatchCandidates,
   fcraRegistrations,
   fundingTransactions,
   openQuestions,
@@ -95,7 +96,7 @@ export async function orgRecord(slug: string) {
   const [org] = await db.select().from(orgs).where(eq(orgs.slug, slug));
   if (!org) return null;
 
-  const [fcra, outs, board, given, received, rels, parent, children, questions] =
+  const [fcra, outs, board, given, received, rels, parent, children, questions, matchRows] =
     await Promise.all([
       db
         .select()
@@ -162,6 +163,12 @@ export async function orgRecord(slug: string) {
         .where(
           sql`${openQuestions.subjectType} = 'org' AND ${openQuestions.subjectId} = ${org.id}`,
         ),
+      db
+        .select()
+        .from(entityMatchCandidates)
+        .where(
+          sql`${entityMatchCandidates.entityType} = 'org' AND (${entityMatchCandidates.aId} = ${org.id} OR ${entityMatchCandidates.bId} = ${org.id})`,
+        ),
     ]);
 
   const [orgCites, fcraCites, outCites, boardCites, txCites, relCites] = await Promise.all([
@@ -172,6 +179,26 @@ export async function orgRecord(slug: string) {
     citationsFor("funding_transaction", [...given, ...received].map((r) => r.id)),
     citationsFor("relationship", rels.map((r) => r.id)),
   ]);
+
+  // The other side of each possible match, named and linked.
+  const matchOtherIds = matchRows.map((m) => (m.aId === org.id ? m.bId : m.aId));
+  const matchOthers = matchOtherIds.length
+    ? await db
+        .select({ id: orgs.id, name: orgs.name, slug: orgs.slug })
+        .from(orgs)
+        .where(inArray(orgs.id, matchOtherIds))
+    : [];
+  const matches = matchRows.map((m) => {
+    const otherId = m.aId === org.id ? m.bId : m.aId;
+    const other = matchOthers.find((o) => o.id === otherId);
+    return {
+      id: m.id,
+      status: m.status,
+      rationale: m.rationale,
+      otherName: other?.name ?? otherId,
+      otherSlug: other?.slug ?? null,
+    };
+  });
 
   const endpoints = [
     ...given.map((t) => ({ type: t.recipientType, id: t.recipientId })),
@@ -194,6 +221,7 @@ export async function orgRecord(slug: string) {
     parent: parent[0] ?? null,
     children,
     questions,
+    matches,
     labels,
   };
 }

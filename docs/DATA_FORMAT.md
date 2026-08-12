@@ -267,3 +267,16 @@ example-ngo,regulatory_action,2015-11-04,"Registration under the state Societies
 happened to, never to whoever is said to have caused it: attribution is a
 claim. Actions under laws other than the FCRA belong here, not in
 `funding_fcra.csv`.
+
+### funding_matches.csv
+
+```csv
+a,b,rationale
+example-uk-entity,example-limited,"Agency statements name the first without identifying a legal entity; whether it is the second has not been established from the retrieved sources."
+```
+
+Two recorded entities that might be one body, stored as a `possible` match.
+There is no merge: confirming or rejecting a match is a reviewer's decision,
+recorded on the candidate, never a deletion. Both sides must already exist in
+the archive; a suspicion about a body the archive does not hold belongs in an
+org summary instead.
