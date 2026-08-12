@@ -16,12 +16,15 @@ import type { Bridge, Convergence } from "@/lib/funding/analysis";
  * stop being one the moment somebody files a source.
  */
 export function StructurePanel({
+  hasRoot = true,
   bridges,
   convergences,
   componentCount,
   labelOf,
   onSelect,
 }: {
+  /** Convergence is measured from a starting point; the whole-web view has none. */
+  hasRoot?: boolean;
   bridges: Bridge[];
   convergences: Convergence[];
   componentCount: number;
@@ -84,12 +87,13 @@ export function StructurePanel({
         </p>
       )}
 
-      <h4 className="net-card-h">Reached by more than one route</h4>
-      {convergences.length === 0 ? (
+      {hasRoot && <h4 className="net-card-h">Reached by more than one route</h4>}
+      {hasRoot && convergences.length === 0 && (
         <p className="net-card-sub">
           None. Every entity here is reached from the starting point one way only.
         </p>
-      ) : (
+      )}
+      {hasRoot && convergences.length > 0 && (
         <ul className="net-structure">
           {convergences.map((c) => (
             <li key={c.key}>
@@ -103,7 +107,7 @@ export function StructurePanel({
           ))}
         </ul>
       )}
-      {convergences.length > 0 && (
+      {hasRoot && convergences.length > 0 && (
         <p className="net-structure-caveat">
           Two routes arriving at one place is a fact about this diagram. It is not evidence that the
           routes are related to each other, or that the entity they meet at did anything.

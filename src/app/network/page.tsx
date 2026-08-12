@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { NetworkGraph } from "@/components/network/NetworkGraph";
+import { wholeGraph } from "@/lib/funding/graph";
 import { degrees, graphEntryPoints } from "@/lib/db/queries/network";
 import { neighbourhood } from "@/lib/funding/graph";
 import { NODE_TYPE_LABELS, ORG_KIND_LABELS } from "@/lib/funding/labels";
@@ -36,18 +37,51 @@ export default async function NetworkPage({
     : null;
 
   if (!parsed) {
+    // The whole web renders only while it fits one canvas; past the stated cap
+    // it steps back to search-first and the page says so.
+    const web = !filter ? await wholeGraph() : null;
+    const webDegrees =
+      web && !web.truncated
+        ? await degrees(web.nodes.map((n) => ({ type: n.type, id: n.id })))
+        : new Map<string, number>();
+
     return (
-      <div className="mx-auto max-w-[1100px] px-4 pb-4">
+      <div className="mx-auto max-w-[1400px] px-4 pb-4">
         <header className="section-card tricolor-strip px-6 py-9 sm:px-10">
           <h1 className="font-display text-[clamp(30px,4vw,42px)] font-light leading-[1.05]">
             The network
           </h1>
           <p className="mt-3 max-w-[62ch] text-ink-muted">
-            Every line here is one recorded relationship with a source behind it. Pick somewhere to
-            start, then follow it outward. The graph will not tell you what a shape means; it will
-            show you what each line rests on.
+            Every line here is one recorded relationship with a source behind it. The graph will
+            not tell you what a shape means; it will show you what each line rests on.
           </p>
         </header>
+
+        {web && !web.truncated && web.nodes.length > 0 && (
+          <section className="section-card mt-4 px-4 py-5 sm:px-6">
+            <p className="mb-3 max-w-[75ch] text-[0.88rem] text-ink-muted">
+              Everything recorded so far, on one canvas. Separate islands are separate because no
+              documented relationship joins them; people sitting in more than one organisation are
+              what stitches clusters together. Click a line for its evidence, double click an
+              entity to pull in anything hidden, drag to rearrange.
+            </p>
+            <NetworkGraph
+              initialNodes={web.nodes}
+              initialEdges={web.edges}
+              initialDegrees={Object.fromEntries(webDegrees)}
+              rootKey={null}
+              truncated={false}
+            />
+          </section>
+        )}
+        {web?.truncated && (
+          <section className="section-card mt-4 px-6 py-6 sm:px-10">
+            <p className="max-w-[70ch] text-[0.9rem] text-ink-muted">
+              The web has grown past what one canvas can show legibly, so this page starts from a
+              single entity instead. Pick one below.
+            </p>
+          </section>
+        )}
 
         <section className="section-card mt-4 px-6 py-8 sm:px-10">
           <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -169,7 +203,15 @@ function EntryList({ entries }: { entries: Entry[] }) {
     <ul className="mt-4 grid gap-2 sm:grid-cols-2">
       {entries.map((e) => (
         <li key={`${e.type}:${e.id}`}>
-          <Link href={`/network?root=${e.type}:${e.id}`} className="net-entry" data-lamp>
+          <Link
+            href={
+              e.degree > 0 || !e.slug
+                ? `/network?root=${e.type}:${e.id}`
+                : `/network/${e.type === "org" ? "org" : "person"}/${e.slug}`
+            }
+            className="net-entry"
+            data-lamp
+          >
             <span className="net-entry-name">{e.label}</span>
             <span className="net-entry-meta">
               {e.type === "org" && e.subKind

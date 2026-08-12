@@ -126,11 +126,12 @@ export async function degrees(refs: EntityRef[]): Promise<Map<string, number>> {
 }
 
 /**
- * Entities a researcher can start from, newest first within each kind.
+ * Entities a researcher can start from, most connected first.
  *
- * Deliberately not "the whole graph": section 20's rule is search-first
- * exploration, and an index page that renders every node is the thing that
- * stops working as the dataset grows.
+ * Orgs and people appear even with no relationships drawn yet: an entity can
+ * carry FCRA rows or outcomes that project no edge, and its record page is
+ * where they live. Anything else (campaigns, cases) earns a listing by
+ * touching the graph.
  */
 export async function graphEntryPoints(limit = 24, type?: "org" | "person") {
   const typeFilter = type ? sql`AND n.node_type = ${type}` : sql``;
@@ -142,7 +143,7 @@ export async function graphEntryPoints(limit = 24, type?: "org" | "person") {
          WHERE (e.from_type = n.node_type AND e.from_id = n.node_id)
             OR (e.to_type = n.node_type AND e.to_id = n.node_id)
       ) d ON true
-     WHERE d.degree > 0 ${typeFilter}
+     WHERE (d.degree > 0 OR n.node_type IN ('org', 'person')) ${typeFilter}
      ORDER BY d.degree DESC, n.label
      LIMIT ${limit}
   `);

@@ -240,3 +240,57 @@ export async function sharedConnections(
     };
   });
 }
+
+/** Past this, one canvas stops being legible and the index returns to
+ *  search-first, saying so. The whole point of the cap is that it is stated. */
+export const WEB_MAX_NODES = 250;
+
+/**
+ * The entire recorded web: every entity that touches at least one edge, and
+ * every edge between them. Claims are included and flagged, so the client
+ * toggle governs them exactly as it does in the rooted view.
+ *
+ * This exists because a small archive is browsable whole, and hiding that
+ * behind a search box made four investigations look like a filing cabinet.
+ * Depth is 1 for every node: there is no root, and the force layout separates
+ * the clusters on its own.
+ */
+export async function wholeGraph(): Promise<{
+  nodes: GraphNode[];
+  edges: GraphEdge[];
+  truncated: boolean;
+}> {
+  const nodeRes = await db.execute(sql`
+    SELECT n.node_type, n.node_id, n.label, n.sub_kind, n.state_id,
+           n.started_on, n.ended_on, n.slug
+      FROM graph_nodes n
+     WHERE EXISTS (
+        SELECT 1 FROM graph_edges e
+         WHERE (e.from_type = n.node_type AND e.from_id = n.node_id)
+            OR (e.to_type = n.node_type AND e.to_id = n.node_id)
+      )
+     ORDER BY n.label
+     LIMIT ${WEB_MAX_NODES + 1}
+  `);
+  const rows = nodeRes.rows as Array<Record<string, unknown>>;
+  const truncated = rows.length > WEB_MAX_NODES;
+  const kept = truncated ? rows.slice(0, WEB_MAX_NODES) : rows;
+  const nodes: GraphNode[] = kept.map((r) => ({
+    type: String(r.node_type),
+    id: String(r.node_id),
+    label: String(r.label ?? ""),
+    subKind: (r.sub_kind as string) ?? null,
+    stateId: (r.state_id as string) ?? null,
+    startedOn: (r.started_on as string) ?? null,
+    endedOn: (r.ended_on as string) ?? null,
+    slug: (r.slug as string) ?? null,
+    depth: 1,
+  }));
+  const keys = nodes.map((n) => `${n.type}:${n.id}`).join("\u0001");
+  const edgeRes = await db.execute(sql`
+    SELECT e.* FROM graph_edges e
+     WHERE e.from_type || ':' || e.from_id = ANY(string_to_array(${keys}, chr(1)))
+       AND e.to_type || ':' || e.to_id = ANY(string_to_array(${keys}, chr(1)))
+  `);
+  return { nodes, edges: (edgeRes.rows as Array<Record<string, unknown>>).map(toEdge), truncated };
+}

@@ -59,7 +59,9 @@ export function NetworkGraph({
   initialNodes: GraphNode[];
   initialEdges: GraphEdge[];
   initialDegrees: Record<string, number>;
-  rootKey: string;
+  /** Null renders the whole web: no centre, no depth rings, clusters left to
+   *  separate themselves. Everything else behaves identically. */
+  rootKey: string | null;
   truncated: boolean;
 }) {
   const [nodes, setNodes] = useState(initialNodes);
@@ -113,7 +115,7 @@ export function NetworkGraph({
   /** Nodes still attached to something in this window, plus the root. */
   const visibleNodes = useMemo(() => {
     if (year == null) return nodes;
-    const live = new Set<string>([rootKey]);
+    const live = new Set<string>(rootKey ? [rootKey] : []);
     for (const e of visibleEdges) {
       live.add(keyOf(e.from));
       live.add(keyOf(e.to));
@@ -130,7 +132,7 @@ export function NetworkGraph({
     );
     return {
       bridges: bridges(adj),
-      convergences: convergences(adj, rootKey),
+      convergences: rootKey ? convergences(adj, rootKey) : [],
       componentCount: new Set(componentOf(adj).values()).size,
     };
   }, [visibleNodes, visibleEdges, rootKey]);
@@ -161,20 +163,21 @@ export function NetworkGraph({
   // --- the researcher's own working state ------------------------------------
   // Read straight from the browser store. It lives there and nowhere else; see
   // src/lib/funding/investigation.ts for why.
+  const workKey = rootKey ?? "web:all";
   const stored = useSyncExternalStore(
     investigation.subscribe,
-    useCallback(() => investigation.snapshot(rootKey), [rootKey]),
+    useCallback(() => investigation.snapshot(workKey), [workKey]),
     investigation.serverSnapshot,
   );
-  const empty = useMemo(() => investigation.emptyInvestigation(rootKey, ""), [rootKey]);
+  const empty = useMemo(() => investigation.emptyInvestigation(workKey, ""), [workKey]);
   const work = stored ?? empty;
 
   const edit = useCallback(
     (fn: (draft: investigation.Investigation) => investigation.Investigation) => {
-      const base = investigation.snapshot(rootKey) ?? investigation.emptyInvestigation(rootKey, "");
+      const base = investigation.snapshot(workKey) ?? investigation.emptyInvestigation(workKey, "");
       investigation.save({ ...fn(base), updatedAt: new Date().toISOString() });
     },
-    [rootKey],
+    [workKey],
   );
 
   const setNote = useCallback(
@@ -200,8 +203,8 @@ export function NetworkGraph({
   );
 
   const clearWork = useCallback(() => {
-    investigation.clear(rootKey);
-  }, [rootKey]);
+    investigation.clear(workKey);
+  }, [workKey]);
 
   // --- layout ---------------------------------------------------------------
   // One effect owns both the layout map and the frame loop. They were split in
@@ -559,6 +562,7 @@ export function NetworkGraph({
         <aside className="net-panel" aria-live="polite">
           {!sel && showStructure && (
             <StructurePanel
+              hasRoot={rootKey !== null}
               bridges={structure.bridges}
               convergences={structure.convergences}
               componentCount={structure.componentCount}
