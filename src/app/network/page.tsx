@@ -25,10 +25,11 @@ export const dynamic = "force-dynamic";
 export default async function NetworkPage({
   searchParams,
 }: {
-  searchParams: Promise<{ root?: string }>;
+  searchParams: Promise<{ root?: string; show?: string }>;
 }) {
-  const { root } = await searchParams;
-  const entries = await graphEntryPoints(24);
+  const { root, show } = await searchParams;
+  const filter = show === "orgs" ? "org" : show === "people" ? "person" : undefined;
+  const entries = await graphEntryPoints(filter ? 48 : 60, filter as "org" | undefined);
 
   const parsed = root?.includes(":")
     ? { type: root.slice(0, root.indexOf(":")), id: root.slice(root.indexOf(":") + 1) }
@@ -49,7 +50,23 @@ export default async function NetworkPage({
         </header>
 
         <section className="section-card mt-4 px-6 py-8 sm:px-10">
-          <h2 className="font-display text-[1.35rem] font-light">Start from an entity</h2>
+          <div className="flex flex-wrap items-baseline justify-between gap-3">
+            <h2 className="font-display text-[1.35rem] font-light">Start from an entity</h2>
+            {/* Server-rendered filter: people are entities in this network by
+                design, and a person on two boards is exactly what it exists to
+                surface, but a mixed flat list is the wrong way to browse. */}
+            <nav className="net-filter" aria-label="Filter by kind">
+              <Link href="/network" className={!filter ? "is-on" : ""}>
+                Everything
+              </Link>
+              <Link href="/network?show=orgs" className={filter === "org" ? "is-on" : ""}>
+                Organisations
+              </Link>
+              <Link href="/network?show=people" className={filter === "person" ? "is-on" : ""}>
+                People
+              </Link>
+            </nav>
+          </div>
           {entries.length === 0 ? (
             <div className="mt-3 space-y-4 text-ink-muted">
               <p className="max-w-[62ch]">
@@ -87,22 +104,7 @@ export default async function NetworkPage({
               </p>
             </div>
           ) : (
-            <ul className="mt-4 grid gap-2 sm:grid-cols-2">
-              {entries.map((e) => (
-                <li key={`${e.type}:${e.id}`}>
-                  <Link href={`/network?root=${e.type}:${e.id}`} className="net-entry" data-lamp>
-                    <span className="net-entry-name">{e.label}</span>
-                    <span className="net-entry-meta">
-                      {e.type === "org" && e.subKind
-                        ? (ORG_KIND_LABELS[e.subKind] ?? NODE_TYPE_LABELS.org)
-                        : (NODE_TYPE_LABELS[e.type] ?? e.type)}
-                      {" · "}
-                      {e.degree} {e.degree === 1 ? "relationship" : "relationships"}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
+            <EntryGroups entries={entries} grouped={!filter} />
           )}
         </section>
       </div>
@@ -156,5 +158,62 @@ export default async function NetworkPage({
         )}
       </section>
     </div>
+  );
+}
+
+
+type Entry = Awaited<ReturnType<typeof graphEntryPoints>>[number];
+
+function EntryList({ entries }: { entries: Entry[] }) {
+  return (
+    <ul className="mt-4 grid gap-2 sm:grid-cols-2">
+      {entries.map((e) => (
+        <li key={`${e.type}:${e.id}`}>
+          <Link href={`/network?root=${e.type}:${e.id}`} className="net-entry" data-lamp>
+            <span className="net-entry-name">{e.label}</span>
+            <span className="net-entry-meta">
+              {e.type === "org" && e.subKind
+                ? (ORG_KIND_LABELS[e.subKind] ?? NODE_TYPE_LABELS.org)
+                : (NODE_TYPE_LABELS[e.type] ?? e.type)}
+              {" · "}
+              {e.degree} {e.degree === 1 ? "relationship" : "relationships"}
+            </span>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Unfiltered, the list is grouped by kind so people and organisations never
+ *  interleave; filtered, it is flat because the heading would repeat the pill. */
+function EntryGroups({ entries, grouped }: { entries: Entry[]; grouped: boolean }) {
+  if (!grouped) return <EntryList entries={entries} />;
+  const orgs = entries.filter((e) => e.type === "org");
+  const people = entries.filter((e) => e.type === "person");
+  const rest = entries.filter((e) => e.type !== "org" && e.type !== "person");
+  return (
+    <>
+      {orgs.length > 0 && (
+        <>
+          <h3 className="mt-5 text-[0.8rem] tracking-[0.04em] text-ink-faint">Organisations</h3>
+          <EntryList entries={orgs} />
+        </>
+      )}
+      {people.length > 0 && (
+        <>
+          <h3 className="mt-6 text-[0.8rem] tracking-[0.04em] text-ink-faint">People</h3>
+          <EntryList entries={people} />
+        </>
+      )}
+      {rest.length > 0 && (
+        <>
+          <h3 className="mt-6 text-[0.8rem] tracking-[0.04em] text-ink-faint">
+            Campaigns, projects and cases
+          </h3>
+          <EntryList entries={rest} />
+        </>
+      )}
+    </>
   );
 }

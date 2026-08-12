@@ -132,16 +132,17 @@ export async function degrees(refs: EntityRef[]): Promise<Map<string, number>> {
  * exploration, and an index page that renders every node is the thing that
  * stops working as the dataset grows.
  */
-export async function graphEntryPoints(limit = 24) {
+export async function graphEntryPoints(limit = 24, type?: "org" | "person") {
+  const typeFilter = type ? sql`AND n.node_type = ${type}` : sql``;
   const res = await db.execute(sql`
-    SELECT n.node_type, n.node_id, n.label, n.sub_kind, d.degree
+    SELECT n.node_type, n.node_id, n.label, n.sub_kind, n.slug, d.degree
       FROM graph_nodes n
       JOIN LATERAL (
         SELECT count(*) AS degree FROM graph_edges e
          WHERE (e.from_type = n.node_type AND e.from_id = n.node_id)
             OR (e.to_type = n.node_type AND e.to_id = n.node_id)
       ) d ON true
-     WHERE d.degree > 0
+     WHERE d.degree > 0 ${typeFilter}
      ORDER BY d.degree DESC, n.label
      LIMIT ${limit}
   `);
@@ -150,6 +151,7 @@ export async function graphEntryPoints(limit = 24) {
     id: String(r.node_id),
     label: String(r.label ?? ""),
     subKind: (r.sub_kind as string) ?? null,
+    slug: (r.slug as string) ?? null,
     degree: Number(r.degree ?? 0),
   }));
 }
