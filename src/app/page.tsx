@@ -8,6 +8,7 @@ import { getArchiveStats } from "@/lib/db/queries/stats";
 import { revisions } from "@/lib/db/schema";
 import { formatNumber } from "@/lib/format";
 import { and, desc, eq } from "drizzle-orm";
+import { RollingNumber } from "@/components/ui/RollingNumber";
 import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
 import { Wordmark } from "@/components/ui/Wordmark";
 
@@ -334,7 +335,9 @@ export default async function HomePage() {
         <div className="mx-auto grid max-w-[1000px] grid-cols-2 gap-4 text-center lg:grid-cols-4">
           {statItems.map((s) => (
             <div key={s.label} className="px-3 py-6">
-              <p className="stat-value text-ink">{s.value}</p>
+              <p className="stat-value text-ink">
+                <RollingNumber value={s.value} />
+              </p>
               <p className="stat-label">{s.label}</p>
             </div>
           ))}

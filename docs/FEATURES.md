@@ -112,6 +112,10 @@ note, because a bare link to a 400-page CAG report is not a citation.
   rather than tuned down.
 - **Living background**: the tricolour bands are canvases that answer scroll,
   pointer and taps.
+- **Rolling figures**: the headline counts spin into place on a reel per digit
+  the first time they come into view, then stop for good and hand the DOM back
+  a plain number. The server renders the final figure, so the true number is
+  what a crawler or a reader without JavaScript gets.
 - Nav dropdowns, segmented controls, loading, empty and error states.
 - Reduced motion is honoured throughout: no drift, no glow, no ribbon
   animation.

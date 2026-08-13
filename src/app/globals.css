@@ -799,6 +799,45 @@ thead th {
   font-size: 52px;
   line-height: 1;
 }
+/* Reels for a number that rolls in once, from RollingNumber.tsx. The window is
+   exactly one digit tall, so the strip inside it is the only thing that moves
+   and the line the number sits on never shifts. */
+.roll {
+  display: inline-flex;
+  align-items: flex-start;
+  font-variant-numeric: tabular-nums;
+}
+.roll-reel {
+  display: inline-block;
+  height: 1em;
+  overflow: hidden;
+  vertical-align: top;
+}
+.roll-strip {
+  display: flex;
+  flex-direction: column;
+  will-change: transform;
+  transition-property: transform;
+  /* Fast out of the gate, long slow settle: a reel losing momentum. */
+  transition-timing-function: cubic-bezier(0.12, 0.72, 0.16, 1);
+}
+.roll-cell {
+  display: block;
+  height: 1em;
+  line-height: 1em;
+}
+.roll-fixed {
+  display: inline-block;
+  height: 1em;
+  line-height: 1em;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* The component also refuses to start; this is the belt to its braces. */
+  .roll-strip {
+    transition: none !important;
+  }
+}
+
 .stat-label {
   font-family: var(--font-mono);
   font-size: 10px;
