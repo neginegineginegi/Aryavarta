@@ -185,14 +185,26 @@ FS1,FCRA Annual Return FC-4 2021-22,https://fcraonline.nic.in/...,Ministry of Ho
 ### funding_orgs.csv
 
 ```csv
-slug,name,kind,legal_name,registration_number,registration_type,incorporated_on,dissolved_on,state,city,website,summary,parent,sources
-example-foundation,Example Foundation,foundation,Example Foundation Trust,,trust deed,1995-04-12,,Maharashtra,Mumbai,,Neutral one-line description.,,FS1
+slug,name,kind,legal_name,registration_number,registration_type,incorporated_on,dissolved_on,state,city,website,summary,parent,sources,revise
+example-foundation,Example Foundation,foundation,Example Foundation Trust,,trust deed,1995-04-12,,Maharashtra,Mumbai,,Neutral one-line description.,,FS1,
 ```
 
 `kind`: `ngo`, `trust`, `society`, `foundation`, `think_tank`, `advocacy`,
 `media`, `research`, `company`, `government_body`, `political`,
 `international`, `religious`, `professional_body`, `other`. `parent` is
 another org slug, resolvable anywhere in the same sheet.
+
+An organisation already in the archive is **enriched, not overwritten**: fields
+that are empty take the new value and its citations, and name, kind and summary
+stay exactly as recorded. This is why a body first named in passing by one batch
+can keep a thin description forever.
+
+`revise` is the way out of that, and the only one. Put a sentence in it saying
+what this row changes and why, and the loader will replace the name, kind or
+summary this row carries, stamp the date, and store your sentence on the record,
+where it is shown to every reader under the facts. Leave it empty and nothing
+recorded can change. There is no third setting: an improvement to a record is
+allowed, and it always says out loud that it happened.
 
 ### funding_people.csv
 

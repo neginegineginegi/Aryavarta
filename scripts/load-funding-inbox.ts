@@ -289,6 +289,32 @@ async function main() {
         skip(`${label}: unknown state "${r.state}"`);
         continue;
       }
+      // A sheet row may also REVISE what is recorded, but only by saying why.
+      // The reason is stored with the record and shown on its page, so an
+      // improvement to a thin first description is possible and a silent
+      // rewrite is not. Without a reason the block below runs unchanged and
+      // fills empty fields only.
+      const reason = r.revise?.trim();
+      const revision: Partial<typeof cur> = {};
+      if (reason) {
+        if (r.name?.trim() && r.name.trim() !== cur.name) revision.name = r.name.trim();
+        if (r.kind?.trim() && r.kind.trim() !== cur.kind) {
+          if (!ORG_KINDS.has(r.kind.trim())) {
+            skip(`${label}: unknown org kind "${r.kind}"`);
+            continue;
+          }
+          revision.kind = r.kind.trim() as typeof cur.kind;
+        }
+        if (r.summary?.trim() && r.summary.trim() !== cur.summary)
+          revision.summary = r.summary.trim();
+        if (Object.keys(revision).length === 0) {
+          skip(`${label}: marked as a revision but changes nothing`);
+        } else {
+          revision.revisedOn = today;
+          revision.revisionNote = reason;
+        }
+      }
+
       const fill: Partial<typeof cur> = {};
       if (!cur.legalName && r.legal_name?.trim()) fill.legalName = r.legal_name.trim();
       if (!cur.registrationNumber && r.registration_number?.trim())
@@ -300,10 +326,12 @@ async function main() {
       if (!cur.stateId && stateId) fill.stateId = stateId;
       if (!cur.city && r.city?.trim()) fill.city = r.city.trim();
       if (!cur.website && r.website?.trim()) fill.website = r.website.trim();
-      if (Object.keys(fill).length > 0) {
-        await db.update(schema.orgs).set(fill).where(eq(schema.orgs.id, existingId));
-        bump("orgs_enriched");
-      } else {
+      const change = { ...fill, ...revision };
+      if (Object.keys(change).length > 0) {
+        await db.update(schema.orgs).set(change).where(eq(schema.orgs.id, existingId));
+        if (Object.keys(revision).length > 0) bump("orgs_revised");
+        if (Object.keys(fill).length > 0) bump("orgs_enriched");
+      } else if (!reason) {
         skip(`${label}: already exists and nothing new to fill`);
       }
       await cite("org", existingId, refs);

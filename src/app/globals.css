@@ -1507,6 +1507,13 @@ a:hover .wordmark {
   margin-top: 0.3rem; max-width: 75ch;
   font-size: 0.85rem; color: var(--color-ink-muted); line-height: 1.55;
 }
+/* A change to a record is part of the record, so it is stated on the page and
+   not tucked into a history nobody opens. */
+.rec-revision {
+  margin-top: 0.75rem; padding-left: 0.7rem; max-width: 75ch;
+  border-left: 2px solid var(--color-rule-dark);
+  font-size: 0.83rem; color: var(--color-ink-muted); line-height: 1.55;
+}
 .rec-link { color: var(--color-ink); border-bottom: 1px solid var(--color-rule-dark); }
 .rec-link:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 

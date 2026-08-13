@@ -739,6 +739,14 @@ const STATEMENTS = [
        CHECK (confidence IS NULL OR (confidence BETWEEN 0 AND 100));
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
+  // --- upgrade 11: disclosed revisions --------------------------------------
+  // A later batch may improve what an earlier one recorded in passing, but only
+  // by saying so. The loader refuses to touch a recorded name, kind or summary
+  // unless the sheet row carries a reason, and the reason is stored here and
+  // shown on the record. Nothing in the archive changes invisibly.
+  `ALTER TABLE "orgs" ADD COLUMN IF NOT EXISTS "revised_on" date`,
+  `ALTER TABLE "orgs" ADD COLUMN IF NOT EXISTS "revision_note" text`,
+
   // --- upgrade 10b: the unified edge and node projection --------------------
   // Edges live in nine specific tables, each with fields of its own. The graph
   // needs one shape. These views PROJECT stored columns; they never join two

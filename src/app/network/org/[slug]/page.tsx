@@ -150,6 +150,11 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
             </div>
           )}
         </dl>
+        {org.revisionNote && (
+          <p className="rec-revision">
+            This record was revised on {org.revisedOn?.slice(0, 10)}: {org.revisionNote}
+          </p>
+        )}
         <SourceLines citations={org.citations} />
       </RecordSection>
 

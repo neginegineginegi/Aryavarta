@@ -1131,6 +1131,13 @@ export const orgs = pgTable(
     city: text("city"),
     website: text("website"),
     summary: text("summary"), // neutral description, sourced
+    // What a later batch changed about this record, and why, in the curator's
+    // words. A record that can only ever gain empty fields is a record whose
+    // first thin description is permanent; a record that can be quietly
+    // rewritten is not an archive. This is the third way: an improvement is
+    // allowed, and it has to say out loud that it happened.
+    revisedOn: date("revised_on"),
+    revisionNote: text("revision_note"),
     parentOrgId: uuid("parent_org_id"), // self-reference, set in relations below
     enteredBy: text("entered_by").references(() => users.id),
     enteredOn: date("entered_on"),
