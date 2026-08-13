@@ -26,6 +26,14 @@ export type LayoutNode = {
   /** Dragged nodes stop moving. Section 12's pinning starts here. */
   pinned: boolean;
   radius: number;
+  /** Where this node is pulled toward. Unset means the canvas centre, which is
+   *  right for a rooted view. The whole-web view gives every group its own
+   *  centre instead, so unconnected groups end up in their own patch of canvas
+   *  rather than piled into one ball that looks like a single network. */
+  homeX?: number;
+  homeY?: number;
+  /** How hard, chosen so the group settles at exactly the radius it was given. */
+  homePull?: number;
 };
 
 export type LayoutEdge = { from: string; to: string };
@@ -42,10 +50,109 @@ function hash(s: string): number {
 
 const RING = 132; // px between depth rings
 
+/**
+ * How much canvas a group of n entities is given.
+ *
+ * Area grows with n, which is the only allocation that keeps a twenty-entity
+ * group as readable as a three-entity one: labels are a fixed size on screen,
+ * so a group drawn at half the area per entity has its names collide however
+ * elegant the rest of the layout is.
+ *
+ * The solver is calibrated against this number rather than left to find its own
+ * spread, so what a group is given and what it takes are the same thing by
+ * construction.
+ */
+export function groupRadius(n: number): number {
+  // Area, not radius, is what scales with n. A fixed term added on top would
+  // quietly hand small groups more room per entity than large ones, which is
+  // the wrong way round: the large group is the one whose labels collide.
+  return n <= 1 ? 74 : 12 + 52 * Math.sqrt(n);
+}
+
+/**
+ * A centre for each disconnected group, packed so the groups do not overlap.
+ *
+ * This is the whole-web view's answer to a real problem: with one shared centre
+ * and nothing else to separate them, five unconnected groups collapse into one
+ * hairball, and a hairball is a picture of a network that does not exist. Each
+ * group gets its own patch of canvas, sized by how many entities it holds, and
+ * the gaps between them are the archive saying it holds no relationship there.
+ *
+ * Deterministic: groups are ordered by size then by their first key, and laid
+ * out in rows, so the same archive draws the same way every time.
+ */
+export function packComponents(
+  groups: string[][],
+  width: number,
+  height: number,
+): Map<string, { x: number; y: number }> {
+  const items = groups
+    .map((g) => ({ g, r: groupRadius(g.length) }))
+    .sort((a, b) => b.r - a.r || (a.g[0] ?? "").localeCompare(b.g[0] ?? ""));
+
+  const gap = 44;
+
+  const shelf = (rowWidth: number) => {
+    const out: Array<{ g: string[]; x: number; y: number }> = [];
+    let x = 0;
+    let y = 0;
+    let rowHeight = 0;
+    let widest = 0;
+    for (const it of items) {
+      if (x > 0 && x + it.r * 2 > rowWidth) {
+        x = 0;
+        y += rowHeight + gap;
+        rowHeight = 0;
+      }
+      out.push({ g: it.g, x: x + it.r, y: y + it.r });
+      x += it.r * 2 + gap;
+      widest = Math.max(widest, x - gap);
+      rowHeight = Math.max(rowHeight, it.r * 2);
+    }
+    return { out, w: widest, h: y + rowHeight };
+  };
+
+  // Try every row width the groups can actually produce and keep the packing
+  // shaped most like the frame. A packing that is the wrong shape is not merely
+  // untidy: the whole drawing is scaled down to fit the frame afterwards, and
+  // the labels do not scale with it, so wasted canvas comes straight out of how
+  // far apart two names are drawn.
+  const widths = new Set<number>();
+  let running = 0;
+  for (const it of items) {
+    running += it.r * 2 + gap;
+    widths.add(running - gap);
+  }
+  const want = width / Math.max(1, height);
+  let best = shelf(Math.max(...widths));
+  for (const w of widths) {
+    const cand = shelf(w);
+    const score = Math.abs(cand.w / Math.max(1, cand.h) - want);
+    if (score < Math.abs(best.w / Math.max(1, best.h) - want)) best = cand;
+  }
+  const placed = best.out;
+
+  // Centre the packing on the canvas. Cosmetic, since the view is fitted to the
+  // drawing afterwards, but it keeps a single-group archive exactly where a
+  // reader expects it.
+  const xs = placed.map((p) => p.x);
+  const ys = placed.map((p) => p.y);
+  const ox = width / 2 - (Math.min(...xs, 0) + Math.max(...xs, 0)) / 2;
+  const oy = height / 2 - (Math.min(...ys, 0) + Math.max(...ys, 0)) / 2;
+
+  const out = new Map<string, { x: number; y: number }>();
+  for (const p of placed) {
+    for (const key of p.g) out.set(key, { x: p.x + ox, y: p.y + oy });
+  }
+  return out;
+}
+
 export function seedNodes(
   input: Array<{ key: string; depth: number; radius: number }>,
   width: number,
   height: number,
+  /** Per-node group centre, from packComponents. Absent for a rooted view. */
+  homes?: Map<string, { x: number; y: number }>,
 ): LayoutNode[] {
   const cx = width / 2;
   const cy = height / 2;
@@ -59,23 +166,58 @@ export function seedNodes(
   }
   for (const list of byDepth.values()) list.sort();
 
+  // In a grouped layout the rings are per group, so a twenty-entity group does
+  // not seed its nodes on top of a two-entity one.
+  const byHome = new Map<string, string[]>();
+  if (homes) {
+    for (const n of input) {
+      const h = homes.get(n.key);
+      const id = h ? `${h.x},${h.y}` : "none";
+      const list = byHome.get(id) ?? [];
+      list.push(n.key);
+      byHome.set(id, list);
+    }
+    for (const list of byHome.values()) list.sort();
+  }
+
   return input.map((n) => {
-    const ring = byDepth.get(n.depth) ?? [];
+    const home = homes?.get(n.key);
+    const ring = home
+      ? (byHome.get(`${home.x},${home.y}`) ?? [])
+      : (byDepth.get(n.depth) ?? []);
     const i = ring.indexOf(n.key);
     const spread = ring.length || 1;
     // Even spacing round the ring, nudged by the hash so two rings do not line
     // up into spokes.
     const angle = ((i + 0.5) / spread) * Math.PI * 2 + hash(n.key) * 0.6;
-    const r = n.depth === 0 ? 0 : RING * n.depth;
+    const r = home
+      ? // Seed on a circle whose size follows the group's, so the solver starts
+        // from something already close to spread out.
+        (spread === 1 ? 0 : 26 + 13 * spread)
+      : n.depth === 0
+        ? 0
+        : RING * n.depth;
+    const ox = home?.x ?? cx;
+    const oy = home?.y ?? cy;
     return {
       key: n.key,
-      x: cx + Math.cos(angle) * r,
-      y: cy + Math.sin(angle) * r,
+      x: ox + Math.cos(angle) * r,
+      y: oy + Math.sin(angle) * r,
       vx: 0,
       vy: 0,
       depth: n.depth,
-      pinned: n.depth === 0, // the root holds the centre
+      // The root holds the centre. A grouped layout has no root, so nothing is
+      // pinned and every group is free to find its own shape.
+      pinned: home ? false : n.depth === 0,
       radius: n.radius,
+      homeX: home?.x,
+      homeY: home?.y,
+      // Balance the group's own repulsion against its allotted radius: n nodes
+      // pushing outward at REPULSION/d² settle where the linear pull matches,
+      // which is at n·REPULSION/pull = R³. Solving for the pull is what keeps a
+      // large group from collapsing into its centre and a small one from
+      // wandering out of its patch.
+      homePull: home ? Math.min(0.05, (spread * REPULSION) / groupRadius(spread) ** 3) : undefined,
     };
   });
 }
@@ -111,6 +253,13 @@ export function step(nodes: LayoutNode[], edges: LayoutEdge[], o: StepOptions): 
     const a = nodes[i];
     for (let j = i + 1; j < nodes.length; j++) {
       const b = nodes[j];
+      // Two entities in different groups do not push each other around: the
+      // packed group centres already hold the groups apart, and letting a large
+      // group shove a small one out of its reserved patch is how five separate
+      // groups turn back into one drifting mass.
+      if (a.homeX !== undefined && b.homeX !== undefined) {
+        if (a.homeX !== b.homeX || a.homeY !== b.homeY) continue;
+      }
       let dx = b.x - a.x;
       let dy = b.y - a.y;
       let d2 = dx * dx + dy * dy;
@@ -157,9 +306,17 @@ export function step(nodes: LayoutNode[], edges: LayoutEdge[], o: StepOptions): 
       continue;
     }
     // Deeper nodes are pulled less, so distance from the root stays readable.
-    const pull = CENTRE_PULL * o.alpha * (1 / (1 + n.depth));
-    n.vx += (cx - n.x) * pull;
-    n.vy += (cy - n.y) * pull;
+    // A node with its own group centre is pulled to that instead, harder,
+    // because nothing else keeps two unconnected groups from drifting into
+    // each other and reading as one.
+    const hx = n.homeX;
+    const hy = n.homeY;
+    const grouped = hx !== undefined && hy !== undefined;
+    const pull = grouped
+      ? (n.homePull ?? CENTRE_PULL) * o.alpha
+      : CENTRE_PULL * o.alpha * (1 / (1 + n.depth));
+    n.vx += ((grouped ? hx : cx) - n.x) * pull;
+    n.vy += ((grouped ? hy : cy) - n.y) * pull;
 
     n.vx *= DAMPING;
     n.vy *= DAMPING;

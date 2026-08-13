@@ -6,9 +6,9 @@ import { edgeEvidenceAction, expandNodeAction } from "@/actions/network";
 import type { EdgeEvidence } from "@/lib/db/queries/network";
 import type { GraphEdge, GraphNode } from "@/lib/funding/graph-types";
 import { edgeLabel, EVIDENCE_LABELS, NODE_TYPE_LABELS } from "@/lib/funding/labels";
-import { adjacency, bridges, componentOf, convergences } from "@/lib/funding/analysis";
+import { adjacency, bridges, componentOf, components, convergences } from "@/lib/funding/analysis";
 import * as investigation from "@/lib/funding/investigation";
-import { bounds, seedNodes, step, type LayoutNode } from "@/lib/funding/layout";
+import { bounds, packComponents, seedNodes, step, type LayoutNode } from "@/lib/funding/layout";
 
 import { EvidencePanel } from "@/components/network/EvidencePanel";
 import { StructurePanel } from "@/components/network/StructurePanel";
@@ -86,10 +86,24 @@ export function NetworkGraph({
   const svgRef = useRef<SVGSVGElement>(null);
   const layoutRef = useRef<Map<string, LayoutNode>>(new Map());
   const nodeEls = useRef<Map<string, SVGGElement>>(new Map());
+  const labelEls = useRef<Map<string, SVGTextElement>>(new Map());
   const edgeEls = useRef<Map<string, SVGLineElement>>(new Map());
   const frame = useRef(0);
   const alpha = useRef(1);
   const drag = useRef<{ key: string; moved: boolean } | null>(null);
+  // How far apart the drawing is spread, and where it has been slid to. Only
+  // positions are scaled, never the marks or the type: spreading a crowded
+  // cluster apart has to make its labels readable, and magnifying the text
+  // along with the gaps would leave them overlapping exactly as before.
+  const view = useRef({ k: 1, tx: 0, ty: 0 });
+  const pan = useRef<{ x: number; y: number; tx: number; ty: number } | null>(null);
+  /** The fit-to-frame transform the last paint used, so a drag can invert it. */
+  const xform = useRef({ scale: 1, ox: 0, oy: 0 });
+  const paintRef = useRef<(() => void) | null>(null);
+  /** Only whether the view has been moved off its fit, so the Fit button can
+   *  appear. The transform itself stays in the ref: a slide that re-rendered
+   *  the tree on every pointer move would be a frame loop with extra steps. */
+  const [viewMoved, setViewMoved] = useState(false);
 
   /** The years the current network actually spans. */
   const span = useMemo(() => {
@@ -123,24 +137,46 @@ export function NetworkGraph({
     return nodes.filter((n) => live.has(keyOf(n)));
   }, [nodes, visibleEdges, year, rootKey]);
 
+  const adj = useMemo(
+    () =>
+      adjacency(
+        visibleNodes.map(keyOf),
+        visibleEdges.map((e) => ({ from: keyOf(e.from), to: keyOf(e.to) })),
+      ),
+    [visibleNodes, visibleEdges],
+  );
+
   /** Structure of what is currently drawn. Recomputed, never stored: a shape
    *  that outlived the view it described would be an assertion. */
-  const structure = useMemo(() => {
-    const adj = adjacency(
-      visibleNodes.map(keyOf),
-      visibleEdges.map((e) => ({ from: keyOf(e.from), to: keyOf(e.to) })),
-    );
-    return {
+  const structure = useMemo(
+    () => ({
       bridges: bridges(adj),
       convergences: rootKey ? convergences(adj, rootKey) : [],
       componentCount: new Set(componentOf(adj).values()).size,
-    };
-  }, [visibleNodes, visibleEdges, rootKey]);
+    }),
+    [adj, rootKey],
+  );
+
+  /** One centre per unconnected group, for the whole-web view only. A rooted
+   *  view has a centre already: the entity the reader started from. */
+  const homes = useMemo(
+    () => (rootKey === null ? packComponents(components(adj), W, H) : undefined),
+    [adj, rootKey],
+  );
 
   const bridgeKeys = useMemo(
     () => new Set(structure.bridges.map((b) => b.key)),
     [structure.bridges],
   );
+
+  /** Draw order. The entity being read goes last so its full name lands on top
+   *  of its neighbours: SVG paints in document order and has no z-index. */
+  const drawNodes = useMemo(() => {
+    const top = hover ?? (sel?.kind === "node" ? sel.key : null);
+    if (!top) return visibleNodes;
+    const one = visibleNodes.find((n) => keyOf(n) === top);
+    return one ? [...visibleNodes.filter((n) => keyOf(n) !== top), one] : visibleNodes;
+  }, [visibleNodes, hover, sel]);
 
   /** Which nodes and edges touch the hovered or selected node. */
   const focus = useMemo(() => {
@@ -219,6 +255,7 @@ export function NetworkGraph({
       visibleNodes.map((n) => ({ key: keyOf(n), depth: n.depth, radius: NODE_R[n.type] ?? 16 })),
       W,
       H,
+      homes,
     );
     const next = new Map<string, LayoutNode>();
     for (const seed of seeded) {
@@ -226,7 +263,16 @@ export function NetworkGraph({
       // expansion would throw the whole picture away, and the reader would lose
       // the thing they were looking at.
       const prev = existing.get(seed.key);
-      const base = prev ? { ...prev, depth: seed.depth, radius: seed.radius } : seed;
+      const base = prev
+        ? {
+            ...prev,
+            depth: seed.depth,
+            radius: seed.radius,
+            homeX: seed.homeX,
+            homeY: seed.homeY,
+            homePull: seed.homePull,
+          }
+        : seed;
       // A position the researcher dragged a node to outranks the solver.
       const pin = work.pins[seed.key];
       // `pinned` is derived from the saved pins every time, so clearing an
@@ -263,13 +309,34 @@ export function NetworkGraph({
       );
       const ox = W / 2 - ((b.minX + b.maxX) / 2) * scale;
       const oy = H / 2 - ((b.minY + b.maxY) / 2) * scale;
-      const at = (n: LayoutNode) => [n.x * scale + ox, n.y * scale + oy] as const;
+      xform.current = { scale, ox, oy };
+      const v = view.current;
+      const at = (n: LayoutNode) =>
+        [(n.x * scale + ox) * v.k + v.tx, (n.y * scale + oy) * v.k + v.ty] as const;
 
       for (const [key, el] of nodeEls.current) {
         const n = layoutRef.current.get(key);
         if (!n) continue;
         const [x, y] = at(n);
         el.setAttribute("transform", `translate(${x.toFixed(1)} ${y.toFixed(1)})`);
+
+        // Names are placed on the side of the entity that faces away from the
+        // middle of its cluster, so a ring of entities around a hub writes its
+        // labels outward into empty canvas instead of stacking them all under
+        // the nodes, on top of each other.
+        const label = labelEls.current.get(key);
+        if (!label) continue;
+        const ax = n.x - (n.homeX ?? W / 2);
+        const ay = n.y - (n.homeY ?? H / 2);
+        if (Math.abs(ax) > Math.abs(ay) * 1.25) {
+          label.setAttribute("x", (ax > 0 ? n.radius + 7 : -(n.radius + 7)).toFixed(0));
+          label.setAttribute("y", "4");
+          label.setAttribute("text-anchor", ax > 0 ? "start" : "end");
+        } else {
+          label.setAttribute("x", "0");
+          label.setAttribute("y", (ay < 0 ? -(n.radius + 9) : n.radius + 15).toFixed(0));
+          label.setAttribute("text-anchor", "middle");
+        }
       }
       for (const e of visibleEdges) {
         const el = edgeEls.current.get(e.edgeId);
@@ -284,6 +351,10 @@ export function NetworkGraph({
         el.setAttribute("y2", y2.toFixed(1));
       }
     };
+
+    // Spreading and sliding the drawing must repaint even after the solver has
+    // parked, so the handlers reach the current paint through this.
+    paintRef.current = paint;
 
     if (reduced) {
       // No animation, but the layout still has to be solved: run it to
@@ -311,7 +382,64 @@ export function NetworkGraph({
       if (frame.current) cancelAnimationFrame(frame.current);
       frame.current = 0;
     };
-  }, [visibleNodes, visibleEdges, work.pins, wake]);
+  }, [visibleNodes, visibleEdges, work.pins, wake, homes]);
+
+  // --- spreading and sliding ------------------------------------------------
+  // Neither touches the layout. The solver's positions are the archive's shape;
+  // this only changes how much canvas that shape is drawn across, so a crowded
+  // corner can be opened up without the diagram becoming a different diagram.
+
+  const applyView = useCallback((next: { k: number; tx: number; ty: number }) => {
+    view.current = next;
+    setViewMoved(next.k !== 1 || next.tx !== 0 || next.ty !== 0);
+    paintRef.current?.();
+  }, []);
+
+  /** Spread about a point, so what the reader is looking at stays put. */
+  const spreadBy = useCallback(
+    (factor: number, px = W / 2, py = H / 2) => {
+      const v = view.current;
+      const k = Math.min(4, Math.max(0.5, v.k * factor));
+      const f = k / v.k;
+      applyView({ k, tx: px - (px - v.tx) * f, ty: py - (py - v.ty) * f });
+    },
+    [applyView],
+  );
+
+  const resetView = useCallback(() => applyView({ k: 1, tx: 0, ty: 0 }), [applyView]);
+
+  // Native listener, because a passive wheel handler cannot stop the page from
+  // scrolling underneath. Held modifier only: taking over an ordinary scroll
+  // would trap a reader trying to get past the diagram.
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      const r = svg.getBoundingClientRect();
+      spreadBy(
+        e.deltaY < 0 ? 1.12 : 1 / 1.12,
+        ((e.clientX - r.left) / r.width) * W,
+        ((e.clientY - r.top) / r.height) * H,
+      );
+    };
+    svg.addEventListener("wheel", onWheel, { passive: false });
+    return () => svg.removeEventListener("wheel", onWheel);
+  }, [spreadBy]);
+
+  const onBackgroundDown = useCallback((e: React.PointerEvent) => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const r = svg.getBoundingClientRect();
+    (e.currentTarget as Element).setPointerCapture?.(e.pointerId);
+    pan.current = {
+      x: ((e.clientX - r.left) / r.width) * W,
+      y: ((e.clientY - r.top) / r.height) * H,
+      tx: view.current.tx,
+      ty: view.current.ty,
+    };
+  }, []);
 
   // --- dragging: a pinned node stops moving, which is where section 12 starts -
   const onPointerDown = useCallback((key: string, e: React.PointerEvent) => {
@@ -324,24 +452,44 @@ export function NetworkGraph({
     drag.current = { key, moved: false };
   }, []);
 
-  const onPointerMove = useCallback((e: React.PointerEvent) => {
-    const d = drag.current;
-    const svg = svgRef.current;
-    if (!d || !svg) return;
-    const r = svg.getBoundingClientRect();
-    const n = layoutRef.current.get(d.key);
-    if (!n) return;
-    d.moved = true;
-    n.pinned = true;
-    n.x = ((e.clientX - r.left) / r.width) * W;
-    n.y = ((e.clientY - r.top) / r.height) * H;
-    n.vx = 0;
-    n.vy = 0;
-    alpha.current = Math.max(alpha.current, 0.5);
-    if (frame.current === 0) setWake((w) => w + 1);
-  }, []);
+  const onPointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      const svg = svgRef.current;
+      if (!svg) return;
+      const r = svg.getBoundingClientRect();
+      const px = ((e.clientX - r.left) / r.width) * W;
+      const py = ((e.clientY - r.top) / r.height) * H;
+
+      const p = pan.current;
+      if (p) {
+        view.current = { ...view.current, tx: p.tx + (px - p.x), ty: p.ty + (py - p.y) };
+        setViewMoved(true);
+        paintRef.current?.();
+        return;
+      }
+
+      const d = drag.current;
+      if (!d) return;
+      const n = layoutRef.current.get(d.key);
+      if (!n) return;
+      d.moved = true;
+      n.pinned = true;
+      // Back out the fit and the spread, so the node lands under the pointer
+      // rather than wherever those two transforms happen to put it.
+      const { scale, ox, oy } = xform.current;
+      const v = view.current;
+      n.x = ((px - v.tx) / v.k - ox) / scale;
+      n.y = ((py - v.ty) / v.k - oy) / scale;
+      n.vx = 0;
+      n.vy = 0;
+      alpha.current = Math.max(alpha.current, 0.5);
+      if (frame.current === 0) setWake((w) => w + 1);
+    },
+    [],
+  );
 
   const onPointerUp = useCallback(() => {
+    pan.current = null;
     const d = drag.current;
     drag.current = null;
     if (!d?.moved) return;
@@ -436,6 +584,29 @@ export function NetworkGraph({
             More relationships exist than are shown. Expand a specific entity to see them.
           </span>
         )}
+        <span className="net-spread">
+          <button
+            type="button"
+            onClick={() => spreadBy(1 / 1.25)}
+            aria-label="Draw the diagram closer together"
+            title="Closer together"
+          >
+            −
+          </button>
+          <button
+            type="button"
+            onClick={() => spreadBy(1.25)}
+            aria-label="Spread the diagram further apart"
+            title="Further apart"
+          >
+            +
+          </button>
+          {viewMoved && (
+            <button type="button" onClick={resetView}>
+              Fit
+            </button>
+          )}
+        </span>
       </div>
 
       {span && span.min !== span.max && (
@@ -477,6 +648,16 @@ export function NetworkGraph({
           onPointerUp={onPointerUp}
           onPointerLeave={onPointerUp}
         >
+          {/* Drag anywhere that is not an entity to slide the whole drawing. */}
+          <rect
+            className="net-bg"
+            x={0}
+            y={0}
+            width={W}
+            height={H}
+            onPointerDown={onBackgroundDown}
+            onClick={() => setSel(null)}
+          />
           <g className="net-edges">
             {visibleEdges.map((e) => {
               const dim = focus ? !focus.edgeIds.has(e.edgeId) : false;
@@ -501,9 +682,10 @@ export function NetworkGraph({
             })}
           </g>
           <g className="net-nodes">
-            {visibleNodes.map((n) => {
+            {drawNodes.map((n) => {
               const key = keyOf(n);
               const dim = focus ? !focus.nodeKeys.has(key) : false;
+              const open = hover === key || (sel?.kind === "node" && sel.key === key);
               const shown = visibleEdges.filter(
                 (e) => keyOf(e.from) === key || keyOf(e.to) === key,
               ).length;
@@ -545,13 +727,21 @@ export function NetworkGraph({
                     }
                   }}
                 >
-                  <circle className="net-halo" r={(NODE_R[n.type] ?? 16) + 7} />
-                  <circle className="net-dot" r={NODE_R[n.type] ?? 16} />
+                  <NodeMark type={n.type} r={NODE_R[n.type] ?? 16} />
                   {more > 0 && (
                     <circle className="net-more" r={4} cx={(NODE_R[n.type] ?? 16) * 0.72} cy={-(NODE_R[n.type] ?? 16) * 0.72} />
                   )}
-                  <text className="net-label" y={(NODE_R[n.type] ?? 16) + 15}>
-                    {n.label.length > 26 ? `${n.label.slice(0, 25)}…` : n.label}
+                  {/* Truncated at rest so a crowded canvas stays readable, whole
+                      the moment the reader points at it. */}
+                  <text
+                    className="net-label"
+                    ref={(el) => {
+                      if (el) labelEls.current.set(key, el);
+                      else labelEls.current.delete(key);
+                    }}
+                    y={(NODE_R[n.type] ?? 16) + 15}
+                  >
+                    {open || n.label.length <= 26 ? n.label : `${n.label.slice(0, 25)}…`}
                   </text>
                 </g>
               );
@@ -622,6 +812,13 @@ export function NetworkGraph({
         </aside>
       </div>
 
+      <div className="net-legend-row">
+        <Legend showStructure={showStructure} />
+        <p className="net-legend-note">
+          Drag the background to slide the diagram. Hold Ctrl or Cmd and scroll to spread it apart.
+        </p>
+      </div>
+
       {/* The diagram is not the only way to read this. */}
       <details className="net-list">
         <summary>Read the relationships as a list</summary>
@@ -644,6 +841,80 @@ export function NetworkGraph({
         </ul>
       </details>
     </div>
+  );
+}
+
+/**
+ * The mark for one entity.
+ *
+ * Organisations are squares and people are circles, and that is the whole
+ * encoding: shape says what kind of thing it is, nothing else. Nothing here is
+ * sized, weighted or coloured by how much is recorded about an entity, because
+ * a mark that grew with its number of relationships would be an influence score
+ * drawn as a picture, and the archive does not hold one.
+ */
+function NodeMark({ type, r }: { type: string; r: number }) {
+  if (type === "org" || type === "party") {
+    const s = r * 1.78;
+    return (
+      <>
+        <rect className="net-halo" x={-(s / 2 + 7)} y={-(s / 2 + 7)} width={s + 14} height={s + 14} rx={9} />
+        <rect className="net-dot" x={-s / 2} y={-s / 2} width={s} height={s} rx={5} />
+      </>
+    );
+  }
+  return (
+    <>
+      <circle className="net-halo" r={r + 7} />
+      <circle className="net-dot" r={r} />
+    </>
+  );
+}
+
+/** What every mark on the canvas means, in the canvas's own terms. */
+function Legend({ showStructure }: { showStructure: boolean }) {
+  return (
+    <ul className="net-legend">
+      <li>
+        <svg viewBox="-12 -12 24 24" aria-hidden="true">
+          <rect className="net-dot" x={-8} y={-8} width={16} height={16} rx={3} />
+        </svg>
+        Organisation
+      </li>
+      <li>
+        <svg viewBox="-12 -12 24 24" aria-hidden="true">
+          <circle className="net-dot" r={8} />
+        </svg>
+        Person
+      </li>
+      <li>
+        <svg viewBox="0 -12 40 24" aria-hidden="true">
+          <line className="net-edge" x1={2} y1={0} x2={38} y2={0} />
+        </svg>
+        A recorded relationship
+      </li>
+      <li>
+        <svg viewBox="0 -12 40 24" aria-hidden="true">
+          <line className="net-edge is-claim" x1={2} y1={0} x2={38} y2={0} />
+        </svg>
+        A claim someone made, not a record
+      </li>
+      <li>
+        <svg viewBox="-12 -12 24 24" aria-hidden="true">
+          <circle className="net-dot" r={8} />
+          <circle className="net-more" r={3} cx={6} cy={-6} />
+        </svg>
+        More relationships than are drawn
+      </li>
+      {showStructure && (
+        <li>
+          <svg viewBox="-12 -12 24 24" aria-hidden="true">
+            <circle className="net-dot" r={8} strokeDasharray="4 2.5" strokeWidth={2.2} />
+          </svg>
+          Holds two groups together
+        </li>
+      )}
+    </ul>
   );
 }
 

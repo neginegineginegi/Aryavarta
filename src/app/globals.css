@@ -1160,6 +1160,19 @@ a:hover .wordmark {
   border-radius: 2px;
   touch-action: none;
 }
+/* The whole canvas is a handle for sliding the drawing. */
+.net-bg { fill: transparent; cursor: grab; }
+.net-bg:active { cursor: grabbing; }
+
+.net-spread { display: inline-flex; align-items: center; gap: 0.3rem; margin-left: auto; }
+.net-spread button {
+  min-width: 1.7rem; padding: 0.12rem 0.45rem;
+  border: 1px solid var(--color-rule); border-radius: 2px;
+  background: var(--color-paper-raised); color: var(--color-ink-muted);
+  font-size: 0.82rem; line-height: 1.5; cursor: pointer;
+  transition: color var(--dur-row) ease, border-color var(--dur-row) ease;
+}
+.net-spread button:hover { color: var(--color-ink); border-color: var(--color-ink-soft); }
 
 /* --- edges ---------------------------------------------------------------- */
 .net-edge {
@@ -1204,7 +1217,11 @@ a:hover .wordmark {
 .net-node.is-sel .net-dot { fill: var(--color-accent-wash); stroke: var(--color-accent); }
 .net-node.is-busy .net-dot { stroke-dasharray: 3 3; }
 
-/* Entity kind reads from the fill, quietly. Nothing here is a severity scale. */
+/* Entity kind reads from the SHAPE first: organisations are squares, people are
+   circles, and a reader can tell them apart across a crowded canvas without
+   reading a single label. The fill only separates the rarer kinds from each
+   other. Nothing here is a severity scale, and nothing is sized by how much the
+   archive holds. */
 .net-node.is-org .net-dot { fill: #ececeb; }
 .net-node.is-person .net-dot { fill: var(--color-paper-raised); stroke-dasharray: 0; }
 .net-node.is-campaign .net-dot { fill: #fdf3e9; }
@@ -1225,9 +1242,34 @@ a:hover .wordmark {
   fill: var(--color-ink-body);
   paint-order: stroke;
   stroke: var(--color-paper-sunken);
-  stroke-width: 3px;
+  stroke-width: 3.5px;
   pointer-events: none;
 }
+/* The entity under the pointer shows its whole name. It is also drawn last, in
+   the component, so the full name lands over its neighbours rather than under
+   them: SVG has no z-index, only paint order. */
+.net-node:hover .net-label,
+.net-node:focus-visible .net-label,
+.net-node.is-sel .net-label {
+  fill: var(--color-ink);
+  stroke-width: 4.5px;
+  font-weight: 500;
+}
+.net-node.is-dim .net-label { opacity: 0.5; }
+
+/* --- legend --------------------------------------------------------------- */
+.net-legend-row {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 0.5rem 1.4rem;
+  margin-top: 0.7rem;
+}
+.net-legend {
+  display: flex; flex-wrap: wrap; gap: 0.35rem 1.1rem;
+  font-size: 0.76rem; color: var(--color-ink-muted);
+}
+.net-legend li { display: inline-flex; align-items: center; gap: 0.35rem; }
+.net-legend svg { width: 1.15rem; height: 1.15rem; overflow: visible; }
+.net-legend svg line { stroke-width: 1.6; }
+.net-legend-note { font-size: 0.76rem; color: var(--color-ink-faint); }
 
 /* --- panel ---------------------------------------------------------------- */
 .net-panel {

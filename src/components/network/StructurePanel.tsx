@@ -32,6 +32,15 @@ export function StructurePanel({
   onSelect: (key: string) => void;
 }) {
   const list = (keys: string[]) => keys.map(labelOf).join(", ");
+  // A group of thirty entities named in full is a wall of text nobody reads,
+  // and the count is the part that carries the observation. The names stay
+  // available: the entities are on the canvas, and the reader can click the
+  // bridge to see what it sits between.
+  const brief = (keys: string[]) => {
+    const shown = keys.slice(0, 5).map(labelOf).join(", ");
+    const rest = keys.length - 5;
+    return rest > 0 ? `${shown} and ${rest} more` : shown;
+  };
 
   return (
     <div className="net-card">
@@ -71,7 +80,7 @@ export function StructurePanel({
                 {b.separates.map((g, i) => (
                   <span key={i}>
                     {i > 0 && " · "}
-                    <em>{list(g)}</em>
+                    <em>{brief(g)}</em>
                   </span>
                 ))}
                 .
