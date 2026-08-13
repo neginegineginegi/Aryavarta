@@ -133,26 +133,68 @@ export function NetworkGraph({
 
   const folding = collapsible && !showAll;
 
+  /**
+   * Every edge the reader has asked to see, before the fold is applied.
+   *
+   * The year window belongs here rather than after the fold, so an organisation
+   * opened in one year does not keep drawing people out of another. Same rule
+   * as the server-side window: an edge with no dates survives every year,
+   * because the archive not knowing when a relation ran is not evidence that it
+   * had ended.
+   */
+  const drawable = useMemo(
+    () =>
+      edges.filter(
+        (e) =>
+          (showClaims || !e.interpretive) &&
+          (year == null ||
+            (e.yearFrom == null && e.yearTo == null) ||
+            ((e.yearFrom == null || e.yearFrom <= year) &&
+              (e.yearTo == null || e.yearTo >= year))),
+      ),
+    [edges, showClaims, year],
+  );
+
   /** Every key the fold allows on screen. */
   const unfolded = useMemo(() => {
     if (!folding) return null;
     const keep = new Set<string>();
     for (const n of nodes) if (n.type !== "person") keep.add(keyOf(n));
-    for (const e of edges) {
+    for (const e of drawable) {
       const f = keyOf(e.from);
       const t = keyOf(e.to);
       if (expanded.has(f) && typeOf.get(t) === "person") keep.add(t);
       if (expanded.has(t) && typeOf.get(f) === "person") keep.add(f);
     }
     return keep;
-  }, [folding, nodes, edges, expanded, typeOf]);
+  }, [folding, nodes, drawable, expanded, typeOf]);
+
+  /**
+   * Organisations that are open AND still have somebody to show.
+   *
+   * Derived rather than stored, so dragging the year past the last recorded
+   * position closes the organisation instead of leaving it standing open with
+   * nothing under it, and dragging back opens it again. The reader's click is
+   * remembered; what it currently yields is recomputed.
+   */
+  const openOrgs = useMemo(() => {
+    const out = new Set<string>();
+    if (!folding) return out;
+    for (const e of drawable) {
+      const f = keyOf(e.from);
+      const t = keyOf(e.to);
+      if (expanded.has(f) && typeOf.get(t) === "person") out.add(f);
+      if (expanded.has(t) && typeOf.get(f) === "person") out.add(t);
+    }
+    return out;
+  }, [folding, drawable, expanded, typeOf]);
 
   /** People not on screen, and the organisations each one is waiting behind. */
   const folded = useMemo(() => {
     if (!unfolded) return { people: 0, byOrg: new Map<string, number>() };
     const byOrg = new Map<string, number>();
     const people = new Set<string>();
-    for (const e of edges) {
+    for (const e of drawable) {
       const f = keyOf(e.from);
       const t = keyOf(e.to);
       const person = typeOf.get(f) === "person" ? f : typeOf.get(t) === "person" ? t : null;
@@ -162,25 +204,32 @@ export function NetworkGraph({
       byOrg.set(org, (byOrg.get(org) ?? 0) + 1);
     }
     return { people: people.size, byOrg };
-  }, [unfolded, edges, typeOf]);
+  }, [unfolded, drawable, typeOf]);
 
-  const visibleEdges = useMemo(() => {
-    let list = showClaims ? edges : edges.filter((e) => !e.interpretive);
-    if (unfolded) {
-      list = list.filter((e) => unfolded.has(keyOf(e.from)) && unfolded.has(keyOf(e.to)));
-    }
-    if (year != null) {
-      // Same rule as the server-side window: an edge with no dates survives
-      // every year, because the archive not knowing when a relation ran is not
-      // evidence that it had ended.
-      list = list.filter(
-        (e) =>
-          (e.yearFrom == null && e.yearTo == null) ||
-          ((e.yearFrom == null || e.yearFrom <= year) && (e.yearTo == null || e.yearTo >= year)),
-      );
-    }
-    return list;
-  }, [edges, showClaims, year, unfolded]);
+  /**
+   * Which group each entity belongs to, measured on the WHOLE graph rather than
+   * on what is drawn. Two organisations joined only by a person are in the same
+   * group even while that person is folded away, which is what makes "open
+   * everything in this group" open the thing the reader means.
+   */
+  const clusterOf = useMemo(
+    () =>
+      componentOf(
+        adjacency(
+          nodes.map(keyOf),
+          drawable.map((e) => ({ from: keyOf(e.from), to: keyOf(e.to) })),
+        ),
+      ),
+    [nodes, drawable],
+  );
+
+  const visibleEdges = useMemo(
+    () =>
+      unfolded
+        ? drawable.filter((e) => unfolded.has(keyOf(e.from)) && unfolded.has(keyOf(e.to)))
+        : drawable,
+    [drawable, unfolded],
+  );
 
   /** Nodes still attached to something in this window, plus the root. */
   const visibleNodes = useMemo(() => {
@@ -623,6 +672,35 @@ export function NetworkGraph({
   }, []);
 
   const selectedNode = sel?.kind === "node" ? nodes.find((n) => keyOf(n) === sel.key) : undefined;
+
+  /**
+   * Opening a whole group at once, for the reader who wants the cluster rather
+   * than one organisation at a time. It reveals what is already recorded and
+   * nothing else: same nodes, same edges, drawn instead of folded.
+   */
+  const cluster = useMemo(() => {
+    if (!folding || !selectedNode) return null;
+    const group = clusterOf.get(keyOf(selectedNode));
+    if (group === undefined) return null;
+    const orgKeys = nodes
+      .filter((n) => n.type !== "person" && clusterOf.get(keyOf(n)) === group)
+      .map(keyOf);
+    const closed = orgKeys.filter((k) => !expanded.has(k));
+    const waiting = new Set<string>();
+    for (const e of drawable) {
+      const f = keyOf(e.from);
+      const t = keyOf(e.to);
+      const person = typeOf.get(f) === "person" ? f : typeOf.get(t) === "person" ? t : null;
+      if (!person || unfolded?.has(person)) continue;
+      const org = person === f ? t : f;
+      if (clusterOf.get(org) === group) waiting.add(person);
+    }
+    return {
+      orgs: closed.length,
+      people: waiting.size,
+      onOpen: () => setExpanded((prev) => new Set([...prev, ...orgKeys])),
+    };
+  }, [folding, selectedNode, clusterOf, nodes, expanded, drawable, typeOf, unfolded]);
   const selectedEdge = sel?.kind === "edge" ? edges.find((e) => e.edgeId === sel.id) : undefined;
 
   const hiddenClaims = edges.length - edges.filter((e) => !e.interpretive).length;
@@ -656,7 +734,7 @@ export function NetworkGraph({
             organisation to see who is recorded in it.
           </span>
         )}
-        {folding && expanded.size > 0 && (
+        {folding && openOrgs.size > 0 && (
           <button type="button" className="net-plain" onClick={() => setExpanded(new Set())}>
             Fold them back
           </button>
@@ -811,7 +889,7 @@ export function NetworkGraph({
                     dim ? "is-dim" : "",
                     key === rootKey ? "is-root" : "",
                     showStructure && bridgeKeys.has(key) ? "is-bridge" : "",
-                    folding && expanded.has(key) ? "is-open" : "",
+                    folding && openOrgs.has(key) ? "is-open" : "",
                     folding && (folded.byOrg.get(key) ?? 0) > 0 ? "is-foldable" : "",
                     work.flags[key] ? `is-flag-${work.flags[key]}` : "",
                     sel?.kind === "node" && sel.key === key ? "is-sel" : "",
@@ -931,13 +1009,14 @@ export function NetworkGraph({
               fold={
                 folding
                   ? {
-                      open: expanded.has(keyOf(selectedNode)),
+                      open: openOrgs.has(keyOf(selectedNode)),
                       waiting:
                         selectedNode.type === "person"
                           ? 0
                           : (folded.byOrg.get(keyOf(selectedNode)) ?? 0),
                       isPerson: selectedNode.type === "person",
                       onToggle: () => fold(selectedNode),
+                      cluster,
                     }
                   : null
               }
@@ -1157,7 +1236,13 @@ function NodeCard({
   busy: boolean;
   /** Present only in a folded view, where opening is a drawing decision rather
    *  than a fetch: everything is already loaded. */
-  fold: { open: boolean; waiting: number; isPerson: boolean; onToggle: () => void } | null;
+  fold: {
+    open: boolean;
+    waiting: number;
+    isPerson: boolean;
+    onToggle: () => void;
+    cluster: { orgs: number; people: number; onOpen: () => void } | null;
+  } | null;
   onExpand: () => void;
   edges: GraphEdge[];
   nodes: GraphNode[];
@@ -1188,7 +1273,18 @@ function NodeCard({
                 ? "No people are recorded in it"
                 : `Open: ${fold.waiting} ${fold.waiting === 1 ? "person" : "people"} recorded in it`}
         </button>
-      ) : (
+      ) : null}
+      {fold?.cluster && fold.cluster.orgs > 0 && fold.cluster.people > 0 && (
+        <p className="net-card-sub">
+          <button type="button" className="net-plain" onClick={fold.cluster.onOpen}>
+            Open the rest of this group
+          </button>{" "}
+          ({fold.cluster.orgs} more{" "}
+          {fold.cluster.orgs === 1 ? "organisation" : "organisations"}, {fold.cluster.people}{" "}
+          {fold.cluster.people === 1 ? "person" : "people"})
+        </p>
+      )}
+      {!fold && (
         <button type="button" className="btn btn-secondary net-expand" onClick={onExpand} disabled={busy || hidden === 0}>
           {busy
             ? "Expanding…"
