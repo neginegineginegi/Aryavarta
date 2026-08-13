@@ -8,7 +8,6 @@ import type { MapData, MapTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
 import { YearScrubber } from "@/components/map/YearScrubber";
 import { useYearPlayback } from "@/lib/use-year-playback";
-import { CursorText } from "@/components/ui/CursorText";
 
 const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
@@ -404,11 +403,7 @@ export function MapExplorer({
 
         {/* Legend */}
         <aside className="lg:w-60">
-          {/* .section-label is mono, so "ink" for the same reason as the year
-              readout: no variable weight axis to interpolate. */}
-          <h2 className="section-label">
-            <CursorText mode="ink">{`In power, end of ${year}`}</CursorText>
-          </h2>
+          <h2 className="section-label">{`In power, end of ${year}`}</h2>
           <ul className="mt-2.5 space-y-1.5 border-t border-rule pt-2.5">
             {view.legend.map((l) => (
               <li
@@ -420,12 +415,7 @@ export function MapExplorer({
                   className="h-3 w-3 shrink-0 rounded-[2px] border border-black/10"
                   style={l.hatch ? { background: NA_SWATCH } : { backgroundColor: l.color }}
                 />
-                {/* Party names wrap in this 60-unit column, and "chars"
-                    changes advance widths, which would re-break the line
-                    under the pointer. "ink" cannot affect layout. */}
-                <span className="flex-1 text-ink">
-                  <CursorText mode="ink">{l.label}</CursorText>
-                </span>
+                <span className="flex-1 text-ink">{l.label}</span>
                 <span className="tabular-nums text-ink-faint">{l.count}</span>
               </li>
             ))}

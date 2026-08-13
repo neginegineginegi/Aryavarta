@@ -706,13 +706,7 @@ export function NetworkGraph({
   const hiddenClaims = edges.length - edges.filter((e) => !e.interpretive).length;
 
   return (
-    // AutoLetters must not touch this subtree. It replaces a text node with
-    // per-character spans; React then patches the text node it still holds a
-    // reference to, which is no longer in the document, and the visible letters
-    // freeze at whatever was rendered first. Every relationship in this panel
-    // read "funded" because that was the first edge selected. The letter effect
-    // belongs to prose, not to a surface whose text changes under the reader.
-    <div className="net-wrap" data-auto="skip">
+    <div className="net-wrap">
       <div className="net-toolbar">
         <span className="net-count">
           {visibleNodes.length} {visibleNodes.length === 1 ? "entity" : "entities"}, {visibleEdges.length}{" "}

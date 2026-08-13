@@ -77,7 +77,7 @@ export function ConnectExplorer({
   const sameEntity = a && b && a.type === b.type && a.id === b.id;
 
   return (
-    <div className="net-connect" data-auto="skip">
+    <div className="net-connect">
       <div className="net-connect-controls">
         <EntityPicker label="Start" value={a} onChange={setA} />
         <EntityPicker label="Target" value={b} onChange={setB} />

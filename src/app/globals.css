@@ -990,26 +990,11 @@ a:hover .wordmark {
 }
 
 /* ---------------------------------------------------------------------------
-   Cursor field. The engine (src/lib/cursor-field.ts) writes `translate`,
-   `font-variation-settings` and `--cx-t` per character; everything decorative
-   lives here so the two can be reasoned about separately.
+   Cursor field. The engine (src/lib/cursor-field.ts) writes `translate` on the
+   few elements that drift toward the pointer, and the glow coordinates on
+   panels. It does not touch type: text on this site holds still, because text
+   that moves is text you have to fight to read.
    --------------------------------------------------------------------------- */
-
-/* A word never breaks mid-letter, and letters need a box to translate. */
-.cx-word {
-  display: inline-block;
-  white-space: nowrap;
-}
-.cx-char {
-  display: inline-block;
-  will-change: transform;
-}
-
-/* "chars" thickens as well as lifts, so it may only be used where a width
-   change cannot re-break a line. "ink" tints instead, and is safe anywhere. */
-[data-cx="ink"] .cx-char {
-  color: color-mix(in oklab, var(--color-accent) calc(var(--cx-t, 0) * 100%), currentColor);
-}
 
 /* A panel highlight that follows the pointer. --cx-gx/--cx-gy are the pointer
    in the panel's own coordinates; --cx-go fades the whole thing out when the
@@ -1592,15 +1577,9 @@ a:hover .wordmark {
   .map-reveal {
     animation: none;
   }
-  /* The cursor field is decoration, not information: no letter moves, no
-     weight shifts, no panel glows. The engine also refuses to start when the
-     query matches, so this is the belt to its braces. */
-  .cx-char {
-    translate: none !important;
-    font-variation-settings: normal !important;
-    color: inherit !important;
-    will-change: auto;
-  }
+  /* The cursor field is decoration, not information: nothing drifts, no panel
+     glows. The engine also refuses to start when the query matches, so this is
+     the belt to its braces. */
   .cx-glow::before {
     opacity: 0 !important;
     transition: none;

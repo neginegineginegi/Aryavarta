@@ -2,7 +2,6 @@
 
 import type { MapFact, MapMarker } from "@/lib/db/queries/map";
 import type { Playback } from "@/lib/use-year-playback";
-import { CursorText } from "@/components/ui/CursorText";
 
 /**
  * Player glyphs as inline SVG, not text characters. "▶" and "❚❚" sit on the
@@ -89,17 +88,9 @@ export function YearScrubber({
     <div className="mb-5">
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         <div className="w-24 shrink-0 text-right">
-          {/* "ink" and not "chars": the readout is IBM Plex Mono, which is
-              pinned to 400/500 in layout.tsx and has no variable weight axis
-              to interpolate, so a weight gain would snap between two static
-              instances instead of easing. "ink" lifts and tints only, which
-              also leaves the tabular advance widths alone. */}
-          <CursorText
-            mode="ink"
-            className="font-mono text-[2.1rem] font-bold leading-none text-ink tabular-nums"
-          >
+          <span className="font-mono text-[2.1rem] font-bold leading-none text-ink tabular-nums">
             {String(year)}
-          </CursorText>
+          </span>
         </div>
 
         <button

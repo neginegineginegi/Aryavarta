@@ -3,8 +3,14 @@
  *
  * One module-scope singleton owns a single requestAnimationFrame loop that
  * reads the pointer and writes styles for every registered element. React
- * never re-renders during the animation, which is the whole point: a hundred
- * letters thickening as the pointer passes must not touch the component tree.
+ * never re-renders during the animation, which is the whole point: an element
+ * drifting toward the pointer must not touch the component tree.
+ *
+ * It does not touch type. It used to: every line on the page was split into
+ * per-character spans that lifted, thickened and rode a scroll wave. Reading
+ * is the one thing this site is for, and text that moves under the eye is text
+ * you have to fight, so the whole character half was removed rather than
+ * tuned down.
  *
  * Geometry is cached in DOCUMENT coordinates, so scrolling costs nothing. Any
  * change that moves things without firing a resize (a panel opening, a route
@@ -17,42 +23,15 @@
  * meant to be replaced wholesale if the original turns up.
  */
 
-import { fieldEnergy, fieldTime, scrollWave } from "@/lib/living-field";
-
-export type CursorTextMode = "chars" | "ink";
+import { fieldEnergy } from "@/lib/living-field";
 
 /** Motion constants. All of these are from the handoff's motion table. */
-const RADIUS = 105;
-const RADIUS_SQ = RADIUS * RADIUS;
-const LIFT = { chars: -4.2, ink: -2.6 } as const;
-const WEIGHT_GAIN = 260; // chars only; ink never touches weight
+const RADIUS = 105; // glow catchment around a panel
 const MAGNET_REACH = 130; // plus half the element's width
 const MAGNET_CAP_X = 7;
 const MAGNET_CAP_Y = 5;
 const EASE = 0.2; // per frame toward target, so every value decays to rest
 const REST = 0.0015; // below this an entry is at rest and stops being written
-
-type CharTarget = {
-  el: HTMLElement;
-  mode: CursorTextMode;
-  chars: HTMLElement[];
-  cx: Float64Array;
-  cy: Float64Array;
-  base: Float64Array; // resting font-weight per character
-  cur: Float64Array; // eased intensity, 0 at rest
-  live: boolean; // was anything written last frame
-  seed: number; // stable per-group phase offset for the scroll wave
-  /** Did the wave displace this group on the previous frame? The rest test
-   *  below is about the POINTER, and a character the pointer never touched
-   *  reads as already-at-rest the moment the wave stops, so the frame that
-   *  should have cleaned it up was skipped and it kept the last offset the
-   *  wave wrote. One frame of memory is what makes the cleanup run. */
-  waved: boolean;
-  /** Type in a page's top section keeps the free-running wave, because nobody
-   *  reads a masthead or a hero the way they read a paragraph. Everything
-   *  below it rides the scroll-only signal and stops when the wheel does. */
-  topSection: boolean;
-};
 
 type MagnetTarget = {
   el: HTMLElement;
@@ -79,7 +58,6 @@ type GlowTarget = {
   on: boolean;
 };
 
-const charTargets = new Set<CharTarget>();
 const magnetTargets = new Set<MagnetTarget>();
 const glowTargets = new Set<GlowTarget>();
 
@@ -105,14 +83,6 @@ function centre(el: HTMLElement): { x: number; y: number; w: number; h: number; 
   return { x: l + r.width / 2, y: t + r.height / 2, w: r.width, h: r.height, l, t };
 }
 
-function measureChars(t: CharTarget) {
-  for (let i = 0; i < t.chars.length; i++) {
-    const c = centre(t.chars[i]);
-    t.cx[i] = c.x;
-    t.cy[i] = c.y;
-  }
-}
-
 function measureMagnet(t: MagnetTarget) {
   const c = centre(t.el);
   t.cx = c.x;
@@ -131,7 +101,6 @@ function measureGlow(t: GlowTarget) {
 /** Re-measure everything. Call after any layout change that has no resize. */
 export function refresh(): void {
   if (typeof window === "undefined") return;
-  charTargets.forEach(measureChars);
   magnetTargets.forEach(measureMagnet);
   glowTargets.forEach(measureGlow);
 }
@@ -139,52 +108,6 @@ export function refresh(): void {
 function tick() {
   frame = 0;
   let active = false;
-
-  // Read once per frame, not once per character. Two signals: the top section
-  // rides the whole page's excitement, running text rides scroll alone.
-  const waveTop = Math.min(1, fieldEnergy() * 0.5) * 2.6;
-  const waveBody = Math.min(1, scrollWave() * 0.5) * 2.6;
-
-  for (const t of charTargets) {
-    const wave = t.topSection ? waveTop : waveBody;
-    const rippling = wave > 0.02;
-    const lift = LIFT[t.mode];
-    let live = false;
-    for (let i = 0; i < t.chars.length; i++) {
-      const dx = px - t.cx[i];
-      const dy = py - t.cy[i];
-      const d2 = dx * dx + dy * dy;
-      // Squared falloff: full strength under the pointer, nothing past RADIUS.
-      const target = d2 >= RADIUS_SQ ? 0 : 1 - d2 / RADIUS_SQ;
-      const next = t.cur[i] + (target - t.cur[i]) * EASE;
-      // The scroll wave: a travelling ripple driven by how excited the page
-      // is, offset per character so a crest runs ALONG a line rather than
-      // lifting all of it at once. At rest `wave` is 0 and this costs nothing.
-      const ripple = rippling ? Math.sin(i * 0.42 + fieldTime() * 2.4 + t.seed) * wave : 0;
-      const wasResting = t.cur[i] < REST && next < REST && !rippling && !t.waved;
-      t.cur[i] = next;
-      if (wasResting) continue;
-      live = true;
-      const el = t.chars[i];
-      if (next < REST && ripple === 0) {
-        // Land exactly on rest once, then stop writing this character.
-        el.style.translate = "";
-        if (t.mode === "chars") el.style.fontVariationSettings = "";
-        el.style.removeProperty("--cx-t");
-        t.cur[i] = 0;
-        continue;
-      }
-      el.style.translate = `0 ${(lift * next + ripple).toFixed(2)}px`;
-      if (t.mode === "chars") {
-        el.style.fontVariationSettings = `"wght" ${Math.round(t.base[i] + WEIGHT_GAIN * next)}`;
-      }
-      // Colour is CSS's business; the engine only reports intensity.
-      el.style.setProperty("--cx-t", next.toFixed(3));
-    }
-    t.waved = rippling;
-    t.live = live;
-    active = active || live;
-  }
 
   for (const t of magnetTargets) {
     if (t.sticky) {
@@ -244,7 +167,7 @@ function tick() {
 
   // Stay alive while the page is still excited, or the wave stops mid-scroll
   // with the letters frozen wherever the last frame left them.
-  if (active || fieldEnergy() > 0.002 || scrollWave() > 0.002) {
+  if (active || fieldEnergy() > 0.002) {
     frame = requestAnimationFrame(tick);
   } else {
     running = false;
@@ -298,15 +221,6 @@ function rest() {
   if (frame) cancelAnimationFrame(frame);
   frame = 0;
   running = false;
-  for (const t of charTargets) {
-    t.chars.forEach((c, i) => {
-      c.style.translate = "";
-      c.style.fontVariationSettings = "";
-      c.style.removeProperty("--cx-t");
-      t.cur[i] = 0;
-    });
-    t.live = false;
-  }
   for (const t of magnetTargets) {
     t.el.style.translate = "";
     t.curX = 0;
@@ -323,45 +237,6 @@ function rest() {
  * Register a container whose `.cx-char` descendants should respond.
  * Returns an unregister function.
  */
-export function registerChars(el: HTMLElement, mode: CursorTextMode): () => void {
-  listen();
-  const chars = Array.from(el.querySelectorAll<HTMLElement>(".cx-char"));
-  const n = chars.length;
-  const t: CharTarget = {
-    el,
-    mode,
-    chars,
-    cx: new Float64Array(n),
-    cy: new Float64Array(n),
-    base: new Float64Array(n),
-    cur: new Float64Array(n),
-    live: false,
-    waved: false,
-    seed: charTargets.size * 0.9,
-    // Every interior page opens with a page-level <header>, the home page with
-    // .hero-bleed, and the masthead is a <header> too. Read once at
-    // registration: none of these move between elements.
-    topSection: !!el.closest("header, .hero-bleed"),
-  };
-  if (mode === "chars") {
-    for (let i = 0; i < n; i++) {
-      const w = Number.parseInt(getComputedStyle(chars[i]).fontWeight, 10);
-      t.base[i] = Number.isFinite(w) ? w : 400;
-    }
-  }
-  measureChars(t);
-  charTargets.add(t);
-  return () => {
-    charTargets.delete(t);
-    t.chars.forEach((c) => {
-      c.style.translate = "";
-      c.style.fontVariationSettings = "";
-      c.style.removeProperty("--cx-t");
-    });
-  };
-}
-
-/** Register an element that should drift toward the pointer. */
 export function registerMagnet(
   el: HTMLElement,
   opts: { sticky?: boolean } = {},

@@ -8,8 +8,9 @@
  *   phase    where the wave crest sits. Scrolling pushes it directly.
  *   ripples  expanding rings from taps and clicks.
  *
- * Ribbons (the tricolor bands) read all three. The cursor field reads `energy`
- * so type ripples on scroll too — see the patch in the README.
+ * Ribbons (the tricolor bands) read all three. Nothing here touches type: the
+ * scroll wave that used to run under body text is gone, because a page you
+ * read is a page whose words hold still.
  */
 
 type Ribbon = {
@@ -34,8 +35,6 @@ let time = 0;
 let last = 0;
 let raf: number | null = null;
 let scroll = 0;
-let scrollEnergy = 0;   // scroll only, read by scrollWave() for body text
-let lastScrollAt = 0;   // performance.now() of the last scroll event
 let started = false;
 let reduced = false;
 let lamp: HTMLElement | null = null;
@@ -50,36 +49,6 @@ export function fieldEnergy() {
 }
 export function fieldTime() {
   return time;
-}
-
-/**
- * The scroll-only signal that body text rides, and the reason it is separate
- * from `energy`.
- *
- * Type that is still moving is type you cannot read, so the wave under running
- * text has to be over almost the moment the wheel stops. Two things follow.
- * It ignores the pointer entirely: `energy` rises whenever the mouse moves, and
- * a reader resting a hand on the mouse was making every paragraph on the page
- * breathe. And it is derived from a timestamp rather than accumulated per
- * frame, so it reads zero even when the rAF loop has parked (no ribbon on
- * screen means no loop, and a value decayed frame by frame would freeze at
- * whatever it held and leave the letters bent).
- *
- * HOLD covers the gap between wheel events during a continuous scroll. SETTLE
- * is the ramp to a full stop after it: the wave falls to exactly zero, which
- * is what lets the cursor field write each character back to rest and stop
- * touching it.
- */
-const SCROLL_HOLD = 0.09;
-const SCROLL_SETTLE = 0.24;
-
-export function scrollWave(): number {
-  if (reduced || !lastScrollAt) return 0;
-  const idle = (performance.now() - lastScrollAt) / 1000;
-  if (idle >= SCROLL_HOLD + SCROLL_SETTLE) return 0;
-  const decayed = scrollEnergy * Math.exp(-idle * 3.2);
-  if (idle <= SCROLL_HOLD) return decayed;
-  return decayed * (1 - (idle - SCROLL_HOLD) / SCROLL_SETTLE);
 }
 
 export function registerRibbon(
@@ -143,12 +112,6 @@ function start() {
     const dy = y - scroll;
     scroll = y;
     energy = Math.min(2.4, energy + Math.abs(dy) * 0.02);
-    // The text signal decays to the moment of this event before taking the new
-    // push, because nothing else advances it between scrolls.
-    const now = performance.now();
-    const idle = lastScrollAt ? (now - lastScrollAt) / 1000 : 0;
-    scrollEnergy = Math.min(2.4, scrollEnergy * Math.exp(-idle * 3.2) + Math.abs(dy) * 0.02);
-    lastScrollAt = now;
     phase += dy * 0.005;          // the crest travels with the page
     kick();
   }, { passive: true });

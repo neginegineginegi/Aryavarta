@@ -105,14 +105,16 @@ note, because a bare link to a 400-page CAG report is not a citation.
 
 - Editorial palette, card system, three-voice type system, Devanagari wordmark.
 - **Motion system**: one tempo for the whole archive, defined in tokens.
-- **Cursor field**: type responds to pointer proximity, letters thickening and
-  lifting, with a magnetic drift on the wordmark.
+- **Cursor field**: a magnetic drift on the wordmark and a glow on panels. It
+  does not touch running text. It used to: every line was split into
+  per-character spans that lifted, thickened and rode a scroll wave. Words you
+  are reading have to hold still, so the character half was removed outright
+  rather than tuned down.
 - **Living background**: the tricolour bands are canvases that answer scroll,
   pointer and taps.
-- Text stops moving when you stop scrolling; only the top section keeps the
-  free-running wave.
 - Nav dropdowns, segmented controls, loading, empty and error states.
-- Reduced motion is honoured throughout: no wave, no drift, no ribbon animation.
+- Reduced motion is honoured throughout: no drift, no glow, no ribbon
+  animation.
 
 ## 8. Operations
 

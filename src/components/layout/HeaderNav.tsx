@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 
-import { CursorText } from "@/components/ui/CursorText";
 import { refresh } from "@/lib/cursor-field";
 import { useGlow, useMagnetic } from "@/lib/use-cursor";
 
@@ -140,13 +139,7 @@ function NavEntry({
         active ? "border-ink text-ink" : "border-transparent text-ink-muted hover:text-ink"
       }`}
     >
-      {/* "ink", not "chars". The weight gain widens a label by about 2.5px,
-          and these sit in a centre-justified wrapping row, so one trigger
-          thickening re-centres the whole row and nudges its neighbours out
-          from under the pointer. Same hazard the handoff names for wrapping
-          text, in the horizontal axis. Panel items below are free to use
-          "chars" because a fixed-width panel has nothing to push. */}
-      <CursorText mode="ink">{item.label}</CursorText>
+      {item.label}
     </Link>
   );
 
@@ -182,9 +175,7 @@ function NavEntry({
                 onClick={onCloseNow}
                 className="block rounded-[10px] px-3 py-2 transition-colors hover:bg-paper-sunken"
               >
-                <span className="block font-display text-[15px] text-ink">
-                  <CursorText mode="chars">{d.label}</CursorText>
-                </span>
+                <span className="block font-display text-[15px] text-ink">{d.label}</span>
                 {d.blurb ? (
                   <span className="mt-0.5 block text-[12.5px] text-ink-faint">{d.blurb}</span>
                 ) : null}
