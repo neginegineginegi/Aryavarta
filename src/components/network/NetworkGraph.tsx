@@ -55,6 +55,7 @@ export function NetworkGraph({
   initialDegrees,
   rootKey,
   truncated,
+  collapsible = false,
 }: {
   initialNodes: GraphNode[];
   initialEdges: GraphEdge[];
@@ -63,6 +64,10 @@ export function NetworkGraph({
    *  separate themselves. Everything else behaves identically. */
   rootKey: string | null;
   truncated: boolean;
+  /** Open with people folded away, so the canvas starts as organisations and
+   *  the money and ownership between them, and each organisation opens to show
+   *  who sits in it. Everything is already loaded; this is what is drawn. */
+  collapsible?: boolean;
 }) {
   const [nodes, setNodes] = useState(initialNodes);
   const [edges, setEdges] = useState(initialEdges);
@@ -78,6 +83,9 @@ export function NetworkGraph({
   // it had.
   const [year, setYear] = useState<number | null>(null);
   const [showStructure, setShowStructure] = useState(false);
+  /** Organisations the reader has opened, in a folded view. */
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [showAll, setShowAll] = useState(false);
   // Bumped when a drag ends after the layout has settled, to restart the frame
   // loop. State rather than a ref-held callback, because a ref that a hook has
   // captured cannot then be reassigned.
@@ -111,8 +119,56 @@ export function NetworkGraph({
     return ys.length ? { min: Math.min(...ys), max: Math.max(...ys) } : null;
   }, [edges]);
 
+  // --- folding people away ---------------------------------------------------
+  // A person is drawn when one of the organisations they are recorded in has
+  // been opened. One person is always ONE node: somebody who sits in two
+  // organisations does not become two people because two squares were clicked.
+  // Open both and the same node carries a line to each, which is the entire
+  // point of drawing this at all.
+  const typeOf = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of nodes) m.set(keyOf(n), n.type);
+    return m;
+  }, [nodes]);
+
+  const folding = collapsible && !showAll;
+
+  /** Every key the fold allows on screen. */
+  const unfolded = useMemo(() => {
+    if (!folding) return null;
+    const keep = new Set<string>();
+    for (const n of nodes) if (n.type !== "person") keep.add(keyOf(n));
+    for (const e of edges) {
+      const f = keyOf(e.from);
+      const t = keyOf(e.to);
+      if (expanded.has(f) && typeOf.get(t) === "person") keep.add(t);
+      if (expanded.has(t) && typeOf.get(f) === "person") keep.add(f);
+    }
+    return keep;
+  }, [folding, nodes, edges, expanded, typeOf]);
+
+  /** People not on screen, and the organisations each one is waiting behind. */
+  const folded = useMemo(() => {
+    if (!unfolded) return { people: 0, byOrg: new Map<string, number>() };
+    const byOrg = new Map<string, number>();
+    const people = new Set<string>();
+    for (const e of edges) {
+      const f = keyOf(e.from);
+      const t = keyOf(e.to);
+      const person = typeOf.get(f) === "person" ? f : typeOf.get(t) === "person" ? t : null;
+      if (!person || unfolded.has(person)) continue;
+      const org = person === f ? t : f;
+      people.add(person);
+      byOrg.set(org, (byOrg.get(org) ?? 0) + 1);
+    }
+    return { people: people.size, byOrg };
+  }, [unfolded, edges, typeOf]);
+
   const visibleEdges = useMemo(() => {
     let list = showClaims ? edges : edges.filter((e) => !e.interpretive);
+    if (unfolded) {
+      list = list.filter((e) => unfolded.has(keyOf(e.from)) && unfolded.has(keyOf(e.to)));
+    }
     if (year != null) {
       // Same rule as the server-side window: an edge with no dates survives
       // every year, because the archive not knowing when a relation ran is not
@@ -124,18 +180,19 @@ export function NetworkGraph({
       );
     }
     return list;
-  }, [edges, showClaims, year]);
+  }, [edges, showClaims, year, unfolded]);
 
   /** Nodes still attached to something in this window, plus the root. */
   const visibleNodes = useMemo(() => {
-    if (year == null) return nodes;
+    const base = unfolded ? nodes.filter((n) => unfolded.has(keyOf(n))) : nodes;
+    if (year == null) return base;
     const live = new Set<string>(rootKey ? [rootKey] : []);
     for (const e of visibleEdges) {
       live.add(keyOf(e.from));
       live.add(keyOf(e.to));
     }
-    return nodes.filter((n) => live.has(keyOf(n)));
-  }, [nodes, visibleEdges, year, rootKey]);
+    return base.filter((n) => live.has(keyOf(n)));
+  }, [nodes, unfolded, visibleEdges, year, rootKey]);
 
   const adj = useMemo(
     () =>
@@ -529,6 +586,36 @@ export function NetworkGraph({
     [showClaims],
   );
 
+  /**
+   * Open or close one entity in a folded view.
+   *
+   * An organisation opens to the people recorded in it. A person opens the
+   * other organisations they are recorded in, which is how you follow somebody
+   * from one square to the next: nothing new is fetched and nothing new is
+   * asserted, the drawing just stops leaving things out.
+   */
+  const fold = useCallback(
+    (n: GraphNode) => {
+      const key = keyOf(n);
+      setExpanded((prev) => {
+        const next = new Set(prev);
+        if (n.type === "person") {
+          for (const e of edges) {
+            const f = keyOf(e.from);
+            const t = keyOf(e.to);
+            if (f === key && typeOf.get(t) !== "person") next.add(t);
+            if (t === key && typeOf.get(f) !== "person") next.add(f);
+          }
+          return next;
+        }
+        if (next.has(key)) next.delete(key);
+        else next.add(key);
+        return next;
+      });
+    },
+    [edges, typeOf],
+  );
+
   const selectEdge = useCallback(async (e: GraphEdge) => {
     setSel({ kind: "edge", id: e.edgeId });
     setEvidence(null);
@@ -553,6 +640,27 @@ export function NetworkGraph({
           {visibleNodes.length} {visibleNodes.length === 1 ? "entity" : "entities"}, {visibleEdges.length}{" "}
           {visibleEdges.length === 1 ? "relationship" : "relationships"}
         </span>
+        {collapsible && (
+          <label className="net-toggle">
+            <input
+              type="checkbox"
+              checked={showAll}
+              onChange={(e) => setShowAll(e.target.checked)}
+            />
+            Show everyone at once
+          </label>
+        )}
+        {folding && folded.people > 0 && (
+          <span className="net-folded">
+            {folded.people} {folded.people === 1 ? "person is" : "people are"} folded away. Click an
+            organisation to see who is recorded in it.
+          </span>
+        )}
+        {folding && expanded.size > 0 && (
+          <button type="button" className="net-plain" onClick={() => setExpanded(new Set())}>
+            Fold them back
+          </button>
+        )}
         {hiddenClaims > 0 && (
           <label className="net-toggle">
             <input
@@ -703,6 +811,8 @@ export function NetworkGraph({
                     dim ? "is-dim" : "",
                     key === rootKey ? "is-root" : "",
                     showStructure && bridgeKeys.has(key) ? "is-bridge" : "",
+                    folding && expanded.has(key) ? "is-open" : "",
+                    folding && (folded.byOrg.get(key) ?? 0) > 0 ? "is-foldable" : "",
                     work.flags[key] ? `is-flag-${work.flags[key]}` : "",
                     sel?.kind === "node" && sel.key === key ? "is-sel" : "",
                     busy === key ? "is-busy" : "",
@@ -711,19 +821,32 @@ export function NetworkGraph({
                     .join(" ")}
                   tabIndex={0}
                   role="button"
-                  aria-label={`${n.label}, ${NODE_TYPE_LABELS[n.type] ?? n.type}${more ? `, ${more} further relationships` : ""}`}
+                  aria-label={`${n.label}, ${NODE_TYPE_LABELS[n.type] ?? n.type}${
+                    folding && (folded.byOrg.get(key) ?? 0) > 0
+                      ? `, ${folded.byOrg.get(key)} people folded away, activate to show them`
+                      : more
+                        ? `, ${more} further relationships`
+                        : ""
+                  }`}
                   onPointerDown={(e) => onPointerDown(key, e)}
                   onMouseEnter={() => setHover(key)}
                   onMouseLeave={() => setHover(null)}
                   onFocus={() => setHover(key)}
                   onBlur={() => setHover(null)}
-                  onClick={() => setSel({ kind: "node", key })}
-                  onDoubleClick={() => expand(n)}
+                  onClick={() => {
+                    setSel({ kind: "node", key });
+                    if (folding) fold(n);
+                  }}
+                  onDoubleClick={() => !folding && expand(n)}
                   onKeyDown={(ev) => {
-                    if (ev.key === "Enter") setSel({ kind: "node", key });
+                    if (ev.key === "Enter") {
+                      setSel({ kind: "node", key });
+                      if (folding) fold(n);
+                    }
                     if (ev.key === " ") {
                       ev.preventDefault();
-                      expand(n);
+                      if (folding) fold(n);
+                      else expand(n);
                     }
                   }}
                 >
@@ -750,7 +873,26 @@ export function NetworkGraph({
         </svg>
 
         <aside className="net-panel" aria-live="polite">
-          {!sel && showStructure && (
+          {/* With people folded away, two organisations joined only by a person
+              are drawn apart. Describing that as separate groups would be
+              stating something the archive does not hold, so the shape is not
+              described at all until everyone is on screen. */}
+          {!sel && showStructure && folding && folded.people > 0 && (
+            <div className="net-panel-empty">
+              <h3>Not while people are folded away</h3>
+              <p>
+                Two organisations that share a person are drawn apart in this view. Calling them
+                separate groups would say something the record does not: that nothing joins them.
+              </p>
+              <p className="net-panel-note">
+                <button type="button" className="net-plain" onClick={() => setShowAll(true)}>
+                  Show everyone at once
+                </button>{" "}
+                to see the shape of what is recorded.
+              </p>
+            </div>
+          )}
+          {!sel && showStructure && !(folding && folded.people > 0) && (
             <StructurePanel
               hasRoot={rootKey !== null}
               bridges={structure.bridges}
@@ -764,8 +906,9 @@ export function NetworkGraph({
             <div className="net-panel-empty">
               <h3>Follow the evidence</h3>
               <p>
-                Click a line to see the sources behind it. Click an entity to see what is recorded
-                about it, and double click to pull in one more hop.
+                {folding
+                  ? "Click an organisation to open it: the people recorded in it appear, and a person recorded in two organisations is one node with a line to each. Click a line to see the sources behind it."
+                  : "Click a line to see the sources behind it. Click an entity to see what is recorded about it, and double click to pull in one more hop."}
               </p>
               <p className="net-panel-note">
                 A line means one recorded relationship and nothing more. Two lines meeting at an
@@ -785,6 +928,19 @@ export function NetworkGraph({
                   ).length,
               )}
               busy={busy === keyOf(selectedNode)}
+              fold={
+                folding
+                  ? {
+                      open: expanded.has(keyOf(selectedNode)),
+                      waiting:
+                        selectedNode.type === "person"
+                          ? 0
+                          : (folded.byOrg.get(keyOf(selectedNode)) ?? 0),
+                      isPerson: selectedNode.type === "person",
+                      onToggle: () => fold(selectedNode),
+                    }
+                  : null
+              }
               onExpand={() => expand(selectedNode)}
               edges={visibleEdges.filter(
                 (e) => keyOf(e.from) === keyOf(selectedNode) || keyOf(e.to) === keyOf(selectedNode),
@@ -986,6 +1142,7 @@ function NodeCard({
   node,
   hidden,
   busy,
+  fold,
   onExpand,
   edges,
   nodes,
@@ -998,6 +1155,9 @@ function NodeCard({
   node: GraphNode;
   hidden: number;
   busy: boolean;
+  /** Present only in a folded view, where opening is a drawing decision rather
+   *  than a fetch: everything is already loaded. */
+  fold: { open: boolean; waiting: number; isPerson: boolean; onToggle: () => void } | null;
   onExpand: () => void;
   edges: GraphEdge[];
   nodes: GraphNode[];
@@ -1013,13 +1173,30 @@ function NodeCard({
       <h3 className="net-card-title">{node.label}</h3>
       {node.subKind && <p className="net-card-sub">{node.subKind.replace(/_/g, " ")}</p>}
 
-      <button type="button" className="btn btn-secondary net-expand" onClick={onExpand} disabled={busy || hidden === 0}>
-        {busy
-          ? "Expanding…"
-          : hidden === 0
-            ? "Nothing further recorded"
-            : `Expand: ${hidden} more ${hidden === 1 ? "relationship" : "relationships"}`}
-      </button>
+      {fold ? (
+        <button
+          type="button"
+          className="btn btn-secondary net-expand"
+          onClick={fold.onToggle}
+          disabled={!fold.isPerson && !fold.open && fold.waiting === 0}
+        >
+          {fold.isPerson
+            ? "Open every organisation they are recorded in"
+            : fold.open
+              ? "Close this organisation"
+              : fold.waiting === 0
+                ? "No people are recorded in it"
+                : `Open: ${fold.waiting} ${fold.waiting === 1 ? "person" : "people"} recorded in it`}
+        </button>
+      ) : (
+        <button type="button" className="btn btn-secondary net-expand" onClick={onExpand} disabled={busy || hidden === 0}>
+          {busy
+            ? "Expanding…"
+            : hidden === 0
+              ? "Nothing further recorded"
+              : `Expand: ${hidden} more ${hidden === 1 ? "relationship" : "relationships"}`}
+        </button>
+      )}
       {recordHref(node) && (
         <p className="net-card-sub">
           <a href={recordHref(node)!} className="rec-link">
@@ -1031,12 +1208,25 @@ function NodeCard({
       <h4 className="net-card-h">Shown here</h4>
       <ul className="net-card-edges">
         {edges.map((e) => {
-          const other = keyOf(e.from) === keyOf(node) ? e.to : e.from;
+          // Which end this entity sits on decides the sentence. Read from the
+          // wrong end, "funded" turns a grant received into a grant given, and
+          // "is chief executive of" points at the person instead of the
+          // organisation. A line in this archive states one direction.
+          const outbound = keyOf(e.from) === keyOf(node);
+          const other = outbound ? e.to : e.from;
           const label = nodes.find((n) => keyOf(n) === keyOf(other))?.label ?? other.id;
           return (
             <li key={e.edgeId}>
               <button type="button" onClick={() => onPickEdge(e)}>
-                {edgeLabel(e.kind, e.interpretive)} <strong>{label}</strong>
+                {outbound ? (
+                  <>
+                    {edgeLabel(e.kind, e.interpretive)} <strong>{label}</strong>
+                  </>
+                ) : (
+                  <>
+                    <strong>{label}</strong> {edgeLabel(e.kind, e.interpretive)} this
+                  </>
+                )}
               </button>
               <span className={`ev ev-${e.evidenceStatus}`}>
                 {EVIDENCE_LABELS[e.evidenceStatus] ?? e.evidenceStatus}

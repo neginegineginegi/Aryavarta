@@ -60,10 +60,11 @@ export default async function NetworkPage({
         {web && !web.truncated && web.nodes.length > 0 && (
           <section className="section-card mt-4 px-4 py-5 sm:px-6">
             <p className="mb-3 max-w-[75ch] text-[0.88rem] text-ink-muted">
-              Everything recorded so far, on one canvas. Separate islands are separate because no
-              documented relationship joins them; people sitting in more than one organisation are
-              what stitches clusters together. Click a line for its evidence, double click an
-              entity to pull in anything hidden, drag to rearrange.
+              Everything recorded so far, on one canvas. It opens as organisations and the money and
+              ownership recorded between them, with people folded away. Click an organisation to
+              open it and the people recorded in it appear. Somebody recorded in two organisations
+              is drawn once, with a line to each, so opening the second one does not create a second
+              copy of them. Click a line for its evidence, drag to rearrange.
             </p>
             <NetworkGraph
               initialNodes={web.nodes}
@@ -71,6 +72,7 @@ export default async function NetworkPage({
               initialDegrees={Object.fromEntries(webDegrees)}
               rootKey={null}
               truncated={false}
+              collapsible
             />
           </section>
         )}

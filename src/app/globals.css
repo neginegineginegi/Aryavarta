@@ -1144,6 +1144,12 @@ a:hover .wordmark {
 .net-count { font-variant-numeric: tabular-nums; }
 .net-toggle { display: inline-flex; align-items: center; gap: 0.4rem; cursor: pointer; }
 .net-warn { color: var(--color-disputed); }
+.net-folded { color: var(--color-ink-muted); }
+.net-plain {
+  color: var(--color-ink); border-bottom: 1px solid var(--color-rule-dark);
+  cursor: pointer; font-size: inherit;
+}
+.net-plain:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 
 .net-stage {
   display: grid; gap: 0.75rem;
@@ -1235,6 +1241,11 @@ a:hover .wordmark {
 /* A node with more relationships than are drawn says so, so an unexpanded
    node never reads as a dead end. */
 .net-more { fill: var(--color-accent); }
+
+/* An organisation with people folded behind it invites the click, and one that
+   has been opened stops inviting it. */
+.net-node.is-foldable .net-dot { stroke: var(--color-ink-soft); stroke-width: 2.2; }
+.net-node.is-open .net-dot { fill: var(--color-paper); stroke: var(--color-ink); }
 
 .net-label {
   text-anchor: middle;
