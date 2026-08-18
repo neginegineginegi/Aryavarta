@@ -268,3 +268,50 @@ export async function edgesByIds(ids: string[]): Promise<Map<string, GraphEdge>>
     (res.rows as Array<Record<string, unknown>>).map((r) => [String(r.edge_id), toEdge(r)]),
   );
 }
+
+/**
+ * Which entities the archive holds an accountability record about.
+ *
+ * This exists because "colour the questionable ones red" is a reasonable thing
+ * to want and an impossible thing for an archive to answer. Questionable is a
+ * judgement, and this project holds records. So the mark is keyed to three
+ * specific, checkable facts and nothing else:
+ *
+ *   - the entity is named as a party in a recorded legal case
+ *   - a recorded outcome of an accountability kind attaches to it (a court
+ *     ruling, a regulatory action, an investigation opened)
+ *   - somebody has asserted something about it that is recorded as a claim
+ *
+ * The first two are documented: a court record, a gazette, a regulator's
+ * order. The third is an allegation, and it is returned as a separate tier,
+ * because a person somebody accused and a person a court ruled against must
+ * never be drawn the same way. Where both exist, documented wins: the stronger
+ * record is the one the reader should see first.
+ *
+ * A mark says the archive holds a record naming this entity. It does not say
+ * the entity did anything, and the renderer's legend has to keep saying so.
+ */
+export type RecordMark = "documented" | "alleged";
+
+export async function recordMarks(): Promise<Record<string, RecordMark>> {
+  const res = await db.execute(sql`
+    SELECT 'person' AS t, p.party_type AS ty, p.party_id AS id, 'documented' AS tier
+      FROM legal_case_parties p
+    UNION ALL
+    SELECT 'outcome', o.subject_type, o.subject_id, 'documented'
+      FROM outcomes o
+     WHERE o.kind IN ('court_ruling', 'regulatory_action', 'investigation_initiated')
+    UNION ALL
+    SELECT 'claim', c.subject_type, c.subject_id, 'alleged'
+      FROM claims c
+  `);
+  const out: Record<string, RecordMark> = {};
+  for (const r of res.rows as Array<{ ty: string; id: string; tier: RecordMark }>) {
+    if (!r.ty || !r.id) continue;
+    const key = `${r.ty}:${r.id}`;
+    // Documented outranks alleged wherever both are recorded.
+    if (out[key] === "documented") continue;
+    out[key] = r.tier;
+  }
+  return out;
+}

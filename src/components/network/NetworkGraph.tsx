@@ -55,6 +55,7 @@ export function NetworkGraph({
   initialDegrees,
   rootKey,
   truncated,
+  marks = {},
   collapsible = false,
 }: {
   initialNodes: GraphNode[];
@@ -64,6 +65,10 @@ export function NetworkGraph({
    *  separate themselves. Everything else behaves identically. */
   rootKey: string | null;
   truncated: boolean;
+  /** Entities the archive holds a legal case, ruling, regulatory action or
+   *  recorded allegation about. Keyed "type:id"; absent means the archive holds
+   *  none of those, which is not the same as none existing. */
+  marks?: Record<string, "documented" | "alleged">;
   /** Open with people folded away, so the canvas starts as organisations and
    *  the money and ownership between them, and each organisation opens to show
    *  who sits in it. Everything is already loaded; this is what is drawn. */
@@ -269,6 +274,19 @@ export function NetworkGraph({
     () => (rootKey === null ? packComponents(components(adj), W, H) : undefined),
     [adj, rootKey],
   );
+
+  /** Whether either kind of mark is on screen. The legend explains a mark only
+   *  when the reader can see one, so it never describes something absent. */
+  const markedShown = useMemo(() => {
+    let documented = false;
+    let alleged = false;
+    for (const n of visibleNodes) {
+      const m = marks[keyOf(n)];
+      if (m === "documented") documented = true;
+      else if (m === "alleged") alleged = true;
+    }
+    return { documented, alleged };
+  }, [visibleNodes, marks]);
 
   const bridgeKeys = useMemo(
     () => new Set(structure.bridges.map((b) => b.key)),
@@ -885,6 +903,7 @@ export function NetworkGraph({
                     showStructure && bridgeKeys.has(key) ? "is-bridge" : "",
                     folding && openOrgs.has(key) ? "is-open" : "",
                     folding && (folded.byOrg.get(key) ?? 0) > 0 ? "is-foldable" : "",
+                    marks[key] ? `is-mark-${marks[key]}` : "",
                     work.flags[key] ? `is-flag-${work.flags[key]}` : "",
                     sel?.kind === "node" && sel.key === key ? "is-sel" : "",
                     busy === key ? "is-busy" : "",
@@ -991,6 +1010,7 @@ export function NetworkGraph({
           {selectedNode && (
             <NodeCard
               node={selectedNode}
+              mark={marks[keyOf(selectedNode)] ?? null}
               hidden={Math.max(
                 0,
                 (degree[keyOf(selectedNode)] ?? 0) -
@@ -1042,7 +1062,7 @@ export function NetworkGraph({
       </div>
 
       <div className="net-legend-row">
-        <Legend showStructure={showStructure} />
+        <Legend showStructure={showStructure} marks={markedShown} />
         <p className="net-legend-note">
           Drag the background to slide the diagram. Hold Ctrl or Cmd and scroll to spread it apart.
         </p>
@@ -1101,7 +1121,13 @@ function NodeMark({ type, r }: { type: string; r: number }) {
 }
 
 /** What every mark on the canvas means, in the canvas's own terms. */
-function Legend({ showStructure }: { showStructure: boolean }) {
+function Legend({
+  showStructure,
+  marks,
+}: {
+  showStructure: boolean;
+  marks: { documented: boolean; alleged: boolean };
+}) {
   return (
     <ul className="net-legend">
       <li>
@@ -1135,6 +1161,28 @@ function Legend({ showStructure }: { showStructure: boolean }) {
         </svg>
         More relationships than are drawn
       </li>
+      {marks.documented && (
+        <li>
+          <svg viewBox="-12 -12 24 24" aria-hidden="true">
+            <circle className="net-dot" r={8} stroke="var(--color-danger)" strokeWidth={2.6} />
+          </svg>
+          Named in a recorded case, ruling or regulatory action
+        </li>
+      )}
+      {marks.alleged && (
+        <li>
+          <svg viewBox="-12 -12 24 24" aria-hidden="true">
+            <circle
+              className="net-dot"
+              r={8}
+              stroke="var(--color-disputed)"
+              strokeWidth={2.2}
+              strokeDasharray="3.5 2.5"
+            />
+          </svg>
+          Someone has alleged something, recorded as a claim
+        </li>
+      )}
       {showStructure && (
         <li>
           <svg viewBox="-12 -12 24 24" aria-hidden="true">
@@ -1213,6 +1261,7 @@ function recordHref(node: GraphNode): string | null {
 
 function NodeCard({
   node,
+  mark,
   hidden,
   busy,
   fold,
@@ -1226,6 +1275,7 @@ function NodeCard({
   onFlag,
 }: {
   node: GraphNode;
+  mark: "documented" | "alleged" | null;
   hidden: number;
   busy: boolean;
   /** Present only in a folded view, where opening is a drawing decision rather
@@ -1251,6 +1301,13 @@ function NodeCard({
       <p className="net-card-kind">{NODE_TYPE_LABELS[node.type] ?? node.type}</p>
       <h3 className="net-card-title">{node.label}</h3>
       {node.subKind && <p className="net-card-sub">{node.subKind.replace(/_/g, " ")}</p>}
+      {mark && (
+        <p className={`net-mark net-mark-${mark}`}>
+          {mark === "documented"
+            ? "The archive holds a legal case, court ruling, regulatory action or investigation naming this entity. That is a record of a proceeding, not a finding about conduct, and the record page states which one it is."
+            : "Somebody has asserted something about this entity, and the archive records the assertion and who made it. Nothing here says the assertion is true."}
+        </p>
+      )}
 
       {fold ? (
         <button

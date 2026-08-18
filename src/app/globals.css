@@ -1266,6 +1266,24 @@ a:hover .wordmark {
    node never reads as a dead end. */
 .net-more { fill: var(--color-accent); }
 
+/* An entity the archive holds a legal case, ruling, regulatory action or
+   recorded allegation about.
+
+   The mark is a RING, never a fill. A filled-red person reads as a verdict on
+   somebody; a ring reads as "there is a record here", which is the only thing
+   this archive is in a position to say. Documented and alleged are drawn
+   differently for the same reason claim edges are dashed: a person a court
+   ruled against and a person somebody accused must never look alike. */
+.net-node.is-mark-documented .net-dot {
+  stroke: var(--color-danger);
+  stroke-width: 2.6;
+}
+.net-node.is-mark-alleged .net-dot {
+  stroke: var(--color-disputed);
+  stroke-width: 2.2;
+  stroke-dasharray: 3.5 2.5;
+}
+
 /* An organisation with people folded behind it invites the click, and one that
    has been opened stops inviting it. */
 .net-node.is-foldable .net-dot { stroke: var(--color-ink-soft); stroke-width: 2.2; }
@@ -1660,3 +1678,13 @@ a:hover .wordmark {
     transform: none;
   }
 }
+
+/* The mark, said in words on the entity's card. The colour matches the ring on
+   the canvas; the sentence is what stops the ring being read as a verdict. */
+.net-mark {
+  margin-top: 0.6rem; padding-left: 0.7rem;
+  border-left: 2px solid var(--color-rule-dark);
+  font-size: 0.82rem; line-height: 1.5; color: var(--color-ink-muted);
+}
+.net-mark-documented { border-left-color: var(--color-danger); }
+.net-mark-alleged { border-left-color: var(--color-disputed); }

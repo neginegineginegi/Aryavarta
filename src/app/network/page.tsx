@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { NetworkGraph } from "@/components/network/NetworkGraph";
 import { wholeGraph } from "@/lib/funding/graph";
-import { degrees, graphEntryPoints } from "@/lib/db/queries/network";
+import { degrees, graphEntryPoints, recordMarks } from "@/lib/db/queries/network";
 import { neighbourhood } from "@/lib/funding/graph";
 import { NODE_TYPE_LABELS, ORG_KIND_LABELS } from "@/lib/funding/labels";
 
@@ -30,7 +30,10 @@ export default async function NetworkPage({
 }) {
   const { root, show } = await searchParams;
   const filter = show === "orgs" ? "org" : show === "people" ? "person" : undefined;
-  const entries = await graphEntryPoints(filter ? 48 : 60, filter as "org" | undefined);
+  const [entries, marks] = await Promise.all([
+    graphEntryPoints(filter ? 48 : 60, filter as "org" | undefined),
+    recordMarks(),
+  ]);
 
   const parsed = root?.includes(":")
     ? { type: root.slice(0, root.indexOf(":")), id: root.slice(root.indexOf(":") + 1) }
@@ -72,6 +75,7 @@ export default async function NetworkPage({
               initialDegrees={Object.fromEntries(webDegrees)}
               rootKey={null}
               truncated={false}
+              marks={marks}
               collapsible
             />
           </section>
@@ -190,6 +194,7 @@ export default async function NetworkPage({
             initialDegrees={Object.fromEntries(deg)}
             rootKey={`${parsed.type}:${parsed.id}`}
             truncated={graph.truncated}
+            marks={marks}
           />
         )}
       </section>
