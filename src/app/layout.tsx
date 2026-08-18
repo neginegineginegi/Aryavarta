@@ -60,7 +60,11 @@ export const metadata: Metadata = {
     locale: "en_IN",
   },
   twitter: {
-    card: "summary",
+    // The large card, not the small square one. Every share of this site is a
+    // link to a record, and the square thumbnail crops the card down to the
+    // wordmark with no room for the state, year or name that makes the link
+    // worth opening.
+    card: "summary_large_image",
   },
 };
 
