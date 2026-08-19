@@ -117,6 +117,28 @@ export function NetworkGraph({
    *  appear. The transform itself stays in the ref: a slide that re-rendered
    *  the tree on every pointer move would be a frame loop with extra steps. */
   const [viewMoved, setViewMoved] = useState(false);
+  /**
+   * Whether this is a screen the diagram cannot serve.
+   *
+   * At 390px the canvas renders about 326px wide, which puts an 11px label at
+   * three physical pixels. That is not a scaling problem with a scaling fix:
+   * label size is fixed in viewBox units, so no viewBox makes forty entities
+   * legible in that space. The list is the honest primary view there, and the
+   * diagram stays one tap away rather than being taken off the phone.
+   *
+   * Starts false so the server and the first client render agree; the effect
+   * corrects it on mount.
+   */
+  const [narrow, setNarrow] = useState(false);
+  const [diagramAnyway, setDiagramAnyway] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const read = () => setNarrow(mq.matches);
+    read();
+    mq.addEventListener("change", read);
+    return () => mq.removeEventListener("change", read);
+  }, []);
+  const drawDiagram = !narrow || diagramAnyway;
 
   /** The years the current network actually spans. */
   const span = useMemo(() => {
@@ -835,7 +857,20 @@ export function NetworkGraph({
         </div>
       )}
 
-      <div className="net-stage">
+      {narrow && !diagramAnyway && (
+        <div className="net-narrow">
+          <p>
+            {visibleNodes.length} entities and {visibleEdges.length} relationships are recorded
+            here. On a screen this width the diagram draws them about three pixels tall, so the
+            list below is the readable view.
+          </p>
+          <button type="button" className="net-plain" onClick={() => setDiagramAnyway(true)}>
+            Draw the diagram anyway
+          </button>
+        </div>
+      )}
+
+      <div className="net-stage" hidden={!drawDiagram}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}
@@ -1068,8 +1103,9 @@ export function NetworkGraph({
         </p>
       </div>
 
-      {/* The diagram is not the only way to read this. */}
-      <details className="net-list">
+      {/* The diagram is not the only way to read this, and on a narrow screen
+          it is not the best one either. */}
+      <details className="net-list" open={narrow}>
         <summary>Read the relationships as a list</summary>
         <ul>
           {visibleEdges.map((e) => {

@@ -12,7 +12,7 @@ const OPEN_DELAY = 55;
 const CLOSE_DELAY = 170;
 const STAGGER = 42;
 
-type Dest = { href: string; label: string; blurb?: string };
+export type Dest = { href: string; label: string; blurb?: string };
 type NavItem = { href: string; label: string; panel?: Dest[] };
 
 /**
@@ -21,7 +21,7 @@ type NavItem = { href: string; label: string; panel?: Dest[] };
  * a masthead with fewer links. Anchors point at ids that exist in the page
  * they name (`#indicators` in browse/page.tsx, `#faq` in page.tsx).
  */
-const NAV: NavItem[] = [
+export const NAV: NavItem[] = [
   {
     href: "/",
     label: "Map",

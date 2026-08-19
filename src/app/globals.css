@@ -1688,3 +1688,16 @@ a:hover .wordmark {
 }
 .net-mark-documented { border-left-color: var(--color-danger); }
 .net-mark-alleged { border-left-color: var(--color-disputed); }
+
+/* The network's narrow-screen notice: the diagram is not readable at phone
+   widths, so the list leads and the diagram is offered rather than imposed. */
+.net-narrow {
+  border: 1px solid var(--color-rule);
+  border-radius: 2px;
+  background: var(--color-paper-sunken);
+  padding: 0.9rem 1rem;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-ink-muted);
+}
+.net-narrow button { margin-top: 0.5rem; }
