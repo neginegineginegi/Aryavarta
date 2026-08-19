@@ -7,7 +7,14 @@ import { getSessionUser } from "@/lib/authz";
 
 export const metadata: Metadata = { title: "Sign in" };
 
-const DEV_LOGIN_ENABLED = process.env.AUTH_DEV_LOGIN === "insecure-dev-mode";
+// The same three locks as src/lib/auth.ts. If this drifts the page renders a
+// form whose provider is not registered, which fails as a confusing error
+// rather than as a refusal.
+const DEV_LOGIN_ENABLED =
+  process.env.AUTH_DEV_LOGIN === "insecure-dev-mode" &&
+  process.env.NODE_ENV !== "production" &&
+  process.env.VERCEL_ENV !== "production" &&
+  process.env.VERCEL_ENV !== "preview";
 
 function safeNext(raw: string | undefined): string {
   // Only allow same-site relative paths to prevent open redirects. Browsers
