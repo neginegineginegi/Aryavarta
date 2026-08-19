@@ -21,7 +21,10 @@ const PROJECT_LINKS = [
 export function Footer() {
   return (
     <footer className="mt-20 border-t border-rule-dark bg-paper-sunken">
-      <div className="mx-auto max-w-6xl px-6 py-10 text-[0.82rem] leading-relaxed text-ink-muted">
+      {/* The last element on the page, so under `viewport-fit=cover` it is the
+          one the home indicator lands on. `max()` keeps the existing 40px
+          bottom padding on every device without one. */}
+      <div className="mx-auto max-w-6xl px-6 pt-10 pb-[max(2.5rem,env(safe-area-inset-bottom))] text-[0.82rem] leading-relaxed text-ink-muted">
         <div className="flex flex-col gap-8 sm:flex-row sm:justify-between">
           <div className="max-w-md">
             <p lang="sa" className="font-brand text-lg text-ink">

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   IBM_Plex_Mono,
   Instrument_Sans,
@@ -68,6 +68,25 @@ export const metadata: Metadata = {
   },
 };
 
+// Next writes a `width=device-width, initial-scale=1` viewport tag on its own,
+// which is why there was no export here. `viewportFit` is the one field it
+// cannot infer, and without it a notched phone letterboxes the page: iOS insets
+// the whole document to the safe area, leaving bands of background beside the
+// masthead in landscape and under the tricolor at the top.
+//
+// `cover` hands the layout the full screen and the responsibility that comes
+// with it. Everything that touches an edge now reads `env(safe-area-inset-*)`
+// itself: the masthead (top and sides), the mobile nav panel (sides and
+// bottom) and the footer (bottom, for the home indicator).
+//
+// No `maximumScale` or `userScalable: false`. Pinch-zoom is how a lot of people
+// read an archive on a phone, and taking it away is a WCAG 1.4.4 failure.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -80,7 +99,12 @@ export default function RootLayout({
       lang="en"
       className={`${newsreader.variable} ${instrument.variable} ${plexMono.variable} ${tiroDevanagari.variable}`}
     >
-      <body className="min-h-screen flex flex-col">
+      {/* dvh, not vh: on iOS Safari `100vh` is the LARGE viewport, the height
+          the page would have if the toolbars were hidden. With the toolbars
+          showing, which is how a page first loads, a `min-h-screen` body is
+          taller than the screen and every short page gains a scrollbar it has
+          no content for. */}
+      <body className="min-h-dvh flex flex-col">
         <Header />
         <main className="flex-1">{children}</main>
         <Footer />

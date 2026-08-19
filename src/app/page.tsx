@@ -103,7 +103,14 @@ export default async function HomePage() {
           viewport edges and the surface runs unbroken from the top of the
           page, through the masthead, into the headline. Every later section
           resumes the inset card rhythm below. */}
-      <section className="hero-bleed section-card section-tint-hero relative flex min-h-[82vh] flex-col">
+      {/* svh, not vh and not dvh. `vh` is iOS Safari's LARGE viewport, so at
+          82vh the hero came within a few percent of filling a phone that still
+          had its toolbars up, and the scroll cue below it fell off the screen.
+          `dvh` fixes the height but re-measures as the toolbar collapses, which
+          would grow the hero mid-scroll and shove the rest of the page down
+          under the reader's thumb. `svh` is the toolbars-showing height: never
+          too tall, and it never moves. */}
+      <section className="hero-bleed section-card section-tint-hero relative flex min-h-[82svh] flex-col">
         <TricolorRibbon variant="wide" />
         <TricolorRibbon variant="sharp" />
 

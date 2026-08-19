@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { edgeEvidenceAction, expandNodeAction } from "@/actions/network";
 import type { EdgeEvidence } from "@/lib/db/queries/network";
@@ -131,6 +131,7 @@ export function NetworkGraph({
    */
   const [narrow, setNarrow] = useState(false);
   const [diagramAnyway, setDiagramAnyway] = useState(false);
+  const stageId = useId();
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 1023px)");
     const read = () => setNarrow(mq.matches);
@@ -857,20 +858,32 @@ export function NetworkGraph({
         </div>
       )}
 
-      {narrow && !diagramAnyway && (
+      {/* The narrow-screen notice stays mounted once the diagram is drawn, and
+          the control stays a real toggle. Unmounting the button on open would
+          delete the element the reader had just activated, dropping focus to
+          the top of the document, and would leave no way back to the list. */}
+      {narrow && (
         <div className="net-narrow">
-          <p>
-            {visibleNodes.length} entities and {visibleEdges.length} relationships are recorded
-            here. On a screen this width the diagram draws them about three pixels tall, so the
-            list below is the readable view.
-          </p>
-          <button type="button" className="net-plain" onClick={() => setDiagramAnyway(true)}>
-            Draw the diagram anyway
+          {!diagramAnyway && (
+            <p>
+              {visibleNodes.length} entities and {visibleEdges.length} relationships are
+              recorded here. On a screen this width the diagram draws them about three pixels
+              tall, so the list below is the readable view.
+            </p>
+          )}
+          <button
+            type="button"
+            className="net-plain net-narrow-btn"
+            aria-expanded={diagramAnyway}
+            aria-controls={stageId}
+            onClick={() => setDiagramAnyway((v) => !v)}
+          >
+            {diagramAnyway ? "Hide the diagram" : "Draw the diagram anyway"}
           </button>
         </div>
       )}
 
-      <div className="net-stage" hidden={!drawDiagram}>
+      <div className="net-stage" id={stageId} hidden={!drawDiagram}>
         <svg
           ref={svgRef}
           viewBox={`0 0 ${W} ${H}`}

@@ -1701,3 +1701,17 @@ a:hover .wordmark {
   color: var(--color-ink-muted);
 }
 .net-narrow button { margin-top: 0.5rem; }
+
+/* AuthNav is built for the masthead, where its controls sit beside each other
+   at desktop scale. Inside the mobile panel the same controls are thumb
+   targets, so they take the 44px minimum like everything else in there. */
+.mobile-auth a,
+.mobile-auth button {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* The diagram control is the only interactive element in its notice, so it
+   carries the touch-target minimum itself. */
+.net-narrow-btn { min-height: 44px; display: inline-flex; align-items: center; }
