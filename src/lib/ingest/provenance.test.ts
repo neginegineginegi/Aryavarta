@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  DEFERRED_UNTIL_SERIES_BREAKS,
+  isDeferredIndicator,
   PATH_STATEMENT,
   parseDatasetRow,
   parseRowProvenance,
@@ -163,13 +165,74 @@ describe("recordPath", () => {
     expect(recordPath({ provenance: false, approvedRevision: false })).toBe("unrecorded");
   });
 
-  it("says nothing about a record carrying no marker, rather than assuming one", () => {
-    expect(PATH_STATEMENT[recordPath({ provenance: false, approvedRevision: false })]).toContain(
-      "not recorded",
+  it("states the unknown case rather than leaving it blank", () => {
+    expect(PATH_STATEMENT[recordPath({ provenance: false, approvedRevision: false })]).toMatch(
+      /does not record/i,
     );
   });
 
   it("keeps a bulk row from reading as reviewed", () => {
-    expect(PATH_STATEMENT.bulk).toContain("No person has reviewed");
+    expect(PATH_STATEMENT.bulk).toMatch(/not reviewed by a person/i);
+  });
+});
+
+describe("indicator definitions on the bulk path", () => {
+  const known = new Set(["ncrb-2022"]);
+
+  it("accepts provenance columns on an indicator row, like any other bulk row", () => {
+    const r = parseRowProvenance({ dataset: "ncrb-2022", upstream_id: "Table 3A" }, known);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.value).toEqual({ dataset: "ncrb-2022", upstreamId: "Table 3A" });
+  });
+
+  it("holds back an indicator whose publisher revises the definition between years", () => {
+    expect(isDeferredIndicator("ncrb-crime-rate")).toBe(true);
+    expect(isDeferredIndicator("  ncrb-crimes-against-women  ")).toBe(true);
+  });
+
+  it("lets every other indicator through", () => {
+    expect(isDeferredIndicator("literacy-rate")).toBe(false);
+    expect(isDeferredIndicator("forest-cover")).toBe(false);
+    // Already in the archive, and deliberately not on the list: the gate
+    // refuses NEW definitions and changes nothing already recorded.
+    expect(isDeferredIndicator("ipc-crime-rate")).toBe(false);
+    expect(isDeferredIndicator("crimes-against-women-rate")).toBe(false);
+  });
+
+  it("names the deferred set explicitly, so lifting the gate is a visible edit", () => {
+    expect([...DEFERRED_UNTIL_SERIES_BREAKS].sort()).toEqual([
+      "ncrb-cognizable-crime-rate",
+      "ncrb-crime-rate",
+      "ncrb-crimes-against-women",
+    ]);
+  });
+});
+
+describe("every path is stated", () => {
+  it("has a sentence for all four states, none of them empty", () => {
+    for (const path of ["bulk", "reviewed", "both", "unrecorded"] as const) {
+      expect(PATH_STATEMENT[path].length).toBeGreaterThan(20);
+    }
+  });
+
+  it("states unrecorded rather than staying silent about it", () => {
+    // Silence on a legacy row reads as reassurance, and the reader ends up
+    // crediting a review that never happened.
+    expect(PATH_STATEMENT.unrecorded).toMatch(/does not record/i);
+  });
+
+  it("keeps reviewed a statement about process, not a quality mark", () => {
+    const s = PATH_STATEMENT.reviewed.toLowerCase();
+    for (const word of ["verified", "accurate", "trusted", "confirmed", "reliable"]) {
+      expect(s).not.toContain(word);
+    }
+  });
+
+  it("does not claim a bulk row came from a PUBLISHED dataset", () => {
+    // The same path carries curated inbox sheets. What it came from is named
+    // on the line below; the sentence only reports that nobody checked it.
+    expect(PATH_STATEMENT.bulk).not.toMatch(/published/i);
+    expect(PATH_STATEMENT.bulk).toMatch(/not reviewed by a person/i);
   });
 });

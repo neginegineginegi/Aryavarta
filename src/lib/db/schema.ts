@@ -196,6 +196,10 @@ export const citationSubjectEnum = pgEnum("citation_subject", [
   "election",
   "event",
   "indicator_value",
+  // The definition, not just the measurement. A definition has sources like
+  // anything else here, and an unsourced one is the same unsupported assertion
+  // the archive refuses everywhere else.
+  "indicator",
   "document",
   "manifesto_promise",
   "promise_status_claim",

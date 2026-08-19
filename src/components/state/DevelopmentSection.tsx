@@ -2,6 +2,8 @@ import Link from "next/link";
 import { Fragment } from "react";
 
 import type { IndicatorSeries } from "@/lib/db/queries/development";
+import type { Provenance } from "@/lib/db/queries/provenance";
+import { ProvenanceNote } from "@/components/ui/Citations";
 import { TrendChart } from "@/components/ui/TrendChart";
 import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
@@ -16,7 +18,15 @@ import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
  * A single table means a single column grid, so Latest/Trend/Source align
  * from the first category to the last.
  */
-export function DevelopmentSection({ grouped }: { grouped: Array<[string, IndicatorSeries[]]> }) {
+export function DevelopmentSection({
+  grouped,
+  provenance,
+}: {
+  grouped: Array<[string, IndicatorSeries[]]>;
+  /** One statement for the whole table. `mixed` means these rows did not all
+   *  arrive the same way, which the section says rather than averaging. */
+  provenance?: Provenance | { mixed: true; paths: string[] };
+}) {
   if (grouped.length === 0) return null;
 
   // Column gutters come from .rec-table in globals.css; padding utilities on
@@ -134,6 +144,18 @@ export function DevelopmentSection({ grouped }: { grouped: Array<[string, Indica
           </table>
         </div>
       </div>
+      {/* How every value above got here, said once for the table. Each row
+          already names its own source; this answers the different question of
+          whether a person checked it. */}
+      {provenance &&
+        ("mixed" in provenance ? (
+          <p className="mt-3 text-[0.82rem] leading-relaxed text-ink-muted">
+            These rows did not all enter the archive the same way: {provenance.paths.join(", ")}.
+            Each indicator&apos;s own page states which path its values took.
+          </p>
+        ) : (
+          <ProvenanceNote provenance={provenance} />
+        ))}
     </section>
   );
 }

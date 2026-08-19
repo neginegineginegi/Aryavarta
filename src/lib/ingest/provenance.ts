@@ -162,10 +162,58 @@ export function recordPath(has: { provenance: boolean; approvedRevision: boolean
   return "unrecorded";
 }
 
-/** What each path lets the archive say, in the reader's words. */
+/**
+ * What each path lets the archive say, in the reader's words.
+ *
+ * All four are stated. Silence is not an option for any of them, and least of
+ * all for `unrecorded`: if a record that says nothing reads as reviewed, then
+ * legacy rows collect credit they never earned, and the bulk statement's
+ * meaning leaks outward into everything that is merely quiet. Absence is
+ * displayed as absence, the same rule the archive follows for a missing date
+ * or a missing source.
+ *
+ * `reviewed` is deliberately flat. It records that a process happened, not
+ * that the result is good: a reviewed record can still be wrong, and a
+ * sentence that reads as a quality mark would be the archive scoring its own
+ * contents, which it does nowhere else.
+ *
+ * `bulk` says "directly" rather than "from a published dataset", because the
+ * same path carries curated inbox sheets as well as published datasets. What
+ * it came from is named on the line below it; what this sentence reports is
+ * that no person checked this row on its own.
+ */
 export const PATH_STATEMENT: Record<RecordPath, string> = {
-  bulk: "Loaded from a published dataset, named below. No person has reviewed this row individually.",
-  reviewed: "Proposed and reviewed by people, with its full edit history.",
-  both: "Loaded from a published dataset, then corrected through review. Both records are below.",
-  unrecorded: "How this row entered the archive is not recorded.",
+  bulk: "Loaded directly, and not reviewed by a person row by row. Where it came from is named below.",
+  reviewed: "A person reviewed and approved this record before it published.",
+  both: "Loaded directly, then corrected by a person through review. Both records are below.",
+  unrecorded: "The archive does not record which path this row took into it.",
 };
+
+/**
+ * Indicators held back until the archive can record a series break.
+ *
+ * A definition that changed between years produces a series the archive cannot
+ * yet describe honestly: the values line up in one column and one chart, and
+ * nothing on screen says 2015 and 2020 counted different things. Loading them
+ * first and explaining later means publishing a chart that misleads, and the
+ * explanation arrives after the reader has drawn the line with their eye.
+ *
+ * This is code rather than a note in a document because a note rots. It lifts
+ * when the series-break table exists: the design is deferred, not the decision.
+ * See the tier 3 gate in docs/ABHILEKH_DATA_PLAN.md.
+ *
+ * A break must annotate rather than block, when it exists. The archive records
+ * and does not withhold; what it must never do is draw a line across a break
+ * without the break being visible. Until it can draw that, it does not draw.
+ */
+export const DEFERRED_UNTIL_SERIES_BREAKS: ReadonlySet<string> = new Set([
+  // NCRB revises what counts as a cognizable crime, and which offences fall
+  // under crimes against women, between report years.
+  "ncrb-crime-rate",
+  "ncrb-crimes-against-women",
+  "ncrb-cognizable-crime-rate",
+]);
+
+export function isDeferredIndicator(id: string): boolean {
+  return DEFERRED_UNTIL_SERIES_BREAKS.has(id.trim());
+}

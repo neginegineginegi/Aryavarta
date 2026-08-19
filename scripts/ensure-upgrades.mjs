@@ -739,6 +739,15 @@ const STATEMENTS = [
        CHECK (confidence IS NULL OR (confidence BETWEEN 0 AND 100));
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
+  // --- upgrade 13: indicator definitions are citable --------------------------
+  // A definition has sources, and sometimes a change in the definition is the
+  // fact that matters: NCRB revises crime definitions between years, and a
+  // reader comparing 2015 with 2020 needs somewhere the change can be recorded
+  // and sourced. This makes the definition citable. It does not by itself
+  // record a CHANGE in one, which needs the series-break table (see the tier 3
+  // gate in docs/ABHILEKH_DATA_PLAN.md).
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'indicator'`,
+
   // --- upgrade 12: dataset provenance for bulk ingest ------------------------
   // Section 14a generalised. A loader importing a published dataset is not a
   // stranger proposing an edit, and staging two hundred thousand rows as

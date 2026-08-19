@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { getIndicatorAcrossStates } from "@/lib/db/queries/development";
+import { citationsForRecord, provenanceOf } from "@/lib/db/queries/provenance";
+
+import { ProvenanceNote, ReferenceList } from "@/components/ui/Citations";
 import { TrendChart } from "@/components/ui/TrendChart";
 import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
@@ -31,6 +34,10 @@ export default async function IndicatorPage({
   const data = await getIndicatorAcrossStates(indicatorId);
   if (!data) notFound();
   const { indicator, series } = data;
+  const [definitionSources, definitionProvenance] = await Promise.all([
+    citationsForRecord("indicator", indicator.id),
+    provenanceOf("indicator", indicator.id),
+  ]);
 
   return (
     <div className="mx-auto max-w-[1100px] px-4 pb-4">
@@ -51,6 +58,14 @@ export default async function IndicatorPage({
           {indicator.category} · {indicator.unit}
         </p>
         <p className="mt-3 max-w-2xl text-[0.9rem] text-ink-muted">{indicator.methodology}</p>
+        {/* The definition is a sourced claim in its own right. What a series
+            counts can change between publishers' report years, and a
+            methodology paragraph nobody can check is the same unsupported
+            assertion the archive refuses everywhere else. */}
+        <div className="max-w-2xl">
+          <ReferenceList sources={definitionSources} />
+          <ProvenanceNote provenance={definitionProvenance} />
+        </div>
         <p className="mt-2 max-w-2xl text-[0.78rem] text-ink-faint">
           Values are shown as published by their named sources. Abhilekh does not score, rank,
           or grade governments.

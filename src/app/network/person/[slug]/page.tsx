@@ -10,6 +10,8 @@ import {
   TxRow,
 } from "@/components/network/RecordParts";
 import { personRecord } from "@/lib/db/queries/entity";
+import { provenanceOf } from "@/lib/db/queries/provenance";
+import { ProvenanceNote } from "@/components/ui/Citations";
 import { formatPeriod } from "@/lib/funding/labels";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,7 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
   const { slug } = await params;
   const rec = await personRecord(slug);
   if (!rec) notFound();
+  const provenance = await provenanceOf("person_record", rec.person.id);
 
   const { person, labels } = rec;
   const href = (type: string, id: string) => {
@@ -85,6 +88,7 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
       <RecordSection title="The record">
         {person.summary && <p className="max-w-[70ch] text-[0.95rem]">{person.summary}</p>}
         <SourceLines citations={person.citations} />
+        <ProvenanceNote provenance={provenance} />
       </RecordSection>
 
       {rec.positions.length > 0 && (

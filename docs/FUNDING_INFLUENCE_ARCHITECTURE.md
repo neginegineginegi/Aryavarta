@@ -480,6 +480,22 @@ A column with a default would have made every one of those pre-existing rows
 claim a path nobody verified, which is why the marker lives in a side table and
 nothing already in the archive changed shape to accommodate it.
 
+**The funding layer marks itself.** 14a decided this layer inserts directly and
+said why, but saying it in a document is not saying it to a reader. Citations do
+not cover the gap: a citation answers where a fact came from, which is a
+different question from whether a person checked it. `load-funding-inbox.ts`
+now writes a path marker for every row it manages, against a dataset that
+describes what these sheets actually are — curated by hand, loaded directly,
+version "unversioned" because they are not a published edition.
+
+The pass runs over every row rather than only rows inserted on the current run.
+The loader skips rows that already exist, so a per-insert marker would have left
+the records already in the archive, the ones anybody is actually reading,
+permanently silent. This matters more here than elsewhere: funding is the most
+contestable data the archive holds, so an unreviewed claim about who paid whom
+needs its status stated more plainly than an unreviewed election result, not
+less.
+
 **What has not changed.** When a public contribution form reaches a bulk table,
 its submissions go through revisions like everything else. 14a's closing rule
 holds: this widens the bulk path, it does not replace review.

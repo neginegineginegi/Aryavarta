@@ -68,17 +68,18 @@ const SHEETS = {
 /**
  * Bulk sheets whose rows may carry `dataset` and `upstream_id`.
  *
- * The three absentees are absent for one reason. A source IS the citation
- * vocabulary rather than a claim expressed in it; a party colour is
- * presentation config nobody cites; an indicator is a definition, and what it
- * defines is the thing that gets measured. None of the three is a fact about
- * the world, and putting them through dataset provenance would be ceremony
- * that teaches readers to skim it.
+ * sources.csv and party_colors.csv are absent for one reason: a source IS the
+ * citation vocabulary rather than a claim expressed in it, and a party colour
+ * is presentation config nobody cites. Neither is a fact about the world.
  *
- * The `citation_subject` enum agrees: it carries `indicator_value` and not
- * `indicator`, because the value is what a reader cites.
+ * An indicator definition IS one. NCRB revises crime definitions between
+ * years and RBI has changed how GSDP at current prices is computed, so what a
+ * series counts is itself a sourced claim that can be wrong or can change. An
+ * unsourced definition is the same unsupported assertion the archive refuses
+ * everywhere else.
  */
-const PROVENANCE = new Set(["documents.csv", "indicator_values.csv"]);
+const PROVENANCE = new Set(["documents.csv", "indicators.csv", "indicator_values.csv"]);
+
 
 function readSheet(name: string): Array<Record<string, string>> {
   const p = join(INBOX, name);
@@ -116,8 +117,10 @@ async function main() {
 
   // App modules (transitively need tsconfig path resolution, which tsx provides).
   const { db } = await import("../src/lib/db");
-  const { states, revisions, terms, elections, events, indicators, indicatorValues, documents } =
-    await import("../src/lib/db/schema");
+  const {
+    states, revisions, terms, elections, events, indicators, indicatorValues, documents,
+    sources, citations,
+  } = await import("../src/lib/db/schema");
   const {
     termPayloadSchema,
     electionPayloadSchema,
@@ -154,7 +157,8 @@ async function main() {
   // and re-declaring one updates its fields: a publisher reissuing an edition
   // is the normal case, and the version column is what records the difference.
   // ===========================================================================
-  const { parseDatasetRow, parseRowProvenance } = await import("../src/lib/ingest/provenance");
+  const { parseDatasetRow, parseRowProvenance, isDeferredIndicator } =
+    await import("../src/lib/ingest/provenance");
   const { datasets, recordProvenance } = await import("../src/lib/db/schema");
 
   const datasetIdBySlug = new Map<string, string>();
@@ -226,7 +230,11 @@ async function main() {
     prov: RowProvenance,
   ): Promise<void> => {
     if (!prov) return;
-    await db
+    // `returning` rather than a bare insert: onConflictDoNothing drops a row
+    // whose provenance is already recorded, and a counter that fires anyway
+    // reports work that did not happen. Same shape as the indicator-values
+    // bug, in code written to fix it.
+    const wrote = await db
       .insert(recordProvenance)
       .values({
         subjectType: subjectType as "document",
@@ -235,8 +243,44 @@ async function main() {
         upstreamId: prov.upstreamId,
         ingestedOn: today,
       })
+      .onConflictDoNothing()
+      .returning({ subjectId: recordProvenance.subjectId });
+    if (wrote.length > 0) bump("provenance records");
+  };
+
+  /**
+   * Cite an indicator definition.
+   *
+   * Definitions are the one bulk record whose citations the loader writes
+   * directly into `citations`, because there is no revision payload to carry
+   * them: the definition is not staged, it is inserted.
+   */
+  const citeIndicator = async (indicatorId: string, src: SourceSnapshot) => {
+    const [row] = await db
+      .insert(sources)
+      .values({
+        id: uuidv7(),
+        title: src.title,
+        url: src.url,
+        publisher: src.publisher ?? null,
+        publishedOn: src.publishedOn ?? null,
+        accessedOn: today,
+      })
+      .onConflictDoNothing({ target: sources.url })
+      .returning({ id: sources.id });
+    let sourceId = row?.id;
+    if (!sourceId) {
+      const [found] = await db
+        .select({ id: sources.id })
+        .from(sources)
+        .where(eq(sources.url, src.url));
+      sourceId = found?.id;
+    }
+    if (!sourceId) return;
+    await db
+      .insert(citations)
+      .values({ subjectType: "indicator", subjectId: indicatorId, sourceId, note: null })
       .onConflictDoNothing();
-    bump("provenance records");
   };
 
   // ===========================================================================
@@ -775,12 +819,26 @@ async function main() {
     category: string;
     methodology: string;
   }> = [];
+  const indicatorProv = new Map<string, RowProvenance>();
+  const indicatorCites = new Map<string, string[]>();
   const valueRows: Array<typeof indicatorValues.$inferInsert> = [];
   for (const r of readSheet("indicators.csv")) {
     if (!r.id || !r.name || !r.unit || !r.category || !r.methodology) {
       skip(`indicator "${r.id || r.name}": all of id/name/unit/category/methodology are required`);
       continue;
     }
+    if (isDeferredIndicator(r.id)) {
+      skip(
+        `indicator "${r.id}": held until the series-break table exists. Its publisher has ` +
+          `revised the definition between years, and the archive cannot yet record that a ` +
+          `series changed what it counts. See the tier 3 gate in docs/ABHILEKH_DATA_PLAN.md.`,
+      );
+      continue;
+    }
+    const prov = checkProvenance("indicators.csv", r, `indicator "${r.id}"`);
+    if (prov === false) continue;
+    indicatorProv.set(r.id, prov);
+    if (r.sources?.trim()) indicatorCites.set(r.id, r.sources.split(";").map((x) => x.trim()).filter(Boolean));
     indicatorRows.push({
       id: r.id,
       name: r.name,
@@ -792,6 +850,12 @@ async function main() {
   // One statement per chunk instead of one per row: this script runs on every
   // deploy against a remote database, and a round trip per row was costing
   // minutes of build time to rewrite data that had not changed.
+  // Which ids are already here, read BEFORE the upsert. onConflictDoUpdate
+  // touches every row it is handed, so counting the chunk reported 51 created
+  // on every run forever when almost all of them were updates.
+  const existingIndicators = new Set(
+    (await db.select({ id: indicators.id }).from(indicators)).map((i) => i.id),
+  );
   for (const chunk of chunked(indicatorRows, 200)) {
     await db
       .insert(indicators)
@@ -805,7 +869,24 @@ async function main() {
           methodology: sql`excluded.methodology`,
         },
       });
-    report.created["indicators"] = (report.created["indicators"] ?? 0) + chunk.length;
+    const made = chunk.filter((i) => !existingIndicators.has(i.id)).length;
+    if (made > 0) report.created["indicators"] = (report.created["indicators"] ?? 0) + made;
+    const updated = chunk.length - made;
+    if (updated > 0)
+      report.created["indicators (definition updated)"] =
+        (report.created["indicators (definition updated)"] ?? 0) + updated;
+    for (const i of chunk) {
+      await writeProvenance("indicator", i.id, indicatorProv.get(i.id) ?? null);
+      const refs = indicatorCites.get(i.id) ?? [];
+      for (const ref of refs) {
+        const src = sourceById.get(ref);
+        if (!src) {
+          skip(`indicator "${i.id}": unknown source id "${ref}"`);
+          continue;
+        }
+        await citeIndicator(i.id, src);
+      }
+    }
   }
   const valueProv = new Map<string, RowProvenance>();
   for (const r of readSheet("indicator_values.csv")) {

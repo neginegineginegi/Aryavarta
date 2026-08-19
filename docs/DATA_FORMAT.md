@@ -238,11 +238,25 @@ and the row is skipped.
 `upstream_id` is printed to readers as the publisher wrote it. A natural key
 (`AC_2024_MH_042`) beats a line number, which shifts when a publisher reissues.
 
-The other three bulk sheets take no provenance. A source IS the citation
-vocabulary rather than a claim expressed in it, a party colour is presentation
-config nobody cites, and an indicator is a definition rather than a
-measurement. The `citation_subject` enum agrees: it carries `indicator_value`
-and not `indicator`.
+`sources.csv` and `party_colors.csv` take no provenance. A source IS the
+citation vocabulary rather than a claim expressed in it, and a party colour is
+presentation config nobody cites.
+
+`indicators.csv` does take it, and also takes a `sources` column. A definition
+is a sourced claim: what a series counts can change between a publisher's
+report years, and an unsourced methodology paragraph is the same unsupported
+assertion the archive refuses everywhere else.
+
+```csv
+id,name,unit,category,methodology,sources,dataset,upstream_id
+literacy-rate,Literacy rate,%,Education,"Share of persons aged 7+ able to read and write.",S1,census-2011,Table C-8
+```
+
+**A definition that CHANGED between years cannot yet be recorded.** Citing a
+definition says where the current one came from; it does not say the series
+counted something different in 2016. Indicators whose publishers revise
+definitions between years are refused by the loader until the series-break
+table exists. See the tier 3 gate in `docs/ABHILEKH_DATA_PLAN.md`.
 
 ### funding_orgs.csv
 

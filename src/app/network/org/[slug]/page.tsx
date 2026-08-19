@@ -10,6 +10,8 @@ import {
   TxRow,
 } from "@/components/network/RecordParts";
 import { orgRecord } from "@/lib/db/queries/entity";
+import { provenanceOf } from "@/lib/db/queries/provenance";
+import { ProvenanceNote } from "@/components/ui/Citations";
 import { edgeLabel, formatPeriod, ORG_KIND_LABELS } from "@/lib/funding/labels";
 
 export const dynamic = "force-dynamic";
@@ -41,6 +43,7 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
   const { slug } = await params;
   const rec = await orgRecord(slug);
   if (!rec) notFound();
+  const provenance = await provenanceOf("org", rec.org.id);
 
   const { org, labels } = rec;
   const href = (type: string, id: string) => {
@@ -156,6 +159,11 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
           </p>
         )}
         <SourceLines citations={org.citations} />
+        {/* Funding is the most contestable data the archive holds, so how a
+            record got here is stated on the record itself rather than left to
+            be inferred from the citations. A citation says where a fact came
+            from; it does not say whether anybody checked it. */}
+        <ProvenanceNote provenance={provenance} />
       </RecordSection>
 
       {(rec.received.length > 0 || rec.given.length > 0) && (

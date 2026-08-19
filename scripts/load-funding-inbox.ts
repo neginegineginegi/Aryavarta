@@ -878,6 +878,82 @@ async function main() {
     bump("match_candidates");
   }
 
+  // ===========================================================================
+  // PATH MARKER: every row this loader manages is bulk-ingested
+  //
+  // Section 14a decided that this layer inserts directly, and said why. What it
+  // did not do is tell the READER, and citations do not cover it: a citation
+  // answers where a fact came from, which is a different question from whether
+  // a person checked it. Without this pass every funding record renders with
+  // its sources and no statement of path, and a reader who has learned that
+  // bulk rows say so will read the silence as review.
+  //
+  // That matters more here than anywhere else in the archive. Funding is the
+  // most contestable data it holds, so an unreviewed claim about who paid whom
+  // needs its status stated more plainly than an unreviewed election result,
+  // not less.
+  //
+  // The pass is set-based and runs over EVERY row, not just rows inserted on
+  // this run. The loader skips rows that already exist, so a per-insert marker
+  // would have left the ninety-odd records already in the archive — the ones
+  // anybody is actually reading — permanently silent.
+  const FUNDING_DATASET = "abhilekh-funding-inbox";
+  let fundingDatasetId = (
+    await db
+      .select({ id: schema.datasets.id })
+      .from(schema.datasets)
+      .where(eq(schema.datasets.slug, FUNDING_DATASET))
+  )[0]?.id;
+  if (!fundingDatasetId) {
+    fundingDatasetId = uuidv7();
+    await db.insert(schema.datasets).values({
+      id: fundingDatasetId,
+      slug: FUNDING_DATASET,
+      name: "Funding and influence inbox (curated sheets)",
+      publisher: "Abhilekh",
+      // Not a published dataset with editions. Saying so is the honest use of
+      // this field, and the reason "unversioned" exists as a stated value.
+      version: "unversioned",
+      licence: "CC BY-SA 4.0",
+      licenceUrl: "https://creativecommons.org/licenses/by-sa/4.0/",
+      retrievedOn: today,
+      upstreamUrl: "https://github.com/neginegineginegi/Aryavarta/tree/main/data/inbox",
+      curator: "Abhilekh curators",
+      notes:
+        "Rows curated by hand from the sources cited on each record, then loaded directly. " +
+        "No row in this layer has been reviewed individually by a second person.",
+    });
+  }
+
+  // (subject_type, table, the column that identifies a row upstream)
+  const MARKED: Array<[string, string, string]> = [
+    ["org", "orgs", "slug"],
+    ["person_record", "people", "slug"],
+    ["funding_transaction", "funding_transactions", "id"],
+    ["board_position", "board_positions", "id"],
+    ["fcra_registration", "fcra_registrations", "id"],
+    ["relationship", "relationships", "id"],
+    ["outcome", "outcomes", "id"],
+    ["claim", "claims", "id"],
+  ];
+  let marked = 0;
+  for (const [subjectType, table, idCol] of MARKED) {
+    const res = await db.execute(
+      sql.raw(`
+        INSERT INTO record_provenance (subject_type, subject_id, dataset_id, upstream_id, ingested_on)
+        SELECT '${subjectType}', t.id::text, '${fundingDatasetId}', t.${idCol}::text, '${today}'
+          FROM ${table} t
+         WHERE NOT EXISTS (
+           SELECT 1 FROM record_provenance p
+            WHERE p.subject_type = '${subjectType}' AND p.subject_id = t.id::text
+         )
+        RETURNING subject_id
+      `),
+    );
+    marked += res.rows.length;
+  }
+  if (marked > 0) report.created["path markers"] = marked;
+
   // --- report ----------------------------------------------------------------
   const citedUrls = new Set(sourceIdByUrl.keys());
   const unused = [...srcById.entries()].filter(([, s]) => !citedUrls.has(s.url)).map(([id]) => id);

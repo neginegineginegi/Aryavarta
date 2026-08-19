@@ -8,6 +8,7 @@ import { YearFocus } from "@/components/state/YearFocus";
 import { AdminRemoveButton } from "@/components/admin/AdminRemoveButton";
 import { DevelopmentSection } from "@/components/state/DevelopmentSection";
 import { getDevelopment } from "@/lib/db/queries/development";
+import { provenanceOfMany } from "@/lib/db/queries/provenance";
 import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks } from "@/components/ui/Citations";
 import { EmptyState } from "@/components/ui/States";
@@ -60,6 +61,15 @@ export default async function StatePage({
     getStateArticle(stateId),
     getDevelopment(stateId),
   ]);
+  // One statement for the section: every value in it took the same path, so
+  // saying it forty times would be noise, and saying it nowhere would let the
+  // reader assume review that did not happen.
+  const developmentProvenance = await provenanceOfMany(
+    "indicator_value",
+    // `development` is an array of [category, series[]] pairs, not a Map.
+    development.flatMap(([, series]) => series.flatMap((one) => one.values.map((v) => v.id))),
+  );
+
   if (!article) notFound();
 
   const { state, terms: allTerms, elections, events } = article;
@@ -397,7 +407,7 @@ export default async function StatePage({
       </section>
 
       {/* References */}
-      <DevelopmentSection grouped={development} />
+      <DevelopmentSection grouped={development} provenance={developmentProvenance} />
 
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[30px] font-light leading-tight text-ink">References</h2>

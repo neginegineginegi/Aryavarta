@@ -6,6 +6,8 @@ import { indicatorValues, indicators } from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 
 export type IndicatorValuePoint = {
+  /** The indicator_values row id, so a surface can resolve its provenance. */
+  id: string;
   year: number;
   value: string;
   sourceTitle: string;
@@ -39,6 +41,7 @@ async function fetchDevelopment(stateId: string): Promise<Map<string, IndicatorS
       category: indicators.category,
       methodology: indicators.methodology,
       displayOrder: indicators.displayOrder,
+      valueId: indicatorValues.id,
       year: indicatorValues.year,
       value: indicatorValues.value,
       sourceTitle: indicatorValues.sourceTitle,
@@ -64,6 +67,7 @@ async function fetchDevelopment(stateId: string): Promise<Map<string, IndicatorS
       values: [],
     };
     s.values.push({
+      id: r.valueId,
       year: r.year,
       value: r.value,
       sourceTitle: r.sourceTitle,
@@ -158,6 +162,7 @@ export async function getIndicatorAcrossStates(indicatorId: string): Promise<{
       stateId: indicatorValues.stateId,
       stateName: states.name,
       stateKind: states.kind,
+      valueId: indicatorValues.id,
       year: indicatorValues.year,
       value: indicatorValues.value,
       sourceTitle: indicatorValues.sourceTitle,
@@ -181,6 +186,7 @@ export async function getIndicatorAcrossStates(indicatorId: string): Promise<{
       values: [],
     };
     s.values.push({
+      id: r.valueId,
       year: r.year,
       value: r.value,
       sourceTitle: r.sourceTitle,

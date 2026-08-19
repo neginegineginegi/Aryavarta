@@ -121,12 +121,17 @@ export function DatasetEntry({ dataset, n }: { dataset: DatasetRef; n: number })
  * row" and "proposed and reviewed by people" are different claims about the
  * same fact and the reader is owed the difference before they read the fact.
  *
- * Renders nothing when the archive has no marker either way. Saying "how this
- * arrived is not recorded" on every legacy row would be noise; the sentence is
- * available in PATH_STATEMENT for surfaces that want it.
+ * All four states render, including `unrecorded`. An earlier version of this
+ * returned null for that case on the grounds that it was noise, which had it
+ * backwards: silence on a legacy row is read as reassurance, and the reader
+ * ends up crediting a review that never happened. The archive displays absence
+ * as absence here as it does everywhere else.
+ *
+ * No badge, no colour, no icon. Each state gets the same sentence in the same
+ * type at the same weight, because which path a record took is a fact about
+ * process and not a rating of the record.
  */
 export function ProvenanceNote({ provenance }: { provenance: Provenance }) {
-  if (provenance.path === "unrecorded") return null;
   return (
     <div className="mt-3">
       <p className="text-[0.82rem] leading-relaxed text-ink-muted">

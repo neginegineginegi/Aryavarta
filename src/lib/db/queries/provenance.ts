@@ -107,3 +107,60 @@ export async function provenanceOf(subjectType: string, id: string): Promise<Pro
   const map = await provenanceFor(subjectType, [id]);
   return map.get(id) ?? EMPTY;
 }
+
+/**
+ * The sources cited for one record, in the shape the reference list renders.
+ *
+ * Bulk records write their citations straight into `citations` rather than
+ * through a revision payload, so there is no existing query that reaches them.
+ */
+export async function citationsForRecord(
+  subjectType: string,
+  id: string,
+): Promise<
+  Array<{
+    id: string;
+    title: string;
+    url: string;
+    publisher: string | null;
+    publishedOn: string | null;
+    accessedOn: string | null;
+  }>
+> {
+  const res = await db.execute(sql`
+    SELECT s.id, s.title, s.url, s.publisher, s.published_on, s.accessed_on
+      FROM citations c
+      JOIN sources s ON s.id = c.source_id
+     WHERE c.subject_type = ${subjectType} AND c.subject_id = ${id}
+     ORDER BY s.title
+  `);
+  return (res.rows as Array<Record<string, string | null>>).map((r) => ({
+    id: r.id!,
+    title: r.title!,
+    url: r.url!,
+    publisher: r.publisher,
+    publishedOn: r.published_on,
+    accessedOn: r.accessed_on,
+  }));
+}
+
+/**
+ * One statement covering a set of records of the same kind.
+ *
+ * A section listing forty indicator values does not want forty path
+ * statements. Where every record on screen took the same path, the section
+ * says it once. Where they differ, the section says THAT, rather than picking
+ * the majority and quietly misdescribing the rest.
+ */
+export async function provenanceOfMany(
+  subjectType: string,
+  ids: string[],
+): Promise<Provenance | { mixed: true; paths: RecordPath[] }> {
+  const map = await provenanceFor(subjectType, ids);
+  const paths = [...new Set([...map.values()].map((p) => p.path))].sort();
+  if (paths.length === 0) return EMPTY;
+  if (paths.length > 1) return { mixed: true, paths };
+  const datasets = new Map<string, DatasetRef>();
+  for (const p of map.values()) for (const d of p.datasets) datasets.set(d.slug, d);
+  return { path: paths[0], datasets: [...datasets.values()] };
+}
