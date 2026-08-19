@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 
 import { PartyTag } from "@/components/ui/PartyTag";
 import { getDocument } from "@/lib/db/queries/documents";
+import { provenanceOf } from "@/lib/db/queries/provenance";
+import { ProvenanceNote } from "@/components/ui/Citations";
 import { getPromisesForDocument, type PromiseRow } from "@/lib/db/queries/promises";
 import {
   DOCUMENT_TYPE_LABELS,
@@ -118,6 +120,7 @@ export default async function DocumentPage({
 }) {
   const { documentId } = await params;
   const doc = await getDocument(documentId);
+  const provenance = await provenanceOf("document", documentId);
   if (!doc) notFound();
 
   const promises = await getPromisesForDocument(doc.id);
@@ -238,6 +241,9 @@ export default async function DocumentPage({
             ? " Its text has been extracted, so the archive search reaches inside it."
             : " Its text has not been extracted, so it is searchable by title, publisher and date only."}
         </p>
+        {/* How this record entered the archive, in the same vocabulary the
+            references list uses. Renders nothing when neither marker exists. */}
+        <ProvenanceNote provenance={provenance} />
       </section>
 
       {promises.length > 0 && (

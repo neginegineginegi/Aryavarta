@@ -560,6 +560,80 @@ export const sources = pgTable("sources", {
 });
 
 /**
+ * A published dataset the archive has ingested in bulk.
+ *
+ * The generalisation of section 14a. Review earns its keep when the proposer
+ * and the reviewer are different people; a loader importing two hundred
+ * thousand constituency results is neither, and a queue that size is one
+ * nobody empties. So bulk rows insert directly, and what replaces review is
+ * this: the reader is told exactly which published dataset a fact came from,
+ * at which version, under which licence, retrieved when, by whom.
+ *
+ * That is a different claim from "a person checked this", and the interface
+ * has to be able to say which one it is making. It is not a weaker claim.
+ * A named edition of a CAG report is more checkable than a volunteer's tick,
+ * because anyone can fetch the same edition and look.
+ *
+ * `version` is NOT NULL and "unversioned" is its correct value when the
+ * publisher issues none: a null could not distinguish a publisher who does not
+ * version from a curator who did not look.
+ */
+export const datasets = pgTable("datasets", {
+  id: uuid("id").primaryKey(),
+  /** Stable key the inbox sheets reference. */
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  publisher: text("publisher").notNull(),
+  version: text("version").notNull(),
+  licence: text("licence").notNull(),
+  licenceUrl: text("licence_url"),
+  retrievedOn: date("retrieved_on").notNull(),
+  upstreamUrl: text("upstream_url").notNull(),
+  /** Who ran the ingest. Not a user reference: a curator need not have an
+   *  account, and the name in the record should outlive the account anyway. */
+  curator: text("curator").notNull(),
+  notes: text("notes"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+/**
+ * Which dataset a bulk-ingested row came from, and where inside it.
+ *
+ * Shaped deliberately like `citations`: same polymorphic key, same composite
+ * primary key, same indexes. Provenance is a sibling of citation, not a
+ * parallel system, and the tables say so before any component does.
+ *
+ * `upstreamId` is the whole traceability claim, so it is required. It carries
+ * the row's own identifier in the source file, which lets a reader take one
+ * fact from this archive back to one line of the publisher's data.
+ *
+ * There is no `ingest_path` column on the records themselves. A row here IS
+ * the bulk marker, an approved revision is the review marker, and a record can
+ * carry both: bulk-ingested, then corrected by a person. A column with a
+ * default would have made every pre-existing row claim a path nobody verified.
+ */
+export const recordProvenance = pgTable(
+  "record_provenance",
+  {
+    subjectType: citationSubjectEnum("subject_type").notNull(),
+    subjectId: text("subject_id").notNull(),
+    datasetId: uuid("dataset_id")
+      .notNull()
+      .references(() => datasets.id),
+    /** The row's identifier in the source file: a natural key where the
+     *  publisher gives one, a line reference where it does not. */
+    upstreamId: text("upstream_id").notNull(),
+    ingestedOn: date("ingested_on").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.subjectType, t.subjectId, t.datasetId] }),
+    index("record_provenance_subject_idx").on(t.subjectType, t.subjectId),
+    index("record_provenance_dataset_idx").on(t.datasetId),
+  ],
+);
+
+/**
  * Polymorphic citations.
  *
  * Replaces the per-entity join tables (term_sources, election_sources,
@@ -787,6 +861,10 @@ export const documentsRelations = relations(documents, ({ one, many }) => ({
 
 export const citationsRelations = relations(citations, ({ one }) => ({
   source: one(sources, { fields: [citations.sourceId], references: [sources.id] }),
+}));
+
+export const recordProvenanceRelations = relations(recordProvenance, ({ one }) => ({
+  dataset: one(datasets, { fields: [recordProvenance.datasetId], references: [datasets.id] }),
 }));
 
 export const partiesRelations = relations(parties, ({ many }) => ({

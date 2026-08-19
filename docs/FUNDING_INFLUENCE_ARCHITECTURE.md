@@ -424,6 +424,70 @@ What the loader enforces, per row, skipping loudly and repairing nothing:
   says why when the kind smells like an accusation;
 - inserts are idempotent and rows are never updated in place.
 
+## 14b. The rule generalised: bulk ingest and dataset provenance
+
+Section 14a decided how the funding layer ingests, and stated its reasoning so
+it could be argued with. The reasoning turned out to be general, so it now
+applies across the archive and lives in `scripts/load-inbox.ts` as well.
+
+**The rule.** A row entering the archive takes one of exactly two paths.
+
+*Contribution path.* Somebody proposes a fact. It stages as a pending revision
+and a different person reviews it before it publishes. Terms, elections and
+events go this way, and an import of them is not exempt: `load-inbox.ts` files
+imported political content as pending drafts exactly as a stranger's proposal
+would be.
+
+*Bulk path.* A published dataset is loaded wholesale. Rows insert directly.
+
+**Why the second path exists.** Review earns its keep when the proposer and the
+reviewer are different people. A loader importing two hundred thousand
+constituency results is neither: the curator who ran it would be approving
+their own rows, and a queue that size is one nobody empties. A queue nobody
+empties is not review. It is a backlog wearing review's clothes, and the
+archive would be claiming an assurance it does not provide.
+
+**What replaces review.** Provenance, recorded per dataset in `datasets` and
+per row in `record_provenance`. The reader is told which published dataset a
+fact came from, at which version, under which licence, retrieved when, by whom,
+and which line of that dataset the row is. That is a *different* claim from "a
+person checked this", and the interface says which one it is making, in those
+words, wherever the fact appears.
+
+It is not a weaker claim. A named edition of a public report is more checkable
+than a volunteer's tick, because anyone can fetch the same edition and look.
+What it is not is a review, and the archive must never let one read as the
+other.
+
+**How a reader tells them apart.** There is no `origin` column on the records.
+A row in `record_provenance` is the bulk marker; an approved revision is the
+review marker; `recordPath()` in `src/lib/ingest/provenance.ts` resolves the
+pair into four states, and all four are honest:
+
+| Path | What the archive says |
+| --- | --- |
+| `bulk` | Loaded from a named dataset. No person reviewed this row individually. |
+| `reviewed` | Proposed and reviewed by people, with its full edit history. |
+| `both` | Loaded in bulk, then corrected through review. Both records shown. |
+| `unrecorded` | How this row arrived is not recorded. |
+
+`both` is not an edge case to collapse: a bulk row later corrected by a person
+is the case a reader most needs described, because the correction is the
+interesting part. `unrecorded` exists because rows predating this mechanism
+carry no marker of either kind, and the archive says so rather than assuming.
+
+A column with a default would have made every one of those pre-existing rows
+claim a path nobody verified, which is why the marker lives in a side table and
+nothing already in the archive changed shape to accommodate it.
+
+**What has not changed.** When a public contribution form reaches a bulk table,
+its submissions go through revisions like everything else. 14a's closing rule
+holds: this widens the bulk path, it does not replace review.
+
+**Which sheets take which path** is declared in `SHEETS` at the top of
+`load-inbox.ts` and printed in the loader's report on every run, so a sheet
+cannot change path quietly. Formats are in `docs/DATA_FORMAT.md`.
+
 ## 15. Build order
 
 | Phase | Deliverable | Status |

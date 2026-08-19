@@ -739,6 +739,44 @@ const STATEMENTS = [
        CHECK (confidence IS NULL OR (confidence BETWEEN 0 AND 100));
    EXCEPTION WHEN duplicate_object THEN NULL; END $$`,
 
+  // --- upgrade 12: dataset provenance for bulk ingest ------------------------
+  // Section 14a generalised. A loader importing a published dataset is not a
+  // stranger proposing an edit, and staging two hundred thousand rows as
+  // pending drafts makes a queue nobody empties. Bulk rows insert directly and
+  // carry this instead: which dataset, which version, which licence, retrieved
+  // when, by whom, and where inside the file the row came from.
+  //
+  // Nothing here alters an existing table. A row in record_provenance is the
+  // bulk marker; an approved revision is the review marker; a record may carry
+  // both, and one that carries neither says so rather than guessing.
+  `CREATE TABLE IF NOT EXISTS "datasets" (
+     "id" uuid PRIMARY KEY,
+     "slug" text NOT NULL UNIQUE,
+     "name" text NOT NULL,
+     "publisher" text NOT NULL,
+     "version" text NOT NULL,
+     "licence" text NOT NULL,
+     "licence_url" text,
+     "retrieved_on" date NOT NULL,
+     "upstream_url" text NOT NULL,
+     "curator" text NOT NULL,
+     "notes" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   )`,
+  `CREATE TABLE IF NOT EXISTS "record_provenance" (
+     "subject_type" "citation_subject" NOT NULL,
+     "subject_id" text NOT NULL,
+     "dataset_id" uuid NOT NULL REFERENCES "datasets"("id"),
+     "upstream_id" text NOT NULL,
+     "ingested_on" date NOT NULL,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+     PRIMARY KEY ("subject_type", "subject_id", "dataset_id")
+   )`,
+  `CREATE INDEX IF NOT EXISTS "record_provenance_subject_idx"
+     ON "record_provenance" ("subject_type", "subject_id")`,
+  `CREATE INDEX IF NOT EXISTS "record_provenance_dataset_idx"
+     ON "record_provenance" ("dataset_id")`,
+
   // --- upgrade 11: disclosed revisions --------------------------------------
   // A later batch may improve what an earlier one recorded in passing, but only
   // by saying so. The loader refuses to touch a recorded name, kind or summary

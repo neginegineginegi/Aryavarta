@@ -182,6 +182,68 @@ FS1,FCRA Annual Return FC-4 2021-22,https://fcraonline.nic.in/...,Ministry of Ho
 `grant_database`, `org_document`, `org_statement`, `parliamentary_record`,
 `rti_response`, `news`, `research`, `social_media`, ...).
 
+## Bulk ingest and provenance
+
+Sheets take one of two paths, declared in `SHEETS` at the top of
+`scripts/load-inbox.ts`.
+
+**Contribution path** — `terms.csv`, `term_updates.csv`, `elections.csv`,
+`results.csv`, `events.csv`. Every row becomes a pending revision reviewed in
+`/review`, exactly as a stranger's proposal would be. An import is not exempt
+from review.
+
+**Bulk path** — `sources.csv`, `party_colors.csv`, `documents.csv`,
+`indicators.csv`, `indicator_values.csv`. Rows insert directly. What replaces
+review here is provenance: the reader is told which published dataset the row
+came from, at which version, under which licence, retrieved when and by whom.
+
+Moving a sheet between those lists changes whether a person reviews its rows.
+It is a decision about the archive, not a refactor.
+
+### datasets.csv
+
+Declares a dataset before any row references it.
+
+```csv
+slug,name,publisher,version,licence,licence_url,retrieved_on,upstream_url,curator,notes
+cag-state-finances-2024-25,State Finances Audit Report 2024-25,Comptroller and Auditor General of India,2024-25 edition,Government Open Data Licence India,https://data.gov.in/government-open-data-license-india,2026-08-18,https://cag.gov.in/en/audit-report,A. Curator,Annexures 14 and 15
+```
+
+Every column except `licence_url` and `notes` is required.
+
+`version` is required, and **"unversioned" is its correct value when the
+publisher issues none**. An empty version cannot be told apart from a curator
+who did not look, and those are different facts about the dataset.
+
+`retrieved_on` must be a full ISO date. A dataset retrieved "March 2026" cannot
+be re-fetched to the state it was in.
+
+Re-declaring a slug updates the dataset's fields. A publisher reissuing an
+edition is the normal case, and `version` is what records the difference.
+
+### Provenance columns on a bulk row
+
+`documents.csv` and `indicator_values.csv` accept two more columns:
+
+| Column | Meaning |
+| --- | --- |
+| `dataset` | a slug declared in `datasets.csv` |
+| `upstream_id` | this row's own identifier inside that dataset |
+
+**Both or neither.** A row that names its dataset without saying which line of
+it it came from claims a traceability it cannot deliver; a row with an upstream
+id and no dataset has nothing to trace against. Either half alone is refused
+and the row is skipped.
+
+`upstream_id` is printed to readers as the publisher wrote it. A natural key
+(`AC_2024_MH_042`) beats a line number, which shifts when a publisher reissues.
+
+The other three bulk sheets take no provenance. A source IS the citation
+vocabulary rather than a claim expressed in it, a party colour is presentation
+config nobody cites, and an indicator is a definition rather than a
+measurement. The `citation_subject` enum agrees: it carries `indicator_value`
+and not `indicator`.
+
 ### funding_orgs.csv
 
 ```csv

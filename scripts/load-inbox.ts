@@ -1,17 +1,39 @@
 /* eslint-disable no-console */
 /**
- * Bulk CSV loader: turns files in data/inbox/ into PENDING Import Bot drafts,
- * exactly like the Wikidata pipeline. Runs before every build (like
- * ensure-upgrades) and is idempotent: rows whose entity already exists live,
- * or already has a pending imported draft, are skipped, so committed inbox
- * files can stay in the repo.
+ * The inbox loader, and its two paths.
  *
- * Sheets (all optional): sources.csv, terms.csv, elections.csv, results.csv,
- * events.csv, indicators.csv, indicator_values.csv. Format: docs/DATA_FORMAT.md.
+ * Runs before every build, like ensure-upgrades, and is idempotent: rows whose
+ * entity already exists live, or already has a pending imported draft, are
+ * skipped, so committed inbox files can stay in the repo. Formats are in
+ * docs/DATA_FORMAT.md.
  *
- * Political content NEVER publishes directly: every row becomes a pending
- * revision reviewed in /review. Development Lens rows are curated reference
- * data and upsert directly, carrying their inline sources.
+ * Every sheet takes one of two paths, and which one is declared in SHEETS
+ * below rather than left to be inferred from what the code happens to do.
+ *
+ * CONTRIBUTION PATH. Political content never publishes directly. A term, an
+ * election, an event: each row becomes a PENDING revision reviewed in /review,
+ * exactly as a stranger's proposal would be. Review is the point, and an
+ * import is not exempt from it.
+ *
+ * BULK PATH. A published dataset loaded wholesale is a different act. Section
+ * 14a of docs/FUNDING_INFLUENCE_ARCHITECTURE.md made this call once for the
+ * funding layer; the reasoning generalises. Review earns its keep when the
+ * proposer and the reviewer are different people, and a loader importing two
+ * hundred thousand constituency results is neither: staging them would build a
+ * queue nobody empties, and a queue nobody empties is not review, it is a
+ * backlog wearing review's clothes.
+ *
+ * What replaces review on that path is provenance. A bulk row may name the
+ * dataset it came from and its own line within that dataset, and the archive
+ * then tells the reader which published dataset, at which version, under which
+ * licence, retrieved when and by whom. That is a different claim from "a
+ * person checked this" and the interface says so in those words. It is not a
+ * weaker claim: a named edition of a public report is more checkable than a
+ * volunteer's tick, because anyone can fetch the same edition and look.
+ *
+ * When a public contribution form reaches one of the bulk tables, its
+ * submissions go through revisions like everything else. This widens the bulk
+ * path; it does not replace review.
  */
 import "dotenv/config";
 import { existsSync, readFileSync, readdirSync } from "node:fs";
@@ -22,7 +44,41 @@ import { and, eq, sql } from "drizzle-orm";
 import type { SourceSnapshot } from "../src/lib/revisions/payloads";
 import { parseCsv } from "../src/lib/csv";
 
-const INBOX = join(process.cwd(), "data", "inbox");
+/** INBOX_DIR overrides the directory, for testing against sheets that are not
+ *  committed. Same override the funding loader carries. */
+const INBOX = process.env.INBOX_DIR || join(process.cwd(), "data", "inbox");
+
+/**
+ * Which path each sheet takes. The end-of-run report prints from this, so a
+ * sheet cannot change path without the log announcing it, and a reader of this
+ * file learns the split in one place instead of by tracing ten loops.
+ *
+ * Moving a sheet between these lists changes whether its rows are reviewed by
+ * a person. It is a decision about the archive, not a refactor.
+ */
+const SHEETS = {
+  /** Staged as pending revisions, reviewed in /review before publishing. */
+  contribution: ["terms.csv", "term_updates.csv", "elections.csv", "results.csv", "events.csv"],
+  /** Inserted directly. Rows may carry dataset provenance; see PROVENANCE. */
+  bulk: ["sources.csv", "party_colors.csv", "documents.csv", "indicators.csv", "indicator_values.csv"],
+  /** Declares the datasets the bulk sheets reference. */
+  declaration: ["datasets.csv"],
+} as const;
+
+/**
+ * Bulk sheets whose rows may carry `dataset` and `upstream_id`.
+ *
+ * The three absentees are absent for one reason. A source IS the citation
+ * vocabulary rather than a claim expressed in it; a party colour is
+ * presentation config nobody cites; an indicator is a definition, and what it
+ * defines is the thing that gets measured. None of the three is a fact about
+ * the world, and putting them through dataset provenance would be ceremony
+ * that teaches readers to skim it.
+ *
+ * The `citation_subject` enum agrees: it carries `indicator_value` and not
+ * `indicator`, because the value is what a reader cites.
+ */
+const PROVENANCE = new Set(["documents.csv", "indicator_values.csv"]);
 
 function readSheet(name: string): Array<Record<string, string>> {
   const p = join(INBOX, name);
@@ -90,7 +146,102 @@ async function main() {
   stateByKey.set("india", stateByKey.get("in")!);
   const resolveState = (raw: string) => stateByKey.get(raw.trim().toLowerCase()) ?? null;
 
-  // --- sources --------------------------------------------------------------
+  // ===========================================================================
+  // BULK PATH: dataset declarations
+  //
+  // Read before anything else, because a bulk row naming a dataset that was
+  // never declared is refused rather than invented. Datasets are keyed by slug
+  // and re-declaring one updates its fields: a publisher reissuing an edition
+  // is the normal case, and the version column is what records the difference.
+  // ===========================================================================
+  const { parseDatasetRow, parseRowProvenance } = await import("../src/lib/ingest/provenance");
+  const { datasets, recordProvenance } = await import("../src/lib/db/schema");
+
+  const datasetIdBySlug = new Map<string, string>();
+  for (const row of await db.select({ id: datasets.id, slug: datasets.slug }).from(datasets)) {
+    datasetIdBySlug.set(row.slug, row.id);
+  }
+
+  for (const r of readSheet("datasets.csv")) {
+    const parsed = parseDatasetRow(r);
+    if (!parsed.ok) {
+      skip(`dataset "${r.slug ?? "(no slug)"}": ${parsed.error}`);
+      continue;
+    }
+    const d = parsed.value;
+    const existing = datasetIdBySlug.get(d.slug);
+    const values = {
+      name: d.name,
+      publisher: d.publisher,
+      version: d.version,
+      licence: d.licence,
+      licenceUrl: d.licenceUrl,
+      retrievedOn: d.retrievedOn,
+      upstreamUrl: d.upstreamUrl,
+      curator: d.curator,
+      notes: d.notes,
+    };
+    if (existing) {
+      await db.update(datasets).set(values).where(eq(datasets.id, existing));
+    } else {
+      const id = uuidv7();
+      await db.insert(datasets).values({ id, slug: d.slug, ...values });
+      datasetIdBySlug.set(d.slug, id);
+      bump("datasets");
+    }
+  }
+
+  const knownDatasets = new Set(datasetIdBySlug.keys());
+
+  type RowProvenance = { dataset: string; upstreamId: string } | null;
+
+  /**
+   * Check a bulk row's provenance columns before the row is inserted.
+   *
+   * Returns `false` when the row names its dataset badly, so the caller skips
+   * the row rather than storing a fact whose stated provenance is wrong. A
+   * wrong trail is worse than no trail: it looks like traceability and leads
+   * nowhere. `null` means the row carried no provenance columns, which is
+   * fine — plenty of curated reference data has no upstream dataset, and the
+   * interface reports that as "not recorded" rather than guessing.
+   */
+  const checkProvenance = (
+    sheet: string,
+    row: Record<string, string>,
+    label: string,
+  ): RowProvenance | false => {
+    if (!PROVENANCE.has(sheet)) return null;
+    const parsed = parseRowProvenance(row, knownDatasets);
+    if (!parsed.ok) {
+      skip(`${label}: ${parsed.error}`);
+      return false;
+    }
+    return parsed.value;
+  };
+
+  /** Write provenance for a row that actually landed in the archive. */
+  const writeProvenance = async (
+    subjectType: string,
+    subjectId: string,
+    prov: RowProvenance,
+  ): Promise<void> => {
+    if (!prov) return;
+    await db
+      .insert(recordProvenance)
+      .values({
+        subjectType: subjectType as "document",
+        subjectId,
+        datasetId: datasetIdBySlug.get(prov.dataset)!,
+        upstreamId: prov.upstreamId,
+        ingestedOn: today,
+      })
+      .onConflictDoNothing();
+    bump("provenance records");
+  };
+
+  // ===========================================================================
+  // BULK PATH: sources
+  // ===========================================================================
   const sourceById = new Map<string, SourceSnapshot>();
   for (const r of readSheet("sources.csv")) {
     if (!r.id || !r.url || !r.title) {
@@ -126,7 +277,9 @@ async function main() {
   const SUMMARY =
     "Imported from a bulk data sheet. Verify names, dates and figures against the cited sources before approving.";
 
-  // --- terms ----------------------------------------------------------------
+  // ===========================================================================
+  // CONTRIBUTION PATH: terms, staged as pending revisions
+  // ===========================================================================
   // Dedup keys are fetched once and checked in memory. Two queries per row
   // against a remote database was the other half of this script's build cost.
   const termKey = (stateId: string, kind: string, start: string) => `${stateId}|${kind}|${start}`;
@@ -224,7 +377,9 @@ async function main() {
     bump("terms");
   }
 
-  // --- term updates: end an incumbency (or correct an end date) -------------
+  // ===========================================================================
+  // CONTRIBUTION PATH: term updates, staged as pending UPDATE revisions
+  // ===========================================================================
   // Columns: state,office,start_date,new_end_date,notes,sources
   // Matches the term by state + office + start date. A live term gets a
   // pending UPDATE revision (reviewed like everything else); a still-pending
@@ -324,7 +479,9 @@ async function main() {
     bump("term updates (amended drafts)");
   }
 
-  // --- elections (+ results merged) ----------------------------------------
+  // ===========================================================================
+  // CONTRIBUTION PATH: elections and their results, staged as revisions
+  // ===========================================================================
   const resultRows = readSheet("results.csv");
   for (const r of readSheet("elections.csv")) {
     const label = `election: ${r.state} ${r.election_date}`;
@@ -404,7 +561,9 @@ async function main() {
     bump("elections");
   }
 
-  // --- events ---------------------------------------------------------------
+  // ===========================================================================
+  // CONTRIBUTION PATH: events, staged as pending revisions
+  // ===========================================================================
   for (const r of readSheet("events.csv")) {
     const label = `event: ${r.title} (${r.state} ${r.year})`;
     const st = resolveState(r.state ?? "");
@@ -472,7 +631,9 @@ async function main() {
     bump("events");
   }
 
-  // --- party colors (curated display metadata, like /admin/parties) --------
+  // ===========================================================================
+  // BULK PATH: party colours. Presentation config, so no provenance.
+  // ===========================================================================
   // Standing config: applies to matching parties on every run; unknown
   // parties are reported and picked up automatically once data creates them.
   const { parties } = await import("../src/lib/db/schema");
@@ -522,7 +683,9 @@ async function main() {
     bump("party colors");
   }
 
-  // --- media archive documents (curated metadata, like parties) ------------
+  // ===========================================================================
+  // BULK PATH: media archive documents, provenance-bearing
+  // ===========================================================================
   // Metadata about a file carries little editorial judgment, so documents load
   // directly rather than through the review queue. The methodology page states
   // this publicly. Redistribution defaults to link-only until someone checks.
@@ -535,6 +698,7 @@ async function main() {
     "coalition_agreement", "white_paper", "budget_speech", "economic_survey",
     "five_year_plan", "committee_report", "other",
   ]);
+  const docProv = new Map<string, RowProvenance>();
   for (const r of readSheet("documents.csv")) {
     const label = `document: ${r.title || "(untitled)"}`;
     const type = (r.type ?? "").trim().toLowerCase();
@@ -548,8 +712,12 @@ async function main() {
     if (r.state && !st) { skip(`${label}: unknown state "${r.state}"`); continue; }
     const published = normalizeDate(r.published_on ?? "");
     const redistribution = (r.redistribution ?? "").trim().toLowerCase();
+    const prov = checkProvenance("documents.csv", r, label);
+    if (prov === false) continue;
+    const docId = uuidv7();
+    docProv.set(docId, prov);
     docRows.push({
-      id: uuidv7(),
+      id: docId,
       type: type as "manifesto",
       title: r.title,
       publisher: r.publisher || null,
@@ -579,6 +747,9 @@ async function main() {
     for (const chunk of chunked(fresh, 200)) {
       await db.insert(documents).values(chunk);
       report.created["documents"] = (report.created["documents"] ?? 0) + chunk.length;
+      // Provenance is written only for rows that actually landed, so a
+      // deduplicated row never leaves a trail pointing at nothing.
+      for (const d of chunk) await writeProvenance("document", d.id!, docProv.get(d.id!) ?? null);
     }
     const dupes = docRows.length - fresh.length;
     if (dupes > 0) skip(`documents: ${dupes} row(s) already in the archive by official_url`);
@@ -594,7 +765,9 @@ async function main() {
     );
   }
 
-  // --- development lens (curated; upserts directly with inline sources) -----
+  // ===========================================================================
+  // BULK PATH: indicator definitions, then their values (values bear provenance)
+  // ===========================================================================
   const indicatorRows: Array<{
     id: string;
     name: string;
@@ -634,6 +807,7 @@ async function main() {
       });
     report.created["indicators"] = (report.created["indicators"] ?? 0) + chunk.length;
   }
+  const valueProv = new Map<string, RowProvenance>();
   for (const r of readSheet("indicator_values.csv")) {
     const label = `indicator value: ${r.indicator} ${r.state} ${r.year}`;
     const st = resolveState(r.state ?? "");
@@ -642,8 +816,12 @@ async function main() {
       skip(`${label}: indicator, value, source_title, source_url and verified_on are required`);
       continue;
     }
+    const prov = checkProvenance("indicator_values.csv", r, label);
+    if (prov === false) continue;
+    const valueId = uuidv7();
+    valueProv.set(valueId, prov);
     valueRows.push({
-      id: uuidv7(),
+      id: valueId,
       indicatorId: r.indicator,
       stateId: st.id,
       year: Number(r.year),
@@ -657,12 +835,29 @@ async function main() {
     });
   }
   for (const chunk of chunked(valueRows, 500)) {
-    await db.insert(indicatorValues).values(chunk).onConflictDoNothing();
+    // `returning` rather than the chunk itself: onConflictDoNothing drops rows
+    // whose series already exists, and provenance must describe what landed,
+    // not what was offered.
+    const landed = await db
+      .insert(indicatorValues)
+      .values(chunk)
+      .onConflictDoNothing()
+      .returning({ id: indicatorValues.id });
     report.created["indicator values"] =
-      (report.created["indicator values"] ?? 0) + chunk.length;
+      (report.created["indicator values"] ?? 0) + landed.length;
+    for (const row of landed) await writeProvenance("indicator_value", row.id, valueProv.get(row.id) ?? null);
   }
 
   // --- report ---------------------------------------------------------------
+  // The path split is printed every run, from the SHEETS manifest rather than
+  // from prose, so a sheet that changes path cannot do it quietly.
+  const present = (list: readonly string[]) => list.filter((f) => existsSync(join(INBOX, f)));
+  const staged = present(SHEETS.contribution);
+  const direct = present(SHEETS.bulk);
+  console.log(
+    `[load-inbox] path: ${staged.length} sheet(s) staged for review${staged.length ? ` (${staged.join(", ")})` : ""}; ` +
+      `${direct.length} inserted directly${direct.length ? ` (${direct.join(", ")})` : ""}`,
+  );
   const madeAny = Object.keys(report.created).length > 0;
   console.log(
     `[load-inbox] created drafts: ${madeAny ? Object.entries(report.created).map(([k, v]) => `${k}=${v}`).join(", ") : "none (all rows already loaded)"}`,
