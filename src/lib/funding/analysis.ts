@@ -185,6 +185,74 @@ export function convergences(adj: Adjacency, root: string): Convergence[] {
     .sort((a, b) => a.hops - b.hops || a.key.localeCompare(b.key));
 }
 
+export type Density = {
+  nodes: number;
+  /** Distinct pairs. Two grants between the same two organisations are one
+   *  line on the canvas, and it is the canvas this measures. */
+  edges: number;
+  components: number;
+  /** Edges minus nodes plus components: how many edges could be cut before the
+   *  graph became a forest. Zero means it already is one. */
+  cycles: number;
+  /** Whether `bridges` and `convergences` can say anything the node list did
+   *  not already say. See MIN_CYCLES_FOR_STRUCTURE. */
+  supportsStructure: boolean;
+};
+
+/**
+ * The cycle count below which structural findings are not worth reporting.
+ *
+ * Argued from cycles rather than from node count, because cycles are the
+ * property both findings actually depend on. A hundred-node forest is exactly
+ * as unable to produce a meaningful bridge as a ten-node one.
+ *
+ * At zero cycles the graph is a forest, and in a forest every internal node is
+ * an articulation point by definition. "This entity holds two groups together"
+ * then means precisely "this entity has more than one neighbour", which the
+ * diagram already shows. The finding is true and carries no information.
+ * Convergence is worse off: two shortest routes to one entity require an
+ * alternative route, which requires a cycle, so at zero cycles the answer is
+ * provably always none.
+ *
+ * One cycle spares only the entities lying on it. Two spares two such sets. In
+ * both cases a reader can see the whole cycle structure at a glance, so
+ * "which entities are load-bearing" is still something they derive by looking
+ * rather than something the panel has told them.
+ *
+ * Three is the floor chosen here, and the boundary between two and three is a
+ * judgement rather than a theorem. It errs toward silence deliberately: a panel
+ * that stays quiet costs a reader one finding, and a panel that names 29% of
+ * entities as structurally load-bearing in a confident typeface costs them
+ * their read of the whole diagram. Section 6 of docs/NETWORK_AT_LOW_DENSITY.md
+ * says this number is the first thing to check when the data grows.
+ */
+export const MIN_CYCLES_FOR_STRUCTURE = 3;
+
+/**
+ * How sparse the drawn neighbourhood is, and whether structure can be read off
+ * it at all.
+ *
+ * Recomputed from the current view like everything else here. The panel asks
+ * this before it reports anything, so a view filtered down to four entities
+ * declines on its own without the caller having to remember to check.
+ */
+export function density(adj: Adjacency): Density {
+  const nodes = adj.size;
+  let ends = 0;
+  for (const [, ns] of adj) ends += ns.size;
+  // Halved because an undirected adjacency stores each pair twice.
+  const edges = ends / 2;
+  const comps = components(adj).length;
+  const cycles = edges - nodes + comps;
+  return {
+    nodes,
+    edges,
+    components: comps,
+    cycles,
+    supportsStructure: cycles >= MIN_CYCLES_FOR_STRUCTURE,
+  };
+}
+
 /**
  * How many separate groups the drawn network falls into.
  *

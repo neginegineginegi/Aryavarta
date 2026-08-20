@@ -6,7 +6,7 @@ import { edgeEvidenceAction, expandNodeAction } from "@/actions/network";
 import type { EdgeEvidence } from "@/lib/db/queries/network";
 import type { GraphEdge, GraphNode } from "@/lib/funding/graph-types";
 import { edgeLabel, EVIDENCE_LABELS, NODE_TYPE_LABELS } from "@/lib/funding/labels";
-import { adjacency, bridges, componentOf, components, convergences } from "@/lib/funding/analysis";
+import { adjacency, bridges, componentOf, components, convergences, density } from "@/lib/funding/analysis";
 import * as investigation from "@/lib/funding/investigation";
 import { bounds, packComponents, seedNodes, step, type LayoutNode } from "@/lib/funding/layout";
 
@@ -282,14 +282,19 @@ export function NetworkGraph({
 
   /** Structure of what is currently drawn. Recomputed, never stored: a shape
    *  that outlived the view it described would be an assertion. */
-  const structure = useMemo(
-    () => ({
-      bridges: bridges(adj),
-      convergences: rootKey ? convergences(adj, rootKey) : [],
+  const structure = useMemo(() => {
+    const shape = density(adj);
+    return {
+      // Empty below the threshold, which also empties `bridgeKeys` and so
+      // clears the highlight ring from the canvas. The panel and the drawing
+      // have to agree: a ring around 29% of the entities with no explanation
+      // beside it is the same trivially-true finding, drawn instead of typed.
+      bridges: shape.supportsStructure ? bridges(adj) : [],
+      convergences: shape.supportsStructure && rootKey ? convergences(adj, rootKey) : [],
       componentCount: new Set(componentOf(adj).values()).size,
-    }),
-    [adj, rootKey],
-  );
+      density: shape,
+    };
+  }, [adj, rootKey]);
 
   /** One centre per unconnected group, for the whole-web view only. A rooted
    *  view has a centre already: the entity the reader started from. */
@@ -1037,6 +1042,7 @@ export function NetworkGraph({
               bridges={structure.bridges}
               convergences={structure.convergences}
               componentCount={structure.componentCount}
+              density={structure.density}
               labelOf={(k) => visibleNodes.find((n) => keyOf(n) === k)?.label ?? k}
               onSelect={(k) => setSel({ kind: "node", key: k })}
             />

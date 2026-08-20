@@ -6,6 +6,8 @@ import {
   componentOf,
   components,
   convergences,
+  density,
+  MIN_CYCLES_FOR_STRUCTURE,
 } from "@/lib/funding/analysis";
 
 const build = (keys: string[], pairs: Array<[string, string]>) =>
@@ -126,5 +128,88 @@ describe("componentOf", () => {
     const map = componentOf(adj);
     expect(map.get("a")).toBe(map.get("b"));
     expect(map.get("c")).not.toBe(map.get("a"));
+  });
+});
+
+describe("density", () => {
+  it("counts an isolated set as no edges and no cycles", () => {
+    expect(density(build(["a", "b", "c"], []))).toMatchObject({
+      nodes: 3,
+      edges: 0,
+      components: 3,
+      cycles: 0,
+      supportsStructure: false,
+    });
+  });
+
+  it("reports zero cycles for a tree of any size", () => {
+    // A hundred-node forest is exactly as unable to produce a meaningful
+    // bridge as a three-node one, which is why the gate is cycles not nodes.
+    const keys = Array.from({ length: 100 }, (_, i) => `n${i}`);
+    const pairs = keys.slice(1).map((k, i) => [keys[i], k] as [string, string]);
+    const d = density(build(keys, pairs));
+    expect(d).toMatchObject({ nodes: 100, edges: 99, components: 1, cycles: 0 });
+    expect(d.supportsStructure).toBe(false);
+  });
+
+  it("counts one cycle for a triangle", () => {
+    const adj = build(["a", "b", "c"], [["a", "b"], ["b", "c"], ["c", "a"]]);
+    expect(density(adj)).toMatchObject({ edges: 3, components: 1, cycles: 1 });
+  });
+
+  it("adds cycles across separate groups", () => {
+    // Two disjoint triangles: two independent cycles, two components.
+    const adj = build(
+      ["a", "b", "c", "x", "y", "z"],
+      [["a", "b"], ["b", "c"], ["c", "a"], ["x", "y"], ["y", "z"], ["z", "x"]],
+    );
+    expect(density(adj)).toMatchObject({ components: 2, cycles: 2 });
+  });
+
+  it("ignores a repeated relationship between the same two entities", () => {
+    // Two grants between one pair are one line on the canvas. Counting them
+    // twice would report a cycle that nobody can see.
+    const adj = adjacency(
+      ["a", "b"],
+      [{ from: "a", to: "b" }, { from: "b", to: "a" }, { from: "a", to: "b" }],
+    );
+    expect(density(adj)).toMatchObject({ edges: 1, cycles: 0 });
+  });
+
+  it("passes the threshold at exactly MIN_CYCLES_FOR_STRUCTURE", () => {
+    // Four entities all joined to each other: 6 edges, 4 nodes, 1 component.
+    const keys = ["a", "b", "c", "d"];
+    const pairs: Array<[string, string]> = [];
+    for (const i of keys) for (const j of keys) if (i < j) pairs.push([i, j]);
+    const d = density(build(keys, pairs));
+    expect(d.cycles).toBe(3);
+    expect(MIN_CYCLES_FOR_STRUCTURE).toBe(3);
+    expect(d.supportsStructure).toBe(true);
+  });
+});
+
+describe("the forest premise the threshold rests on", () => {
+  it("makes every internal entity a bridge, so the finding says only 'has two relationships'", () => {
+    // A star: the centre plus five leaves. bridges() names the centre, which
+    // is exactly what the degree already said. This is the vacuity the panel
+    // now declines to print, not a defect in bridges().
+    const leaves = ["a", "b", "c", "d", "e"];
+    const adj = build(["hub", ...leaves], leaves.map((l) => ["hub", l] as [string, string]));
+    expect(bridges(adj).map((b) => b.key)).toEqual(["hub"]);
+
+    const internal = [...adj.entries()].filter(([, ns]) => ns.size > 1).map(([k]) => k);
+    expect(bridges(adj).map((b) => b.key)).toEqual(internal);
+    expect(density(adj).supportsStructure).toBe(false);
+  });
+
+  it("can never produce a convergence without a cycle", () => {
+    // A balanced tree: every entity is reached from the root one way only, so
+    // convergences is empty by structure rather than by chance.
+    const adj = build(
+      ["r", "a", "b", "a1", "a2", "b1", "b2"],
+      [["r", "a"], ["r", "b"], ["a", "a1"], ["a", "a2"], ["b", "b1"], ["b", "b2"]],
+    );
+    expect(density(adj).cycles).toBe(0);
+    expect(convergences(adj, "r")).toEqual([]);
   });
 });

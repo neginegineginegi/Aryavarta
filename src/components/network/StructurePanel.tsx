@@ -1,6 +1,6 @@
 "use client";
 
-import type { Bridge, Convergence } from "@/lib/funding/analysis";
+import type { Bridge, Convergence, Density } from "@/lib/funding/analysis";
 
 /**
  * What shape the drawn network has, and nothing beyond that.
@@ -14,12 +14,19 @@ import type { Bridge, Convergence } from "@/lib/funding/analysis";
  * The caveat under each heading is not boilerplate. A bridge in a diagram of
  * forty relationships is a bridge in what has been recorded so far, and it can
  * stop being one the moment somebody files a source.
+ *
+ * And below a density threshold the panel declines to report either finding at
+ * all. In a forest every internal entity is an articulation point by
+ * definition, so naming them says nothing about those entities: it restates
+ * that the data is sparse. A panel that cannot say anything true should say
+ * that, rather than say something trivially true in a confident typeface.
  */
 export function StructurePanel({
   hasRoot = true,
   bridges,
   convergences,
   componentCount,
+  density,
   labelOf,
   onSelect,
 }: {
@@ -28,6 +35,9 @@ export function StructurePanel({
   bridges: Bridge[];
   convergences: Convergence[];
   componentCount: number;
+  /** Shape of the drawn neighbourhood. When it cannot support structure, the
+   *  two findings below are withheld and the reason is stated instead. */
+  density: Density;
   labelOf: (key: string) => string;
   onSelect: (key: string) => void;
 }) {
@@ -61,6 +71,39 @@ export function StructurePanel({
         </>
       )}
 
+      {!density.supportsStructure && (
+        <>
+          <h4 className="net-card-h">Not enough here to read structure from</h4>
+          {/* Three separate bodies rather than one sentence with a swapped
+              opening clause. "Every entity with more than one relationship" is
+              a true and useful explanation when there are relationships, and
+              gibberish when there are none. */}
+          {density.edges === 0 ? (
+            <p className="net-card-sub">
+              Nothing on this canvas connects to anything else, so there is no shape here to
+              describe. Which entities hold groups together, and which are reached by more than
+              one route, both need relationships between entities before they can mean anything.
+            </p>
+          ) : (
+            <p className="net-card-sub">
+              What is drawn is {density.cycles === 0 ? "branching, with no loops in it at all" : `almost entirely branching, with ${density.cycles === 1 ? "one loop" : `${density.cycles} loops`} in it`}:{" "}
+              {density.nodes} entities and {density.edges} relationships between them. In a record
+              shaped like that, every entity with more than one relationship sits between two
+              groups, so naming the ones that do would tell you nothing the diagram does not
+              already show. And two routes arriving at one entity needs a loop to be possible at
+              all.
+            </p>
+          )}
+          <p className="net-structure-caveat">
+            This is a statement about how much has been filed so far, not about the entities. As
+            sources are added and the record starts to loop back on itself, these findings begin
+            to mean something and reappear here.
+          </p>
+        </>
+      )}
+
+      {density.supportsStructure && (
+        <>
       <h4 className="net-card-h">Entities holding two groups together</h4>
       {bridges.length === 0 ? (
         <p className="net-card-sub">
@@ -121,6 +164,8 @@ export function StructurePanel({
           Two routes arriving at one place is a fact about this diagram. It is not evidence that the
           routes are related to each other, or that the entity they meet at did anything.
         </p>
+      )}
+        </>
       )}
     </div>
   );
