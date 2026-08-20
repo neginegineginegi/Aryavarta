@@ -531,8 +531,10 @@ thead th {
      painting, so this only ever shows when the engine is not running. */
 .ribbon-wide {
   background: linear-gradient(90deg, #ff9933 0%, #ffb066 20%, #fdf6ec 42%, #ffffff 50%, #f0f7ee 58%, #4d9e5f 80%, #138808 100%);
-  top: 38%;
-  height: 320px;
+  /* +60px of headroom, and top pulled back 30px so the band's centreline
+     stays exactly where it was. See the amp note in TricolorRibbon.tsx. */
+  top: calc(38% - 30px);
+  height: 380px;
   filter: blur(42px);
   opacity: var(--ribbon-opacity, 0.8);
 }
@@ -548,24 +550,24 @@ thead th {
 }
 .ribbon-soft {
   background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
-  top: 18%;
-  height: 260px;
+  top: calc(18% - 20px);
+  height: 300px;
   filter: blur(36px);
   opacity: 0.5;
   transform: none;
 }
 .ribbon-reverse {
   background: linear-gradient(90deg, #138808, #cfe8d2 30%, #ffffff 50%, #ffd9b3 70%, #ff9933 100%);
-  top: 34%;
-  height: 240px;
+  top: calc(34% - 25px);
+  height: 290px;
   filter: blur(30px);
   opacity: var(--ribbon-opacity, 0.8);
   transform: none;
 }
 .ribbon-faq {
   background: linear-gradient(90deg, #ff9933, #ffd9b3 30%, #ffffff 50%, #cfe8d2 70%, #138808 95%);
-  top: 0;
-  height: 210px;
+  top: -20px;
+  height: 250px;
   filter: blur(40px);
   opacity: 0.32;
 }

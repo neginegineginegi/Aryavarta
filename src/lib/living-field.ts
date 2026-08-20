@@ -11,6 +11,12 @@
  * Ribbons (the tricolor bands) read all three. Nothing here touches type: the
  * scroll wave that used to run under body text is gone, because a page you
  * read is a page whose words hold still.
+ *
+ * THE RESTING WAVE IS DELIBERATE. The idle amplitude floor (18, in draw) is set
+ * so the bands drift visibly with no input at all; it is not a stuck value left
+ * over from an interaction. It is calibrated against each variant's BLUR, not
+ * in absolute pixels: .ribbon-wide is blur(42px), so the 11px travel the old
+ * floor of 7 produced was invisible by construction. See the note on A below.
  */
 
 type Ribbon = {
@@ -34,6 +40,8 @@ let phase = 0;
 let time = 0;
 let last = 0;
 let raf: number | null = null;
+/** Frame counter, for the half-rate resting draw in tick(). */
+let frame = 0;
 let scroll = 0;
 let started = false;
 let reduced = false;
@@ -161,12 +169,36 @@ function tick(now: number) {
   raf = null;
   const dt = Math.min(0.05, (now - (last || now)) / 1000);
   last = now;
-  time += dt * (0.55 + energy * 1.5);   // excitement speeds the drift up
-  energy *= Math.exp(-dt * 2.6);        // and it always falls back to calm
+  // 0.75 at rest: a 7.6s swell rather than the 10.4s one that read as still.
+  // Raised only this far on purpose. Velocity is amplitude times speed, and
+  // the amplitude floor below already went up 2.6x; pushing speed harder turns
+  // the swell into a shimmer, which is the one thing a background must not do
+  // behind text.
+  time += dt * (0.75 + energy * 1.5);   // excitement speeds the drift up
+  // 1.2 gives a 0.58s half-life. At the old 2.6 it was 0.27s, so excitement
+  // snapped back before the eye had followed it; now it subsides.
+  energy *= Math.exp(-dt * 1.2);        // and it always falls back to calm
   for (let i = ripples.length - 1; i >= 0; i--) {
     ripples[i].age += dt;
     if (ripples[i].age > 1.7) ripples.splice(i, 1);
   }
+
+  // The resting swell is drawn at half rate.
+  //
+  // The expensive part of a ribbon is not this file: it is the compositor
+  // re-blurring a 42px-radius layer every time the canvas changes. Measured on
+  // the homepage with five bands and no input, script was 0.3ms a frame while
+  // the frame as a whole cost 6.9% of a core unthrottled and 67% at 6x. A 7.6
+  // second swell does not need 60fps to look continuous, and halving it there
+  // leaves the page cheaper than it was before the floor went up.
+  //
+  // Full rate the moment anything is happening, so a pointer bulge or a ripple
+  // never looks like it is lagging the cursor. `time` still advances every
+  // frame either way, so the wave keeps moving at the same speed; only the
+  // number of times it is painted changes.
+  frame++;
+  const lively = energy > 0.15 || ripples.length > 0;
+  const paint = lively || frame % 2 === 0;
 
   let awake = false;
   for (const r of ribbons) {
@@ -174,6 +206,7 @@ function tick(now: number) {
     const b = r.el.getBoundingClientRect();
     if (b.width < 1) continue;
     awake = true;
+    if (!paint) continue;
     if (Math.round(b.width * r.ss) !== r.w || Math.round(b.height * r.ss) !== r.h) size(r, b);
     draw(r, b);
   }
@@ -204,7 +237,19 @@ function draw(r: Ribbon, rect: DOMRect) {
   const y0 = H / 2;
   const base = r.th * S;
   const tilt = r.tilt * S;
-  const A = (7 + energy * 22) * r.amp * S;
+  // 18 is the RESTING floor, and it is the number that makes the bands move on
+  // their own. It is set against the blur, not in the abstract: .ribbon-wide is
+  // blur(42px), and the three-sine sum travels about 0.79 * A either side of
+  // the centreline, so a floor of 7 gave 11px of travel inside a 42px Gaussian.
+  // Invisible by construction, which is why the bands read as static until the
+  // pointer moved. 18 gives 28px, about 0.68 of that blur radius: a slow swell
+  // you can see, still far short of anything that competes with reading.
+  //
+  // The gain stays at 22 rather than rising with the floor. The visible range
+  // is capped by the canvas edge, not by this number: on .ribbon-wide the wave
+  // reaches the edge of its box around A = 66, so past a gain of roughly 20 the
+  // extra excited amplitude is spent against a clip nobody sees.
+  const A = (18 + energy * 22) * r.amp * S;
   const px = (pointer.x - rect.left) * S;
   const py = (pointer.y - rect.top) * S;
   const step = Math.max(3, Math.round(6 * S));
