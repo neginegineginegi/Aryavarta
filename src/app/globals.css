@@ -1175,6 +1175,10 @@ a:hover .wordmark {
 }
 .net-plain:hover { color: var(--color-accent); border-bottom-color: var(--color-accent); }
 
+/* Sits in the toggle row, so it takes the row's height rather than the
+   underlined-link look net-plain gives it elsewhere. */
+.net-share { min-height: 44px; display: inline-flex; align-items: center; }
+
 .net-stage {
   display: grid; gap: 0.75rem;
   grid-template-columns: minmax(0, 1fr);

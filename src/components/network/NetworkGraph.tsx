@@ -12,6 +12,7 @@ import { bounds, packComponents, seedNodes, step, type LayoutNode } from "@/lib/
 
 import { EvidencePanel } from "@/components/network/EvidencePanel";
 import { StructurePanel } from "@/components/network/StructurePanel";
+import { useOpenSet, useViewState } from "@/components/network/use-view-state";
 
 /**
  * The network graph.
@@ -81,16 +82,34 @@ export function NetworkGraph({
   const [hover, setHover] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<EdgeEvidence[] | null>(null);
-  const [showClaims, setShowClaims] = useState(false);
   const [wasTruncated, setWasTruncated] = useState(truncated);
-  // Null means "every year". The slider starts there rather than at the latest
-  // year, because opening on a window would hide relationships without saying
-  // it had.
-  const [year, setYear] = useState<number | null>(null);
-  const [showStructure, setShowStructure] = useState(false);
+
+  /**
+   * Five controls that live in the URL rather than in this component, so a
+   * view can be sent to somebody: the year window, whether claims are drawn,
+   * whether the structure panel is open, whether people are unfolded, and
+   * which organisations have been opened.
+   *
+   * Notes, pins and flags are deliberately NOT among them. Those are the
+   * reader's own reasoning, and they stay in this browser where
+   * investigation.ts puts them.
+   *
+   * `year` null means every year. The slider starts there rather than at the
+   * latest year, because opening on a window would hide relationships without
+   * saying it had.
+   */
+  const [shared, setShared] = useViewState();
+  const { year, claims: showClaims, structure: showStructure, everyone: showAll } = shared;
   /** Organisations the reader has opened, in a folded view. */
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [showAll, setShowAll] = useState(false);
+  const expanded = useOpenSet(shared.open);
+  const setExpanded = useCallback(
+    (next: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      setShared({
+        open: [...(typeof next === "function" ? next(new Set(shared.open)) : next)],
+      });
+    },
+    [setShared, shared.open],
+  );
   // Bumped when a drag ends after the layout has settled, to restart the frame
   // loop. State rather than a ref-held callback, because a ref that a hook has
   // captured cannot then be reassigned.
@@ -140,6 +159,24 @@ export function NetworkGraph({
     return () => mq.removeEventListener("change", read);
   }, []);
   const drawDiagram = !narrow || diagramAnyway;
+
+  const [copied, setCopied] = useState(false);
+  const copyLink = useCallback(async () => {
+    // The address bar is already correct, so this copies what the reader can
+    // see rather than rebuilding it and risking the two disagreeing.
+    const url = window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+    } catch {
+      // Clipboard access can be refused, and an investigative tool that
+      // silently fails to hand over a link is worse than one that asks the
+      // reader to copy it themselves.
+      window.prompt("Copy this link", url);
+      return;
+    }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }, []);
 
   /** The years the current network actually spans. */
   const span = useMemo(() => {
@@ -708,7 +745,9 @@ export function NetworkGraph({
         return next;
       });
     },
-    [edges, typeOf],
+    // setExpanded is no longer React's own stable setter: it writes through to
+    // the URL, so it is a real dependency.
+    [edges, typeOf, setExpanded],
   );
 
   const selectEdge = useCallback(async (e: GraphEdge) => {
@@ -746,7 +785,7 @@ export function NetworkGraph({
       people: waiting.size,
       onOpen: () => setExpanded((prev) => new Set([...prev, ...orgKeys])),
     };
-  }, [folding, selectedNode, clusterOf, nodes, expanded, drawable, typeOf, unfolded]);
+  }, [folding, selectedNode, clusterOf, nodes, expanded, drawable, typeOf, unfolded, setExpanded]);
   const selectedEdge = sel?.kind === "edge" ? edges.find((e) => e.edgeId === sel.id) : undefined;
 
   const hiddenClaims = edges.length - edges.filter((e) => !e.interpretive).length;
@@ -763,7 +802,7 @@ export function NetworkGraph({
             <input
               type="checkbox"
               checked={showAll}
-              onChange={(e) => setShowAll(e.target.checked)}
+              onChange={(e) => setShared({ everyone: e.target.checked })}
             />
             Show everyone at once
           </label>
@@ -784,7 +823,7 @@ export function NetworkGraph({
             <input
               type="checkbox"
               checked={showClaims}
-              onChange={(e) => setShowClaims(e.target.checked)}
+              onChange={(e) => setShared({ claims: e.target.checked })}
             />
             Show {hiddenClaims} asserted {hiddenClaims === 1 ? "claim" : "claims"}
           </label>
@@ -793,10 +832,17 @@ export function NetworkGraph({
           <input
             type="checkbox"
             checked={showStructure}
-            onChange={(e) => setShowStructure(e.target.checked)}
+            onChange={(e) => setShared({ structure: e.target.checked })}
           />
           Show structure
         </label>
+        {/* The link carries where you started, the years you set, what you
+            opened and which toggles are on. It carries none of your notes or
+            flags: those stay in this browser, because they are your reasoning
+            and not part of the record. */}
+        <button type="button" className="net-plain net-share" onClick={copyLink}>
+          {copied ? "Link copied" : "Copy link to this view"}
+        </button>
         {investigation.countEntries(work) > 0 && (
           <span className="net-work-status">
             {investigation.countEntries(work)} saved in this browser
@@ -847,10 +893,10 @@ export function NetworkGraph({
             min={span.min}
             max={span.max}
             value={year ?? span.max}
-            onChange={(e) => setYear(Number(e.target.value))}
+            onChange={(e) => setShared({ year: Number(e.target.value) })}
           />
           {year != null && (
-            <button type="button" onClick={() => setYear(null)}>
+            <button type="button" onClick={() => setShared({ year: null })}>
               Show every year
             </button>
           )}
@@ -1029,7 +1075,7 @@ export function NetworkGraph({
                 separate groups would say something the record does not: that nothing joins them.
               </p>
               <p className="net-panel-note">
-                <button type="button" className="net-plain" onClick={() => setShowAll(true)}>
+                <button type="button" className="net-plain" onClick={() => setShared({ everyone: true })}>
                   Show everyone at once
                 </button>{" "}
                 to see the shape of what is recorded.
