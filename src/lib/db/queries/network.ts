@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/lib/db";
 import { citations, sources } from "@/lib/db/schema";
+import type { FlowInput } from "@/lib/funding/flow";
 import { toEdge, type EntityRef, type GraphEdge } from "@/lib/funding/graph-types";
 import type { SourceKind } from "@/lib/funding/source-rank";
 
@@ -314,4 +315,57 @@ export async function recordMarks(): Promise<Record<string, RecordMark>> {
     out[key] = r.tier;
   }
   return out;
+}
+
+/**
+ * Every recorded funding transaction, reduced to the two organisation kinds it
+ * ran between and its currency.
+ *
+ * Only org-to-org transactions. A grant from a person, or to a project, has no
+ * organisation kind on one end, and inventing one for it would put a row on
+ * this view that the record does not support. The view states how many were
+ * left out.
+ *
+ * The arithmetic is deliberately NOT here: this returns rows, and
+ * `aggregateFlow` in lib/funding/flow.ts sums them, so the rule that currencies
+ * never add together is written in one testable place instead of in SQL.
+ */
+export async function fundingByOrgKind(): Promise<{
+  rows: FlowInput[];
+  /** Transactions with an organisation on both ends. */
+  covered: number;
+  /** Transactions with something other than an organisation on either end, so
+   *  they have no kind and are not on this view. */
+  excluded: number;
+}> {
+  const res = await db.execute(sql`
+    SELECT d.kind::text AS donor_kind,
+           r.kind::text AS recipient_kind,
+           t.amount::text AS amount,
+           t.currency AS currency,
+           (t.donor_type = 'org' AND t.recipient_type = 'org') AS both_orgs
+      FROM funding_transactions t
+      LEFT JOIN orgs d ON t.donor_type = 'org' AND d.id::text = t.donor_id
+      LEFT JOIN orgs r ON t.recipient_type = 'org' AND r.id::text = t.recipient_id
+  `);
+
+  const all = res.rows as Array<{
+    donor_kind: string | null;
+    recipient_kind: string | null;
+    amount: string | null;
+    currency: string | null;
+    both_orgs: boolean;
+  }>;
+
+  const kept = all.filter((r) => r.both_orgs);
+  return {
+    rows: kept.map((r) => ({
+      donorKind: r.donor_kind,
+      recipientKind: r.recipient_kind,
+      amount: r.amount,
+      currency: r.currency,
+    })),
+    covered: kept.length,
+    excluded: all.length - kept.length,
+  };
 }

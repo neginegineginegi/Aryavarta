@@ -125,6 +125,23 @@ window.
 
 A peer of the graph, not a replacement for it.
 
+> **Implemented.** `src/lib/funding/sequence.ts` does the ordering, and the
+> organisation and person record pages close with an "In order" section built
+> from it. The safeguard is the section's own intro rather than a footnote.
+>
+> Year-only entries sit in their year after that year's dated entries, under one
+> line reading "no month recorded, so not placed against the entries above": a
+> year-only entry is never treated as 1 January, and never ordered against a
+> dated one. Undated entries are a separate group after the timeline, headed by
+> what they are. Financial years are read for their opening year only, and only
+> where no date exists, since a reporting period is not a day. An unparseable
+> date goes to the undated group rather than being coerced into one.
+>
+> Two older bugs surfaced while checking it against real records and are fixed:
+> `labelEndpoints` omitted board counterparties on both record queries, so board
+> rows rendered bare UUIDs; and a board role missing from `labels.ts` fell
+> through to its own enum value ("other AZB & Partners").
+
 ### 4c. Shareable view state
 
 `investigation.ts` keeps notes, pins and flags in the browser and argues the
@@ -145,6 +162,25 @@ there is nothing to point at.
 If an implementation finds a case where view state starts carrying researcher
 reasoning, that is the line, and it should be raised rather than crossed.
 
+> **Implemented.** `src/lib/funding/view-state.ts` defines the encoding,
+> `use-view-state.ts` binds it to the address bar, and `/network` carries a
+> "copy link to this view" control. Five fields: year window, claims on,
+> structure panel open, people unfolded, and which organisations are open. Root
+> was already a search param. Depth is not adjustable in the client, so there is
+> nothing to sync.
+>
+> The URL is the ONLY copy, not a mirror of component state. `useState` plus a
+> read-on-mount effect and a write-on-change effect is two copies of one fact
+> and misbehaves both ways: the writer races the reader on first paint and can
+> overwrite a pasted link with the defaults, and the back button moves the
+> address bar without moving the diagram. `useSyncExternalStore` with `popstate`
+> subscribed is the shape that has neither problem. `replaceState`, so a slider
+> drag does not file a history entry per tick.
+>
+> The line you named is held by construction: the field list is a closed
+> whitelist and a test asserts it, so a sixth field cannot appear without
+> somebody deciding it should. Notes, pins and flags stay in `investigation.ts`.
+
 ### 4d. Aggregate flow view
 
 Twenty-four transactions between named organisations is below the density where
@@ -155,6 +191,20 @@ legibility when n is small.
 Use `ORG_KIND_LABELS`. Keep every constraint from the analytics design:
 per-currency only and never summed across currencies, counts alongside amounts,
 n stated on the view rather than in a footnote.
+
+> **Implemented.** `src/lib/funding/flow.ts` aggregates, `FlowView` renders, and
+> the `/network` page carries it under the canvas. Each currency is its own
+> block scaled to its own maximum, so a bar is never drawn against a bar in
+> another currency and nothing is converted. Transactions with no amount are
+> counted and reported as such rather than totalled as zero. A missing
+> organisation kind is reported as missing rather than folded into `other`,
+> which is a real kind. Transactions with something other than an organisation
+> at either end have no kind, so they are excluded and the view says how many.
+>
+> Against the current data: 26 org-to-org transactions, 22 in INR across seven
+> kind pairs and 4 in USD across one. The arithmetic lives in the pure module
+> rather than in SQL, so the never-sum-across-currencies rule is tested rather
+> than trusted.
 
 ## 5. What not to build
 

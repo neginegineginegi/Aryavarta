@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { FlowView } from "@/components/network/FlowView";
 import { NetworkGraph } from "@/components/network/NetworkGraph";
 import { wholeGraph } from "@/lib/funding/graph";
-import { degrees, graphEntryPoints, recordMarks } from "@/lib/db/queries/network";
+import { degrees, fundingByOrgKind, graphEntryPoints, recordMarks } from "@/lib/db/queries/network";
+import { aggregateFlow } from "@/lib/funding/flow";
 import { neighbourhood } from "@/lib/funding/graph";
 import { NODE_TYPE_LABELS, ORG_KIND_LABELS } from "@/lib/funding/labels";
 
@@ -30,10 +32,14 @@ export default async function NetworkPage({
 }) {
   const { root, show } = await searchParams;
   const filter = show === "orgs" ? "org" : show === "people" ? "person" : undefined;
-  const [entries, marks] = await Promise.all([
+  const [entries, marks, flow] = await Promise.all([
     graphEntryPoints(filter ? 48 : 60, filter as "org" | undefined),
     recordMarks(),
+    fundingByOrgKind(),
   ]);
+  // The canvas draws a forest at this size; aggregating by kind is what makes
+  // the same transactions legible. A peer of the graph, on the same page.
+  const flowRows = aggregateFlow(flow.rows);
 
   const parsed = root?.includes(":")
     ? { type: root.slice(0, root.indexOf(":")), id: root.slice(root.indexOf(":") + 1) }
@@ -80,6 +86,12 @@ export default async function NetworkPage({
             />
           </section>
         )}
+        {/* A peer of the canvas, not a replacement. Twenty-odd transactions
+            between named organisations is below the density where an
+            entity-level picture reads; the same transactions between kinds
+            read immediately. */}
+        <FlowView rows={flowRows} covered={flow.covered} excluded={flow.excluded} />
+
         {web?.truncated && (
           <section className="section-card mt-4 px-6 py-6 sm:px-10">
             <p className="max-w-[70ch] text-[0.9rem] text-ink-muted">

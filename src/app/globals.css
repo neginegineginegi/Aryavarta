@@ -1212,6 +1212,28 @@ a:hover .wordmark {
 .seq-undated { margin-top: 0.5rem; }
 .seq-undated .seq-items { margin-top: 0.6rem; }
 
+/* ---------------------------------------------------------------------- FLOW
+   Funding between organisation kinds. One block per currency, each scaled to
+   its own maximum, so a bar is never read against a bar in another currency. */
+.flow-rows { list-style: none; margin: 0.7rem 0 0; padding: 0; }
+.flow-row + .flow-row { margin-top: 0.85rem; }
+.flow-pair { font-size: 0.88rem; color: var(--color-ink); }
+.flow-arrow { color: var(--color-ink-faint); }
+.flow-bar-track {
+  margin-top: 0.25rem; height: 0.5rem; border-radius: 1px;
+  background: var(--color-paper-sunken); border: 1px solid var(--color-rule-light);
+}
+.flow-bar {
+  height: 100%; min-width: 1px;
+  background: var(--color-accent); opacity: 0.55;
+}
+.flow-figures {
+  margin-top: 0.22rem; display: flex; flex-wrap: wrap; gap: 0 0.55rem;
+  font-size: 0.8rem;
+}
+.flow-total { color: var(--color-ink-muted); }
+.flow-n { color: var(--color-ink-faint); }
+
 .net-stage {
   display: grid; gap: 0.75rem;
   grid-template-columns: minmax(0, 1fr);
