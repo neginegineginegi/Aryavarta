@@ -1179,6 +1179,39 @@ a:hover .wordmark {
    underlined-link look net-plain gives it elsewhere. */
 .net-share { min-height: 44px; display: inline-flex; align-items: center; }
 
+/* ------------------------------------------------------------------ SEQUENCE
+   One entity's relationships in recorded order. A rule down the left is the
+   whole ornament: the year marks hang off it and the entries sit inside it, so
+   the eye reads it as one run of time without anything implying that a later
+   entry followed FROM an earlier one. No arrows, and no connectors between
+   entries, for exactly that reason. */
+.seq-years { list-style: none; margin: 0; padding: 0; }
+.seq-year { position: relative; padding-left: 1.6rem; padding-bottom: 0.4rem; }
+.seq-year::before {
+  content: ""; position: absolute; left: 0.28rem; top: 0.55rem; bottom: 0;
+  border-left: 1px solid var(--color-rule);
+}
+.seq-year:last-child::before { bottom: auto; height: calc(100% - 1.4rem); }
+.seq-year-mark {
+  font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.06em;
+  color: var(--color-ink-meta); margin: 0.9rem 0 0.35rem;
+}
+.seq-year-mark::before {
+  content: ""; position: absolute; left: 0; width: 0.55rem; height: 0.55rem;
+  margin-top: 0.22rem; border-radius: 50%;
+  background: var(--color-paper); border: 1px solid var(--color-rule-dark);
+}
+.seq-runs, .seq-items { list-style: none; margin: 0; padding: 0; }
+.seq-run { margin-bottom: 0.7rem; }
+.seq-when { font-size: 0.78rem; color: var(--color-ink-faint); margin-bottom: 0.1rem; }
+.seq-same { color: var(--color-ink-meta); }
+.seq-line { font-size: 0.9rem; line-height: 1.55; margin: 0.15rem 0; }
+.seq-rel { color: var(--color-ink-muted); }
+.seq-detail { color: var(--color-ink-faint); }
+.seq-detail::before { content: " · "; }
+.seq-undated { margin-top: 0.5rem; }
+.seq-undated .seq-items { margin-top: 0.6rem; }
+
 .net-stage {
   display: grid; gap: 0.75rem;
   grid-template-columns: minmax(0, 1fr);

@@ -12,6 +12,12 @@ import {
 import { orgRecord } from "@/lib/db/queries/entity";
 import { provenanceOf } from "@/lib/db/queries/provenance";
 import { ProvenanceNote } from "@/components/ui/Citations";
+import { SequenceView } from "@/components/network/SequenceView";
+import {
+  boardEntries,
+  fundingEntries,
+  relationshipEntries,
+} from "@/lib/funding/sequence-entries";
 import { edgeLabel, formatPeriod, ORG_KIND_LABELS } from "@/lib/funding/labels";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +57,18 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
     return hit?.slug ? `/network/${type === "org" ? "org" : "person"}/${hit.slug}` : null;
   };
   const label = (type: string, id: string) => labels.get(`${type}:${id}`)?.label ?? id;
+  const other = (type: string, id: string) => ({ label: label(type, id), href: href(type, id) });
+
+  /* Everything recorded for this organisation, in one list, so it can be put
+     in order. The sections above group by kind, which answers "what funding is
+     recorded"; this answers "what happened, and in what order", and a forest
+     layout can answer neither. */
+  const inOrder = [
+    ...fundingEntries(rec.received, "received", (t) => other(t.donorType, t.donorId)),
+    ...fundingEntries(rec.given, "given", (t) => other(t.recipientType, t.recipientId)),
+    ...boardEntries(rec.board, "org", (b) => other("person", b.personId)),
+    ...relationshipEntries(rec.relationships, `org:${org.id}`, other),
+  ];
 
   const facts: Array<[string, string]> = [];
   if (org.legalName && org.legalName !== org.name) facts.push(["Legal name", org.legalName]);
@@ -357,6 +375,8 @@ export default async function OrgPage({ params }: { params: Promise<{ slug: stri
           </ul>
         </RecordSection>
       )}
+
+      <SequenceView entries={inOrder} subject={org.name} />
 
       <NotHeldSection lines={notHeld} questions={rec.questions} />
     </div>

@@ -203,6 +203,10 @@ export async function orgRecord(slug: string) {
   const endpoints = [
     ...given.map((t) => ({ type: t.recipientType, id: t.recipientId })),
     ...received.map((t) => ({ type: t.donorType, id: t.donorId })),
+    // Board people too: the positions section renders them itself, but the
+    // sequence view asks this map for their names and got bare UUIDs without
+    // them.
+    ...board.map((b) => ({ type: "person" as const, id: b.personId })),
     ...rels.flatMap((r) => [
       { type: r.fromType, id: r.fromId },
       { type: r.toType, id: r.toId },
@@ -276,6 +280,8 @@ export async function personRecord(slug: string) {
   const labels = await labelEndpoints([
     ...given.map((t) => ({ type: t.recipientType, id: t.recipientId })),
     ...received.map((t) => ({ type: t.donorType, id: t.donorId })),
+    // The organisations the positions are held in, for the same reason.
+    ...positions.map((r) => ({ type: "org" as const, id: r.orgId })),
   ]);
 
   return {

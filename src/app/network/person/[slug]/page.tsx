@@ -12,6 +12,8 @@ import {
 import { personRecord } from "@/lib/db/queries/entity";
 import { provenanceOf } from "@/lib/db/queries/provenance";
 import { ProvenanceNote } from "@/components/ui/Citations";
+import { SequenceView } from "@/components/network/SequenceView";
+import { boardEntries, fundingEntries } from "@/lib/funding/sequence-entries";
 import { formatPeriod } from "@/lib/funding/labels";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +53,16 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
     return hit?.slug ? `/network/${type === "org" ? "org" : "person"}/${hit.slug}` : null;
   };
   const label = (type: string, id: string) => labels.get(`${type}:${id}`)?.label ?? id;
+  const other = (type: string, id: string) => ({ label: label(type, id), href: href(type, id) });
+
+  /* Positions and funding in one list, so the order between them is visible.
+     A board seat and a grant are separate sections above, and separate
+     sections cannot show that one is recorded before the other. */
+  const inOrder = [
+    ...boardEntries(rec.positions, "person", (b) => other("org", b.orgId)),
+    ...fundingEntries(rec.received, "received", (t) => other(t.donorType, t.donorId)),
+    ...fundingEntries(rec.given, "given", (t) => other(t.recipientType, t.recipientId)),
+  ];
 
   const notHeld: string[] = [];
   if (rec.positions.length === 0)
@@ -166,6 +178,8 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
           </ul>
         </RecordSection>
       )}
+
+      <SequenceView entries={inOrder} subject={person.name} />
 
       <NotHeldSection lines={notHeld} questions={rec.questions} />
     </div>
