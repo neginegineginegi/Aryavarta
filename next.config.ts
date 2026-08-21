@@ -7,27 +7,36 @@ import type { NextConfig } from "next";
  * covers three path groups and widening it would add an invocation to every
  * request; headers() reaches static and ISR routes for free.
  *
- * The CSP ships REPORT-ONLY, and deliberately strict: script-src 'self' with
- * no 'unsafe-inline', which Next's own inline bootstrap scripts will violate.
- * That is the point. The report data shows exactly what fires and nothing
- * else, so the enforcement decision is made on evidence rather than on the
- * docs' word. Violations land in /api/csp-report, which logs them where
- * `vercel logs` can see.
+ * The CSP is ENFORCED. It ran Report-Only first, and the measurement across
+ * seven pages found exactly one violation class: script-src-elem <- inline,
+ * Next's own bootstrap scripts. That evidence is why script-src carries
+ * 'unsafe-inline' and nothing else was loosened.
  *
- * Why not a nonce policy: Next's CSP guide is explicit that nonces require
- * dynamic rendering on every page that carries one. The homepage, /insights,
- * /union and the state pages are deliberately static or ISR; a nonce would
- * quietly turn all of them dynamic. The endstate agreed instead: enforce with
- * 'unsafe-inline' in script-src, weighed against a surface with zero
- * dangerouslySetInnerHTML, zero third-party scripts, and no remote assets.
+ * THE CONCESSION, on the record: 'unsafe-inline' in script-src means an
+ * attacker who can get markup into a page could run script. It is accepted
+ * because this codebase gives them no way to get markup in: zero
+ * dangerouslySetInnerHTML, zero third-party scripts, no remote assets, and
+ * React escaping everything interpolated. What would remove it: a nonce-based
+ * policy ('nonce-…' + 'strict-dynamic') via the Proxy file — deliberately
+ * deferred, because Next requires dynamic rendering on every page that
+ * carries a nonce, and the homepage, /insights, /union and the state pages
+ * are deliberately static or ISR. Revisit if the app ever grows an injection
+ * surface or gives up ISR.
  *
- * style-src carries 'unsafe-inline' from the start: React style={{...}}
+ * In development only, 'unsafe-eval' joins script-src: React uses eval for
+ * server-error stack reconstruction there; production does not need it.
+ *
+ * style-src carries 'unsafe-inline' permanently: React style={{...}}
  * attributes (23 files) and the canvas engines writing el.style per frame are
  * inline styles, and blocking them is all cost and no security.
+ *
+ * report-uri stays after enforcement, so anything the local measurement did
+ * not cover (the Google OAuth form redirect, an exotic browser) shows up in
+ * /api/csp-report via `vercel logs` instead of failing silently.
  */
-const CSP_REPORT_ONLY = [
+const CSP = [
   "default-src 'self'",
-  "script-src 'self'",
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' blob:",
   "font-src 'self'",
@@ -49,7 +58,7 @@ const SECURITY_HEADERS = [
     key: "Permissions-Policy",
     value: "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
   },
-  { key: "Content-Security-Policy-Report-Only", value: CSP_REPORT_ONLY },
+  { key: "Content-Security-Policy", value: CSP },
 ];
 
 const nextConfig: NextConfig = {
