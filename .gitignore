@@ -46,3 +46,11 @@ data/raw/*
 !data/raw/gem
 data/raw/gem/*
 !data/raw/gem/MANIFEST.md
+# TCPD/LokDhaba drop (docs/ELECTIONS_INGEST_SPEC.md §1.2-1.3): blobs in
+# ae/ ge/ early/ and the generated dry-run report stay local; the manifest,
+# its template, and the captured terms are the committed record.
+!data/raw/tcpd
+data/raw/tcpd/*
+!data/raw/tcpd/MANIFEST.csv
+!data/raw/tcpd/MANIFEST.csv.example
+!data/raw/tcpd/TERMS.md

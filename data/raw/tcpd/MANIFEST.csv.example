@@ -1,0 +1,4 @@
+file,sha256,bytes,downloaded_on,source_url,source_version,kind,notes
+ae/All_States_AE.csv,0000000000000000000000000000000000000000000000000000000000000000,253000000,2026-08-21,https://lokdhaba.ashoka.edu.in/browse-data?et=AE,unversioned,,all states all years assembly export (D1)
+ge/All_States_GE.csv,0000000000000000000000000000000000000000000000000000000000000000,90000000,2026-08-21,https://lokdhaba.ashoka.edu.in/browse-data?et=GE,unversioned,,all states all years general export (D2)
+early/GE_1951.csv,0000000000000000000000000000000000000000000000000000000000000000,1200000,2026-08-21,https://github.com/tcpd-ashoka/example/commit/abc1234,abc1234,ge,1951-62 set (D3); files outside ae/ or ge/ MUST say kind=ae or kind=ge
