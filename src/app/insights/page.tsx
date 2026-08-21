@@ -53,13 +53,29 @@ export default async function InsightsPage() {
                   {g.title}
                 </h2>
                 <span className="font-mono text-[9px] tracking-[0.06em] text-ink-meta">
-                  {g.items.length} {g.items.length === 1 ? "entry" : "entries"}
+                  {/* A top-N that does not say "of M" reads as the whole
+                      field, so the cut is stated where the list is. */}
+                  {g.of && g.of > g.items.length
+                    ? `top ${g.items.length} of ${g.of} recorded`
+                    : `${g.items.length} ${g.items.length === 1 ? "entry" : "entries"}`}
                 </span>
               </div>
               <ul className="mt-3.5 space-y-3">
                 {g.items.map((item, i) => (
                   <li key={i} className="text-[0.92rem]">
                     <p className="font-medium text-ink">{item.headline}</p>
+                    {/* The magnitude, drawn. Scaled to the group's own maximum
+                        (or a true denominator like 100%), never across groups:
+                        days and percentages do not share an axis. Same track
+                        vocabulary as the funding flow view. */}
+                    {item.bar && item.bar.max > 0 && (
+                      <div className="flow-bar-track mt-1 max-w-md">
+                        <div
+                          className="flow-bar"
+                          style={{ width: `${Math.min(100, (item.bar.value / item.bar.max) * 100)}%` }}
+                        />
+                      </div>
+                    )}
                     {item.detail && <p className="text-[0.84rem] text-ink-muted">{item.detail}</p>}
                     {item.links.length > 0 && (
                       <p className="mt-0.5 flex flex-wrap gap-x-3 text-[0.82rem]">

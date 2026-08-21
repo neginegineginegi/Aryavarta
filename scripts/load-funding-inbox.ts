@@ -25,11 +25,11 @@
  * FUNDING_INBOX overrides the directory, for testing against sheets that are
  * not committed.
  */
+import "dotenv/config";
+
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { v7 as uuidv7 } from "uuid";
-
-import { pruneRateLimits } from "../src/lib/rate-limit";
 
 const INBOX = process.env.FUNDING_INBOX || join(process.cwd(), "data", "inbox");
 
@@ -963,7 +963,10 @@ async function main() {
     console.log(`[load-funding] note: source ids cited by no row (not inserted): ${unused.join(", ")}`);
   }
   // Housekeeping that rides the build so no visitor ever pays for it: rate
-  // counter windows that ended days ago carry no information.
+  // counter windows that ended days ago carry no information. Imported
+  // dynamically like db above: this file must stay importable with no
+  // DATABASE_URL, and rate-limit pulls the db in at module scope.
+  const { pruneRateLimits } = await import("../src/lib/rate-limit");
   await pruneRateLimits();
   console.log("[load-funding] created:", JSON.stringify(report.created));
   if (report.skipped.length) {

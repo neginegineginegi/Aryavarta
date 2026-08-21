@@ -3,7 +3,10 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { useRef } from "react";
+
 import { breaksWithin, splitAtBreaks } from "@/lib/series";
+import { downloadSvgAsPng } from "@/lib/svg-png";
 
 /**
  * SVG line chart for a yearly series, now living rather than static.
@@ -37,6 +40,7 @@ export function TrendChart({
   unit,
   href,
   breaks = [],
+  exportSource,
 }: {
   points: TrendPoint[];
   width?: number;
@@ -51,8 +55,14 @@ export function TrendChart({
    *  break, and the break is marked and stated. A break annotates; it never
    *  blocks. See SERIES_BREAKS in lib/ingest/provenance.ts. */
   breaks?: readonly number[];
+  /** When set, the chart offers "Save as image". Both lines are drawn INTO
+   *  the exported PNG: an exported chart gets pasted somewhere without its
+   *  page, and a title or attribution that is not in the pixels does not
+   *  travel. */
+  exportSource?: { title: string; source: string; filename: string };
 }) {
   const [sel, setSel] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   const clean = useMemo(
     () =>
@@ -130,6 +140,7 @@ export function TrendChart({
   const figure = (
     <figure className="inline-block" style={{ width }}>
       <svg
+        ref={svgRef}
         viewBox={`0 0 ${width} ${height}`}
         width={width}
         height={height}
@@ -216,6 +227,22 @@ export function TrendChart({
           </>
         )}
       </figcaption>
+      {exportSource && (
+        <button
+          type="button"
+          className="net-plain mt-1 font-mono text-[0.6rem]"
+          onClick={() => {
+            if (svgRef.current)
+              void downloadSvgAsPng(
+                svgRef.current,
+                { title: exportSource.title, source: exportSource.source },
+                exportSource.filename,
+              );
+          }}
+        >
+          Save as image
+        </button>
+      )}
       {/* Stated on the view, not in a footnote: the one thing a reader must
           not do with a broken series is compare across the break. */}
       {shownBreaks.length > 0 && (

@@ -123,7 +123,12 @@ export default async function ElectionPage({
               </Link>
             </p>
           ) : (
-            <SeatBar results={election.results} totalSeats={election.totalSeats} />
+            <>
+              <p className="font-mono text-[10px] tracking-[0.06em] text-ink-meta">
+                {election.results.length} {election.results.length === 1 ? "party" : "parties"} recorded
+              </p>
+              <SeatBar results={election.results} totalSeats={election.totalSeats} />
+            </>
           )}
         </div>
       </section>
@@ -150,6 +155,19 @@ export default async function ElectionPage({
       {voteShareRows.length > 0 && (
         <section className="section-card px-6 py-9 sm:px-10">
           <h2 className="font-display text-[30px] font-light leading-tight text-ink">Vote share</h2>
+          {/* The denominator, stated where the bars are. Without it, bars for
+              the parties whose share WAS recorded read as the whole field, and
+              the silently filtered rest become a claim nobody made. */}
+          <p className="mt-1 font-mono text-[10px] tracking-[0.06em] text-ink-meta">
+            Recorded for {voteShareRows.length} of {election.results.length}{" "}
+            {election.results.length === 1 ? "party" : "parties"}
+            {election.results.length - voteShareRows.length > 0 && (
+              <>
+                {" "}· not recorded for{" "}
+                {election.results.length - voteShareRows.length}
+              </>
+            )}
+          </p>
           <div className="mt-3 max-w-xl space-y-1.5">
             {voteShareRows.map((r) => (
               <div key={r.partyId} className="flex items-center gap-2 text-[0.82rem]">

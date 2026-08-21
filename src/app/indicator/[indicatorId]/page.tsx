@@ -127,6 +127,13 @@ export default async function IndicatorPage({
                       breaks={seriesBreaksFor(indicator.id)}
                       unit={indicator.unit}
                       ariaLabel={`${indicator.name} in ${s.stateName}, ${s.values[0].year} to ${latest.year}`}
+                      exportSource={{
+                        title: `${indicator.name} (${indicator.unit}) · ${s.stateName}`,
+                        // Distinct source titles joined, so a series drawn from
+                        // two publishers credits both inside the image.
+                        source: `Source: ${[...new Set(s.values.map((v) => v.sourceTitle))].join("; ")} · via abhilekh`,
+                        filename: `${indicator.id}-${s.stateId}`,
+                      }}
                     />
                   ) : (
                     <p className="text-[0.8rem] text-ink-faint">Single data point so far.</p>

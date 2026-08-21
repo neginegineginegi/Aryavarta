@@ -54,12 +54,21 @@ export type InsightItem = {
   links: InsightLink[];
   /** Set when the item concerns one state, so record pages can pick their own. */
   stateId?: string;
+  /** When the item is a quantity, the bar that draws it. `max` is the group's
+   *  own scale (or a true denominator like 100 for a percentage), so bars
+   *  compare only within their group, the same rule the funding flow view
+   *  applies per currency. */
+  bar?: { value: number; max: number };
 };
 export type InsightGroup = {
   key: string;
   title: string;
   method: string; // the trust line: exactly how this was computed
   items: InsightItem[];
+  /** How many candidates the group was cut from, when items is a top-N.
+   *  Stated on the view: a top five that does not say "of 34" reads as the
+   *  whole field. */
+  of?: number;
 };
 
 export function computeInsights(
@@ -91,10 +100,12 @@ export function computeInsights(
         title: "Longest-serving Chief Ministers",
         method:
           "Cumulative days in office summed across all approved CM terms for the same recorded name within a state; ongoing terms counted to today.",
+        of: byPerson.size,
         items: top.map((p) => ({
           headline: `${p.name} · ${formatTenure(p.days)}`,
           detail: p.stateName,
           stateId: p.stateId,
+          bar: { value: p.days, max: top[0].days },
           links: [
             { label: p.name, href: `/person/${personSlug(p.name)}` },
             { label: p.stateName, href: `/state/${p.stateId}` },
@@ -116,8 +127,10 @@ export function computeInsights(
         key: "shortest-gov",
         title: "Shortest governments",
         method: "Completed CM terms (with an end date), ranked by days between swearing-in and exit.",
+        of: cmTerms.filter((t) => t.endDate).length,
         items: completed.map((t) => ({
           headline: `${t.cmName} · ${t.days} days`,
+          bar: { value: t.days, max: completed[completed.length - 1].days },
           stateId: t.stateId,
           detail: `${t.stateName}, ${yearOf(t.startDate)}`,
           links: [
@@ -150,8 +163,10 @@ export function computeInsights(
         key: "largest-majority",
         title: "Largest majorities",
         method: "Winner's seats minus the majority mark (⌊seats/2⌋+1), across elections with recorded totals.",
+        of: scored.length,
         items: largest.map(({ e, winner, overMark }) => ({
           headline: `${winner.partyName} · ${overMark >= 0 ? "+" : ""}${overMark} over the mark`,
+          bar: { value: Math.max(0, overMark), max: Math.max(1, largest[0].overMark) },
           stateId: e.stateId,
           detail: `${e.stateName}, ${yearOf(e.electionDate)} (${winner.seatsWon}/${e.totalSeats})`,
           links: [{ label: "Election dashboard", href: `/election/${e.id}` }],
@@ -163,7 +178,12 @@ export function computeInsights(
         key: "closest-election",
         title: "Closest elections",
         method: "Smallest seat gap between winner and runner-up, across elections with at least two recorded parties.",
+        of: scored.filter((x) => x.runnerUp).length,
         items: closest.map(({ e, winner, runnerUp }) => ({
+          bar: {
+            value: winner.seatsWon - runnerUp!.seatsWon,
+            max: Math.max(1, ...closest.map((c) => c.winner.seatsWon - c.runnerUp!.seatsWon)),
+          },
           headline: `${winner.partyName} by ${winner.seatsWon - runnerUp!.seatsWon} seat${winner.seatsWon - runnerUp!.seatsWon === 1 ? "" : "s"} over ${runnerUp!.partyName}`,
           stateId: e.stateId,
           detail: `${e.stateName}, ${yearOf(e.electionDate)}`,
@@ -184,16 +204,19 @@ export function computeInsights(
       groups.push({
         key: "turnout",
         title: "Turnout extremes",
-        method: "Highest and lowest reported turnout among elections with a recorded figure.",
+        method: "Highest and lowest reported turnout among elections with a recorded figure. Bars are share of 100%.",
+        of: withTurnout.length,
         items: [
           {
             headline: `Highest: ${hi.turnoutPercent}%`,
+            bar: { value: Number(hi.turnoutPercent), max: 100 },
             stateId: hi.stateId,
             detail: `${hi.stateName}, ${yearOf(hi.electionDate)}`,
             links: [{ label: "Election dashboard", href: `/election/${hi.id}` }],
           },
           {
             headline: `Lowest: ${lo.turnoutPercent}%`,
+            bar: { value: Number(lo.turnoutPercent), max: 100 },
             stateId: lo.stateId,
             detail: `${lo.stateName}, ${yearOf(lo.electionDate)}`,
             links: [{ label: "Election dashboard", href: `/election/${lo.id}` }],
@@ -223,9 +246,11 @@ export function computeInsights(
       groups.push({
         key: "presidents-rule",
         title: "Most President's Rule",
-        method: "Count and cumulative duration of recorded President's Rule periods per state.",
+        method: "Count and cumulative duration of recorded President's Rule periods per state. Bars are cumulative days.",
+        of: byState.size,
         items: top.map((s) => ({
           headline: `${s.stateName} · ${s.count} period${s.count === 1 ? "" : "s"}, ${formatTenure(s.days)}`,
+          bar: { value: s.days, max: top[0].days },
           stateId: s.stateId,
           detail: "",
           links: [{ label: s.stateName, href: `/state/${s.stateId}` }],
@@ -309,8 +334,10 @@ export function computeInsights(
         key: "party-dominance",
         title: "Longest party dominance of a state",
         method: "Cumulative days a party's CMs governed a state, summed over all approved terms.",
+        of: byStateParty.size,
         items: top.map((p) => ({
           headline: `${p.partyName} · ${formatTenure(p.days)} governing ${p.stateName}`,
+          bar: { value: p.days, max: top[0].days },
           detail: "",
           links: [
             { label: p.partyName, href: `/party/${p.partyId}` },
