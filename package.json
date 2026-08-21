@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "packageManager": "pnpm@10.33.0",
+  "pnpm": {
+    "overrides": {
+      "sharp@<0.35.0": "^0.35.0",
+      "postcss@<8.5.18": "^8.5.18",
+      "nanoid@<3.3.18": "^3.3.18"
+    }
+  },
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/check-site-url.mjs && node scripts/check-auth-dev-login.mjs && node scripts/ensure-upgrades.mjs && tsx scripts/supersede-wikidata.ts && tsx scripts/load-inbox.ts && tsx scripts/load-funding-inbox.ts && next build",
