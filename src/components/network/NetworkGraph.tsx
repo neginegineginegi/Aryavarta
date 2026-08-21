@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { edgeEvidenceAction, expandNodeAction } from "@/actions/network";
+import { RATE_LIMIT_MESSAGE } from "@/lib/rate-limit-shared";
 import type { EdgeEvidence } from "@/lib/db/queries/network";
 import type { GraphEdge, GraphNode } from "@/lib/funding/graph-types";
 import { edgeLabel, EVIDENCE_LABELS, NODE_TYPE_LABELS } from "@/lib/funding/labels";
@@ -81,6 +82,9 @@ export function NetworkGraph({
   const [sel, setSel] = useState<Sel>(null);
   const [hover, setHover] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  /** Set when the server refused a call for rate, cleared on the next success.
+   *  Shown as its own sentence: a refusal must never render as an absence. */
+  const [limitNote, setLimitNote] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<EdgeEvidence[] | null>(null);
   const [wasTruncated, setWasTruncated] = useState(truncated);
 
@@ -693,6 +697,11 @@ export function NetworkGraph({
       setBusy(key);
       try {
         const res = await expandNodeAction(n.type, n.id, undefined, showClaims);
+        if ("rateLimited" in res) {
+          setLimitNote(RATE_LIMIT_MESSAGE);
+          return;
+        }
+        setLimitNote(null);
         setNodes((prev) => {
           const seen = new Map(prev.map((p) => [keyOf(p), p]));
           for (const incoming of res.nodes) {
@@ -753,7 +762,13 @@ export function NetworkGraph({
   const selectEdge = useCallback(async (e: GraphEdge) => {
     setSel({ kind: "edge", id: e.edgeId });
     setEvidence(null);
-    setEvidence(await edgeEvidenceAction(e.citationSubject, e.citationSubjectId));
+    const ev = await edgeEvidenceAction(e.citationSubject, e.citationSubjectId);
+    if ("rateLimited" in ev) {
+      setLimitNote(RATE_LIMIT_MESSAGE);
+      return;
+    }
+    setLimitNote(null);
+    setEvidence(ev);
   }, []);
 
   const selectedNode = sel?.kind === "node" ? nodes.find((n) => keyOf(n) === sel.key) : undefined;
@@ -851,6 +866,7 @@ export function NetworkGraph({
             </button>
           </span>
         )}
+        {limitNote && <span className="net-warn">{limitNote}</span>}
         {wasTruncated && (
           <span className="net-warn">
             More relationships exist than are shown. Expand a specific entity to see them.

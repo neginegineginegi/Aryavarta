@@ -946,6 +946,16 @@ const STATEMENTS = [
             'claim', cl.id::text, cl.statement
        FROM claims cl
       WHERE cl.subject_id IS NOT NULL AND cl.object_id IS NOT NULL`,
+  // --- upgrade: rate limiting ------------------------------------------------
+  // UNLOGGED on purpose: counters, not records. No WAL, and losing them on
+  // crash recovery costs one clean window, which is nothing.
+  `CREATE UNLOGGED TABLE IF NOT EXISTS "rate_limits" (
+     "bucket" text NOT NULL,
+     "key" text NOT NULL,
+     "window_start" timestamptz NOT NULL,
+     "hits" integer NOT NULL DEFAULT 1,
+     PRIMARY KEY ("bucket", "key", "window_start")
+   )`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

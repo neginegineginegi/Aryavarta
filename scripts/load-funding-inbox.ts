@@ -29,6 +29,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { v7 as uuidv7 } from "uuid";
 
+import { pruneRateLimits } from "../src/lib/rate-limit";
+
 const INBOX = process.env.FUNDING_INBOX || join(process.cwd(), "data", "inbox");
 
 type Row = Record<string, string>;
@@ -960,6 +962,9 @@ async function main() {
   if (unused.length) {
     console.log(`[load-funding] note: source ids cited by no row (not inserted): ${unused.join(", ")}`);
   }
+  // Housekeeping that rides the build so no visitor ever pays for it: rate
+  // counter windows that ended days ago carry no information.
+  await pruneRateLimits();
   console.log("[load-funding] created:", JSON.stringify(report.created));
   if (report.skipped.length) {
     console.log(`[load-funding] skipped ${report.skipped.length}:`);

@@ -1,0 +1,18 @@
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    # One PR per week for the routine drift, separate PRs only for security
+    # advisories, so the queue holds review attention for the updates that
+    # can hurt.
+    groups:
+      routine:
+        applies-to: version-updates
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

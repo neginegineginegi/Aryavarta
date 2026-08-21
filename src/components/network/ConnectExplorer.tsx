@@ -13,6 +13,7 @@ import { EntityPicker } from "@/components/network/EntityPicker";
 import type { EdgeEvidence, NodeHit } from "@/lib/db/queries/network";
 import type { GraphEdge } from "@/lib/funding/graph-types";
 import { edgeLabel, EVIDENCE_LABELS, EVIDENCE_MEANING, formatPeriod } from "@/lib/funding/labels";
+import { RATE_LIMIT_MESSAGE } from "@/lib/rate-limit-shared";
 
 /**
  * "What connects these two?"
@@ -37,6 +38,7 @@ export function ConnectExplorer({
   const [paths, setPaths] = useState<ResolvedPath[] | null>(null);
   const [overlap, setOverlap] = useState<OverlapItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [limitNote, setLimitNote] = useState<string | null>(null);
   const [openEdge, setOpenEdge] = useState<string | null>(null);
   const [evidence, setEvidence] = useState<Record<string, EdgeEvidence[]>>({});
 
@@ -52,6 +54,13 @@ export function ConnectExplorer({
         findPathsAction(ra, rb, depth, includeClaims),
         sharedConnectionsAction(ra, rb, includeClaims),
       ]);
+      // A refusal is not a result. Rendering [] here would state "no
+      // documented paths", which the server did not say.
+      if ("rateLimited" in p || "rateLimited" in o) {
+        setLimitNote(RATE_LIMIT_MESSAGE);
+        return;
+      }
+      setLimitNote(null);
       setPaths(p);
       setOverlap(o);
     } finally {
@@ -68,6 +77,11 @@ export function ConnectExplorer({
       setOpenEdge(edge.edgeId);
       if (!evidence[edge.edgeId]) {
         const found = await edgeEvidenceAction(edge.citationSubject, edge.citationSubjectId);
+        if ("rateLimited" in found) {
+          setLimitNote(RATE_LIMIT_MESSAGE);
+          return;
+        }
+        setLimitNote(null);
         setEvidence((prev) => ({ ...prev, [edge.edgeId]: found }));
       }
     },
@@ -107,6 +121,7 @@ export function ConnectExplorer({
             {busy ? "Searching…" : "Find connections"}
           </button>
         </div>
+        {limitNote && <p className="net-warn">{limitNote}</p>}
         {sameEntity && <p className="net-warn">Pick two different entities.</p>}
       </div>
 

@@ -6,6 +6,7 @@ import { v7 as uuidv7 } from "uuid";
 import { db } from "@/lib/db";
 import { documents, events, parties, revisions, states } from "@/lib/db/schema";
 import { AuthzError, requireRole } from "@/lib/authz";
+import { RATE_LIMIT_MESSAGE, rateLimit } from "@/lib/rate-limit";
 import {
   canonicalizeFor,
   payloadSchemaFor,
@@ -66,6 +67,12 @@ export async function proposeRevision(input: ProposeInput): Promise<ProposeResul
   } catch (e) {
     return { ok: false, error: e instanceof AuthzError ? e.message : "Not signed in." };
   }
+
+  // After auth on purpose, so the counter keys on the account: flooding the
+  // review queue is an attack on the moderators, and rotating IPs is cheaper
+  // than rotating Google accounts.
+  const limit = await rateLimit("propose");
+  if (!limit.ok) return { ok: false, error: RATE_LIMIT_MESSAGE };
 
   // --- basic shape ---------------------------------------------------------
   if (!["term", "election", "event", "manifesto_promise"].includes(input.entityType))
@@ -212,6 +219,9 @@ export async function withdrawRevision(revisionId: string): Promise<WithdrawResu
   } catch (e) {
     return { ok: false, error: e instanceof AuthzError ? e.message : "Not signed in." };
   }
+
+  const limit = await rateLimit("propose");
+  if (!limit.ok) return { ok: false, error: RATE_LIMIT_MESSAGE };
 
   const result = await db.transaction(async (tx) => {
     const [rev] = await tx

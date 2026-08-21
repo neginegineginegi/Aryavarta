@@ -4,6 +4,7 @@ import { edgesByIds, labelsFor, searchGraphNodes, type NodeHit } from "@/lib/db/
 import { findPaths, sharedConnections } from "@/lib/funding/graph";
 import type { GraphEdge } from "@/lib/funding/graph-types";
 import { evidenceRank } from "@/lib/funding/labels";
+import { guardLimit, type RateLimited } from "@/lib/rate-limit";
 
 export type PathStep = {
   from: { key: string; label: string; type: string };
@@ -28,7 +29,9 @@ export type OverlapItem = {
   rank: number;
 };
 
-export async function searchEntitiesAction(query: string): Promise<NodeHit[]> {
+export async function searchEntitiesAction(query: string): Promise<NodeHit[] | RateLimited> {
+  const refused = await guardLimit("graph");
+  if (refused) return refused;
   return searchGraphNodes(query, 12);
 }
 
@@ -44,7 +47,9 @@ export async function findPathsAction(
   b: { type: string; id: string },
   depth = 4,
   includeInterpretive = false,
-): Promise<ResolvedPath[]> {
+): Promise<ResolvedPath[] | RateLimited> {
+  const refused = await guardLimit("graph");
+  if (refused) return refused;
   const paths = await findPaths(a, b, { depth, includeInterpretive, limit: 12 });
   if (paths.length === 0) return [];
 
@@ -82,7 +87,9 @@ export async function sharedConnectionsAction(
   a: { type: string; id: string },
   b: { type: string; id: string },
   includeInterpretive = false,
-): Promise<OverlapItem[]> {
+): Promise<OverlapItem[] | RateLimited> {
+  const refused = await guardLimit("graph");
+  if (refused) return refused;
   const shared = await sharedConnections(a, b, { includeInterpretive });
   return shared
     .map((s) => ({

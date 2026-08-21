@@ -3,6 +3,7 @@
 import { useEffect, useId, useRef, useState } from "react";
 
 import { searchEntitiesAction } from "@/actions/network-connect";
+import { RATE_LIMIT_MESSAGE } from "@/lib/rate-limit-shared";
 import type { NodeHit } from "@/lib/db/queries/network";
 import { NODE_TYPE_LABELS, ORG_KIND_LABELS } from "@/lib/funding/labels";
 
@@ -27,6 +28,7 @@ export function EntityPicker({
   const [hits, setHits] = useState<NodeHit[]>([]);
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
 
@@ -45,6 +47,14 @@ export function EntityPicker({
       setLoading(true);
       const res = await searchEntitiesAction(q);
       if (!live) return;
+      // A refusal must not render as "no matches": leave the previous hits
+      // alone and say why nothing new arrived.
+      if ("rateLimited" in res) {
+        setNote(RATE_LIMIT_MESSAGE);
+        setLoading(false);
+        return;
+      }
+      setNote(null);
       setHits(res);
       setLoading(false);
       setOpen(true);
@@ -113,7 +123,11 @@ export function EntityPicker({
       {open && (
         <ul className="net-pick-list" id={`${id}-list`} role="listbox">
           {loading && <li className="net-pick-note">Searching…</li>}
-          {!loading && shown.length === 0 && (
+          {/* The refusal outranks the absence line: "nothing recorded" is a
+              statement about the archive, and a refused search did not make
+              it. */}
+          {!loading && note && <li className="net-pick-note">{note}</li>}
+          {!loading && !note && shown.length === 0 && (
             <li className="net-pick-note">Nothing recorded under that name.</li>
           )}
           {shown.map((h) => (

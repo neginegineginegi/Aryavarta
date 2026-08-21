@@ -8,6 +8,7 @@ import { v7 as uuidv7 } from "uuid";
 import { db } from "@/lib/db";
 import { events, reports } from "@/lib/db/schema";
 import { getSessionUser, requireRole, AuthzError } from "@/lib/authz";
+import { RATE_LIMIT_MESSAGE, rateLimit } from "@/lib/rate-limit";
 import { tags } from "@/lib/cache";
 
 export type OpenReportResult = { ok: true } | { ok: false; error: string };
@@ -38,6 +39,11 @@ export async function openReport(input: {
 
   const contact = String(input.reporterContact ?? "").trim().slice(0, 200) || null;
   const user = await getSessionUser();
+
+  // Reports are open to anyone by design; the limiter is what keeps
+  // "anyone" from being a loop. Anonymous callers key by IP.
+  const limit = await rateLimit("report");
+  if (!limit.ok) return { ok: false, error: RATE_LIMIT_MESSAGE };
 
   // The entity must exist (only events are individually addressable for now,
   // but terms/elections are accepted for future UI).

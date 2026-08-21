@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 import { SUPPORTED_QUESTIONS, tryAnswer } from "@/lib/ask";
+import { RATE_LIMIT_MESSAGE, rateLimit } from "@/lib/rate-limit";
 import { searchArchive, type SearchHit } from "@/lib/db/queries/search";
 
 export const metadata: Metadata = { title: "Search" };
@@ -89,7 +90,11 @@ export default async function SearchPage({
 }) {
   const { q } = await searchParams;
   const query = (q ?? "").trim();
-  const [results, answer] = query
+  // The page is a GET, not an action, so the limiter runs here. A refused
+  // search renders as a refusal, never as an empty result: "nothing matched"
+  // is a statement about the archive, and a refused query did not make it.
+  const refused = query ? !(await rateLimit("search")).ok : false;
+  const [results, answer] = query && !refused
     ? await Promise.all([searchArchive(query), tryAnswer(query)])
     : [null, null];
 
@@ -161,6 +166,11 @@ export default async function SearchPage({
         </div>
       )}
 
+      {refused && (
+        <section className="section-card mt-4 px-6 py-8 sm:px-10">
+          <p className="text-ink-muted">{RATE_LIMIT_MESSAGE}</p>
+        </section>
+      )}
       {results && (
         <div className="section-card px-6 py-8 sm:px-10">
           {results.states.length === 0 && results.hits.length === 0 ? (

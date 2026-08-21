@@ -3,6 +3,7 @@
 import { edgeEvidence, degrees, type EdgeEvidence } from "@/lib/db/queries/network";
 import { neighbourhood } from "@/lib/funding/graph";
 import type { GraphEdge, GraphNode } from "@/lib/funding/graph-types";
+import { guardLimit, type RateLimited } from "@/lib/rate-limit";
 
 /**
  * The two things the graph asks the server for after first paint: more of the
@@ -31,7 +32,9 @@ export async function expandNodeAction(
   id: string,
   window?: { yearFrom?: number; yearTo?: number },
   includeInterpretive = false,
-): Promise<ExpansionResult> {
+): Promise<ExpansionResult | RateLimited> {
+  const refused = await guardLimit("graph");
+  if (refused) return refused;
   const result = await neighbourhood(
     { type, id },
     {
@@ -54,6 +57,8 @@ export async function expandNodeAction(
 export async function edgeEvidenceAction(
   citationSubject: string,
   citationSubjectId: string,
-): Promise<EdgeEvidence[]> {
+): Promise<EdgeEvidence[] | RateLimited> {
+  const refused = await guardLimit("graph");
+  if (refused) return refused;
   return edgeEvidence(citationSubject, citationSubjectId);
 }
