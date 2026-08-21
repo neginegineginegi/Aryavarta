@@ -2,6 +2,7 @@
   "name": "abhilekh",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.33.0",
   "scripts": {
     "dev": "next dev",
     "build": "node scripts/check-site-url.mjs && node scripts/check-auth-dev-login.mjs && node scripts/ensure-upgrades.mjs && tsx scripts/supersede-wikidata.ts && tsx scripts/load-inbox.ts && tsx scripts/load-funding-inbox.ts && next build",
