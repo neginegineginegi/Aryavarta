@@ -17,7 +17,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: pnpm
@@ -34,7 +34,7 @@ jobs:
       # No `cache: pnpm` here: audit reads the lockfile without installing,
       # so the pnpm store never exists and the cache post-step would fail
       # the job after a successful audit.
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
       # Production dependencies at high or worse fail the PR. Dev-tree noise
