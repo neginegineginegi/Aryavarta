@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 
+import { breaksWithin, splitAtBreaks } from "@/lib/series";
+
 /**
  * SVG line chart for a yearly series, now living rather than static.
  *
@@ -34,6 +36,7 @@ export function TrendChart({
   ariaLabel,
   unit,
   href,
+  breaks = [],
 }: {
   points: TrendPoint[];
   width?: number;
@@ -43,6 +46,11 @@ export function TrendChart({
   unit?: string;
   /** When set, the whole chart links to the expanded view (indicator page). */
   href?: string;
+  /** Years where the indicator's DEFINITION changed (first year under the new
+   *  one). The line is drawn as separate segments that never join across a
+   *  break, and the break is marked and stated. A break annotates; it never
+   *  blocks. See SERIES_BREAKS in lib/ingest/provenance.ts. */
+  breaks?: readonly number[];
 }) {
   const [sel, setSel] = useState<number | null>(null);
 
@@ -68,9 +76,16 @@ export function TrendChart({
 
   const x = (year: number) => PAD_X + ((year - minX) / spanX) * (width - PAD_X * 2);
   const y = (v: number) => height - PAD_Y - ((v - minY) / spanY) * (height - PAD_Y * 2);
-  const path = clean
-    .map((p, i) => `${i === 0 ? "M" : "L"}${x(p.year).toFixed(1)},${y(p.value).toFixed(1)}`)
-    .join(" ");
+  // One path per definition segment. Where a break exists there is no path
+  // between the segments at all, so the eye cannot be led across a change in
+  // what was being counted.
+  const shownBreaks = breaksWithin(clean, breaks);
+  const segments = splitAtBreaks(clean, shownBreaks);
+  const paths = segments.map((seg) =>
+    seg
+      .map((p, i) => `${i === 0 ? "M" : "L"}${x(p.year).toFixed(1)},${y(p.value).toFixed(1)}`)
+      .join(" "),
+  );
   const last = clean[clean.length - 1];
 
   // Group from a thousand, not from ten thousand. The old threshold predated
@@ -146,7 +161,23 @@ export function TrendChart({
             strokeWidth="1"
           />
         )}
-        <path d={path} fill="none" stroke="var(--color-accent)" strokeWidth="1.5" />
+        {/* The break mark: a dashed rule where the definition changed. Drawn
+            under the data so it reads as context, not as a series. */}
+        {shownBreaks.map((b) => (
+          <line
+            key={`break-${b}`}
+            x1={x(b) - 0.5}
+            y1={PAD_Y / 2}
+            x2={x(b) - 0.5}
+            y2={height - PAD_Y}
+            stroke="var(--color-ink-faint)"
+            strokeWidth="1"
+            strokeDasharray="2 3"
+          />
+        ))}
+        {paths.map((d, i) => (
+          <path key={i} d={d} fill="none" stroke="var(--color-accent)" strokeWidth="1.5" />
+        ))}
         {clean.map((p, i) => (
           <circle
             key={p.year}
@@ -185,6 +216,14 @@ export function TrendChart({
           </>
         )}
       </figcaption>
+      {/* Stated on the view, not in a footnote: the one thing a reader must
+          not do with a broken series is compare across the break. */}
+      {shownBreaks.length > 0 && (
+        <p className="font-mono text-[0.6rem] leading-snug text-ink-meta">
+          Definition changed in {shownBreaks.join(", ")}. Values either side count different
+          things and do not compare.
+        </p>
+      )}
     </figure>
   );
 

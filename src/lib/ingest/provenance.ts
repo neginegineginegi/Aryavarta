@@ -217,3 +217,25 @@ export const DEFERRED_UNTIL_SERIES_BREAKS: ReadonlySet<string> = new Set([
 export function isDeferredIndicator(id: string): boolean {
   return DEFERRED_UNTIL_SERIES_BREAKS.has(id.trim());
 }
+
+/**
+ * Known definition changes per indicator: the year is the FIRST measured
+ * under the new definition. TrendChart consumes this and draws one line per
+ * segment, so a series listed here physically cannot render as one unbroken
+ * line — the joining path is never constructed.
+ *
+ * Empty today, and that is a fact, not an omission: every deferred indicator
+ * is unloaded precisely because its breaks are not yet established. The
+ * protocol for lifting a deferral is (1) establish the break years from the
+ * source's own methodology notes, (2) record them here, (3) remove the id
+ * from DEFERRED_UNTIL_SERIES_BREAKS. Step 3 without step 2 ships a chart
+ * that lies across a definition change, which is the exact thing the
+ * deferral exists to prevent — so the two sets are checked against each
+ * other in lib/series.test.ts.
+ */
+export const SERIES_BREAKS: Readonly<Record<string, readonly number[]>> = {};
+
+/** Break years for one indicator; empty for an unbroken series. */
+export function seriesBreaksFor(id: string): readonly number[] {
+  return SERIES_BREAKS[id.trim()] ?? [];
+}

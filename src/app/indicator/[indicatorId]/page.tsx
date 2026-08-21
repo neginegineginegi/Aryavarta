@@ -7,6 +7,7 @@ import { citationsForRecord, provenanceOf } from "@/lib/db/queries/provenance";
 
 import { ProvenanceNote, ReferenceList } from "@/components/ui/Citations";
 import { TrendChart } from "@/components/ui/TrendChart";
+import { seriesBreaksFor } from "@/lib/ingest/provenance";
 import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
 export const revalidate = 3600;
@@ -123,6 +124,7 @@ export default async function IndicatorPage({
                       }))}
                       width={340}
                       height={80}
+                      breaks={seriesBreaksFor(indicator.id)}
                       unit={indicator.unit}
                       ariaLabel={`${indicator.name} in ${s.stateName}, ${s.values[0].year} to ${latest.year}`}
                     />

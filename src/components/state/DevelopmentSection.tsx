@@ -5,6 +5,7 @@ import type { IndicatorSeries } from "@/lib/db/queries/development";
 import type { Provenance } from "@/lib/db/queries/provenance";
 import { ProvenanceNote } from "@/components/ui/Citations";
 import { TrendChart } from "@/components/ui/TrendChart";
+import { seriesBreaksFor } from "@/lib/ingest/provenance";
 import { formatDate, formatNumber, sourcesDiffer } from "@/lib/format";
 
 /**
@@ -108,6 +109,7 @@ export function DevelopmentSection({
                                   (sourcesDiffer(s.values) ? v.sourceTitle : undefined),
                               }))}
                               width={180}
+                              breaks={seriesBreaksFor(s.id)}
                               height={44}
                               unit={s.unit}
                               href={`/indicator/${s.id}`}
