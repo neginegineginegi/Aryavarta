@@ -13,15 +13,7 @@ import { getUnionMapData } from "@/lib/db/queries/map";
 import { getUnionOverview } from "@/lib/db/queries/union";
 import { DevelopmentSection } from "@/components/state/DevelopmentSection";
 import { getDevelopment } from "@/lib/db/queries/development";
-import {
-  EVENT_TYPE_LABELS,
-  EVENT_TYPE_ORDER,
-  formatDate,
-  formatNumber,
-  formatTermRange,
-  yearOf,
-  type EventType,
-} from "@/lib/format";
+import { EVENT_TYPE_LABELS, EVENT_TYPE_ORDER, formatElectionDate, formatNumber, formatTermRange, type EventType, yearOf } from "@/lib/format";
 import type { TermWithSources } from "@/lib/db/queries/state";
 
 export const metadata: Metadata = {
@@ -197,7 +189,7 @@ export default async function UnionPage() {
                   href={`/election/${e.id}`}
                   className="font-display text-lg font-semibold text-ink underline-offset-4 hover:text-accent hover:underline"
                 >
-                  {formatDate(e.electionDate)}
+                  {formatElectionDate(e)}
                 </Link>
                 <span className="text-[0.8rem] text-ink-faint">
                   {e.totalSeats ? `${formatNumber(e.totalSeats)} seats` : null}

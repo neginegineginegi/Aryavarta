@@ -82,6 +82,7 @@ async function fetchUnionOverview(): Promise<UnionOverview> {
     elections: electionRows.map((e) => ({
       id: e.id,
       electionDate: e.electionDate,
+      electionDatePrecision: e.electionDatePrecision,
       resultSummary: e.resultSummary,
       totalSeats: e.totalSeats,
       turnoutPercent: e.turnoutPercent,

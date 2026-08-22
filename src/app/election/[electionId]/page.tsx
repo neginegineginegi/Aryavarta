@@ -14,7 +14,7 @@ import {
   electionTitle,
   seatDeltas,
 } from "@/lib/election-analysis";
-import { formatDate, formatNumber, yearOf } from "@/lib/format";
+import { formatDate, formatElectionDate, formatNumber, yearOf } from "@/lib/format";
 
 export async function generateMetadata({
   params,
@@ -66,7 +66,7 @@ export default async function ElectionPage({
           {electionTitle(election)}
         </h1>
         <p className="mt-3 font-mono text-[10px] tracking-[0.06em] text-ink-soft">
-          Polled {formatDate(election.electionDate)}
+          Polled {formatElectionDate(election)}
           {election.assemblyNumber ? (
             <>
               {" "}· constituted the{" "}

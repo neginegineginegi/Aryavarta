@@ -6,13 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
 import { getUnionOverview } from "@/lib/db/queries/union";
-import {
-  EVENT_TYPE_LABELS,
-  formatDate,
-  formatTermRange,
-  yearOf,
-  type EventType,
-} from "@/lib/format";
+import { EVENT_TYPE_LABELS, formatElectionDate, formatTermRange, type EventType, yearOf } from "@/lib/format";
 
 const MIN_YEAR = 1947;
 
@@ -137,7 +131,7 @@ export default async function UnionYearPage({
           <ul className="mt-4 space-y-3">
             {electionsInYear.map((e) => (
               <li key={e.id} className="text-[0.9rem]">
-                <span className="font-medium text-ink">{formatDate(e.electionDate)}</span>{" "}
+                <span className="font-medium text-ink">{formatElectionDate(e)}</span>{" "}
                 <CiteMarks sources={e.sources} numberOf={citations.numberOf} />
                 <Link
                   href={`/election/${e.id}`}

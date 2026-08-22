@@ -60,6 +60,7 @@ async function fetchElectionDetail(electionId: string): Promise<ElectionDetail |
     stateKind: r.state.kind,
     scope: r.scope,
     electionDate: r.electionDate,
+    electionDatePrecision: r.electionDatePrecision,
     assemblyNumber: r.assemblyNumber,
     totalSeats: r.totalSeats,
     turnoutPercent: r.turnoutPercent,

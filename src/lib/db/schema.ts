@@ -380,6 +380,12 @@ export const elections = pgTable(
     // 15th Rajasthan Legislative Assembly). Display metadata; nullable.
     assemblyNumber: integer("assembly_number"),
     electionDate: date("election_date").notNull(),
+    // How much of election_date is real (ELECTIONS_INGEST_SPEC §2.5): TCPD
+    // rows anchor a month or only a year; hand rows are actual dates ('day').
+    // The formatter renders exactly the known part, never an invented 1st.
+    electionDatePrecision: text("election_date_precision", { enum: ["day", "month", "year"] })
+      .notNull()
+      .default("day"),
     resultSummary: text("result_summary"),
     totalSeats: integer("total_seats"),
     turnoutPercent: numeric("turnout_percent", { precision: 5, scale: 2 }),

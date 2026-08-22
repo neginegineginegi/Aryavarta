@@ -6,13 +6,7 @@ import { Badge } from "@/components/ui/Badge";
 import { buildCitationIndex, CiteMarks, ReferenceList } from "@/components/ui/Citations";
 import { PartyTag } from "@/components/ui/PartyTag";
 import { getStateArticle } from "@/lib/db/queries/state";
-import {
-  EVENT_TYPE_LABELS,
-  formatDate,
-  formatTermRange,
-  yearOf,
-  type EventType,
-} from "@/lib/format";
+import { EVENT_TYPE_LABELS, formatDate, formatElectionDate, formatTermRange, type EventType, yearOf } from "@/lib/format";
 
 // Daily re-render keeps the current-year upper bound fresh (see state page).
 export const revalidate = 86400;
@@ -152,7 +146,7 @@ export default async function StateYearPage({
           <ul className="mt-4 space-y-3">
             {electionsInYear.map((e) => (
               <li key={e.id} className="text-[0.9rem]">
-                <span className="font-medium text-ink">{formatDate(e.electionDate)}</span>{" "}
+                <span className="font-medium text-ink">{formatElectionDate(e)}</span>{" "}
                 <CiteMarks sources={e.sources} numberOf={citations.numberOf} />
                 {e.resultSummary ? (
                   <p className="mt-0.5 max-w-2xl text-ink-muted">{e.resultSummary}</p>

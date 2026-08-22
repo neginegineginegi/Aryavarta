@@ -26,7 +26,7 @@ import {
   electionTitle,
   seatDeltas,
 } from "@/lib/election-analysis";
-import { EVENT_TYPE_LABELS, formatDate, yearOf, type EventType } from "@/lib/format";
+import { EVENT_TYPE_LABELS, formatElectionDate, type EventType, yearOf } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Compare",
@@ -73,7 +73,7 @@ function SidePanel({
           </Link>
         </h2>
         <p className="mt-1 text-[0.8rem] text-ink-muted">
-          {formatDate(election.electionDate)}
+          {formatElectionDate(election)}
           {election.turnoutPercent ? ` · ${election.turnoutPercent}% turnout` : ""}
         </p>
       </div>

@@ -5,7 +5,7 @@ import { getAllParties } from "@/lib/db/queries/party";
 import { getElectionIndex } from "@/lib/db/queries/compare";
 import { getIndicatorIndex, type IndicatorIndexEntry } from "@/lib/db/queries/development";
 import { db } from "@/lib/db";
-import { formatDate } from "@/lib/format";
+import { formatElectionDate } from "@/lib/format";
 
 export const metadata: Metadata = {
   title: "Browse",
@@ -178,7 +178,7 @@ export default async function BrowsePage() {
                   href={`/election/${e.id}`}
                   className="text-accent underline-offset-2 hover:underline"
                 >
-                  {e.stateName}, {formatDate(e.electionDate)}
+                  {e.stateName}, {formatElectionDate(e)}
                   {e.scope === "lok_sabha" ? " (Lok Sabha)" : ""}
                 </Link>
               </li>

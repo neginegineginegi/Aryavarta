@@ -9,6 +9,7 @@ export type ElectionIndexEntry = {
   stateId: string;
   stateName: string;
   electionDate: string;
+  electionDatePrecision: "day" | "month" | "year";
   scope: "state_assembly" | "lok_sabha";
 };
 
@@ -18,7 +19,7 @@ export const getElectionIndex = unstable_cache(
     const rows = await db.query.elections.findMany({
       where: isNull(elections.deletedAt),
       orderBy: [asc(elections.electionDate)],
-      columns: { id: true, stateId: true, electionDate: true, scope: true },
+      columns: { id: true, stateId: true, electionDate: true, electionDatePrecision: true, scope: true },
       with: { state: { columns: { name: true } } },
     });
     return rows.map((r) => ({
@@ -26,6 +27,7 @@ export const getElectionIndex = unstable_cache(
       stateId: r.stateId,
       stateName: r.state.name,
       electionDate: r.electionDate,
+      electionDatePrecision: r.electionDatePrecision,
       scope: r.scope,
     }));
   },

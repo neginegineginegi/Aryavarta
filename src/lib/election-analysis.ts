@@ -22,6 +22,8 @@ export type AnalysisResult = {
 export type AnalysisElection = {
   id: string;
   stateName: string;
+  /** Absent or null reads as 'day' (spec §2.5). */
+  electionDatePrecision?: "day" | "month" | "year" | null;
   stateKind: "state" | "union_territory" | "union";
   scope: "state_assembly" | "lok_sabha";
   electionDate: string;

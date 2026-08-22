@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { Badge } from "@/components/ui/Badge";
 import { getPartyProfile } from "@/lib/db/queries/party";
 import { personSlug } from "@/lib/db/queries/person";
-import { formatDate, yearOf } from "@/lib/format";
+import { formatElectionDate, yearOf } from "@/lib/format";
 
 const OFFICE_LABEL = {
   cm: "Chief Minister",
@@ -132,7 +132,7 @@ export default async function PartyPage({
                       href={`/election/${e.electionId}`}
                       className="text-accent underline-offset-2 hover:underline"
                     >
-                      {formatDate(e.electionDate)}
+                      {formatElectionDate(e)}
                       {e.scope === "lok_sabha" ? " (Lok Sabha)" : ""}
                     </Link>
                   </td>

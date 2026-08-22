@@ -35,6 +35,8 @@ export type TermWithSources = {
 export type ElectionWithResults = {
   id: string;
   electionDate: string;
+  /** Absent or null reads as 'day' (spec §2.5); TCPD-backed rows say less. */
+  electionDatePrecision?: "day" | "month" | "year" | null;
   resultSummary: string | null;
   totalSeats: number | null;
   turnoutPercent: string | null;
@@ -135,6 +137,7 @@ async function fetchStateArticle(stateId: string): Promise<StateArticle | null> 
     elections: electionRows.map((e) => ({
       id: e.id,
       electionDate: e.electionDate,
+      electionDatePrecision: e.electionDatePrecision,
       resultSummary: e.resultSummary,
       totalSeats: e.totalSeats,
       turnoutPercent: e.turnoutPercent,

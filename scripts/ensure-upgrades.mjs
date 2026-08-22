@@ -956,6 +956,13 @@ const STATEMENTS = [
      "hits" integer NOT NULL DEFAULT 1,
      PRIMARY KEY ("bucket", "key", "window_start")
    )`,
+  // --- upgrade: election date precision (ELECTIONS_INGEST_SPEC §2.5) --------
+  // TCPD rows anchor a month or only a year; a date column alone would let
+  // "1962" render as "1 January 1962". Hand-entered rows keep 'day': their
+  // dates are real dates.
+  `ALTER TABLE "elections" ADD COLUMN IF NOT EXISTS
+     "election_date_precision" text NOT NULL DEFAULT 'day'
+     CHECK (election_date_precision IN ('day','month','year'))`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

@@ -17,15 +17,7 @@ import { getSourceClassifications, getSourceUsage } from "@/lib/db/queries/sourc
 import { PartyTag } from "@/components/ui/PartyTag";
 import { personSlug } from "@/lib/db/queries/person";
 import { getAllStateIds, getStateArticle } from "@/lib/db/queries/state";
-import {
-  EVENT_TYPE_LABELS,
-  EVENT_TYPE_ORDER,
-  formatDate,
-  formatNumber,
-  formatTermRange,
-  yearOf,
-  type EventType,
-} from "@/lib/format";
+import { EVENT_TYPE_LABELS, EVENT_TYPE_ORDER, formatDate, formatElectionDate, formatNumber, formatTermRange, type EventType, yearOf } from "@/lib/format";
 
 // Daily re-render so "present"/current-year rendering can never go stale
 // across a year boundary; content changes revalidate immediately via tags.
@@ -303,7 +295,7 @@ export default async function StatePage({
                         href={`/election/${e.id}`}
                         className="underline-offset-4 hover:text-accent hover:underline"
                       >
-                        {formatDate(e.electionDate)}
+                        {formatElectionDate(e)}
                       </Link>
                     </h3>
                     <Link

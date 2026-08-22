@@ -50,12 +50,39 @@ const MONTHS = [
   "July", "August", "September", "October", "November", "December",
 ];
 
-/** '2014-06-02' → '2 June 2014' (Indian-style day-first). */
-export function formatDate(isoDate: string | null | undefined): string {
+export type DatePrecision = "day" | "month" | "year";
+
+/**
+ * '2014-06-02' → '2 June 2014' (Indian-style day-first).
+ *
+ * `precision` states how much of the stored date is real (spec §2.5): a
+ * TCPD row anchored to a year is stored as YYYY-01-01, and rendering the
+ * invented "1 January" would be the archive asserting a date nobody
+ * recorded. 'month' → 'June 2014'; 'year' → '2014'.
+ */
+export function formatDate(
+  isoDate: string | null | undefined,
+  precision: DatePrecision = "day",
+): string {
   if (!isoDate) return "—";
   const [y, m, d] = isoDate.split("-").map(Number);
   if (!y || !m || !d) return isoDate;
+  if (precision === "year") return String(y);
+  if (precision === "month") return `${MONTHS[m - 1]} ${y}`;
   return `${d} ${MONTHS[m - 1]} ${y}`;
+}
+
+/**
+ * The election-date form of formatDate: takes the row the caller already
+ * holds. A query that does not select the precision column gets day
+ * rendering, which is correct for every hand-entered row; queries feeding
+ * TCPD-backed rows must select it (stage 2's render-side guarantee).
+ */
+export function formatElectionDate(e: {
+  electionDate: string;
+  electionDatePrecision?: DatePrecision | null;
+}): string {
+  return formatDate(e.electionDate, e.electionDatePrecision ?? "day");
 }
 
 export function yearOf(isoDate: string): number {

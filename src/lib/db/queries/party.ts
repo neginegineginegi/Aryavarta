@@ -26,6 +26,7 @@ export type PartyProfile = {
     stateId: string;
     stateName: string;
     electionDate: string;
+    electionDatePrecision?: "day" | "month" | "year" | null;
     scope: "state_assembly" | "lok_sabha";
     seatsWon: number;
     totalSeats: number | null;
@@ -87,6 +88,7 @@ async function fetchPartyProfile(partyId: string): Promise<PartyProfile | null> 
           stateId: e.stateId,
           stateName: e.state.name,
           electionDate: e.electionDate,
+          electionDatePrecision: e.electionDatePrecision,
           scope: e.scope,
           seatsWon: r.seatsWon,
           totalSeats: e.totalSeats,

@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { PartyTag } from "@/components/ui/PartyTag";
-import { formatDate, formatTermRange, yearOf } from "@/lib/format";
+import { formatElectionDate, formatTermRange, yearOf } from "@/lib/format";
 
 type FocusTerm = {
   startDate: string;
@@ -133,7 +133,7 @@ export function YearFocus({
           )}
           {electionsInYear.map((e) => (
             <p key={e.id}>
-              <span className="text-ink-muted">Assembly election held {formatDate(e.electionDate)}.</span>{" "}
+              <span className="text-ink-muted">Assembly election held {formatElectionDate(e)}.</span>{" "}
               <Link
                 href={`/election/${e.id}`}
                 className="text-accent underline-offset-2 hover:underline"
