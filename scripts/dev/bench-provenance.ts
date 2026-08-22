@@ -50,6 +50,10 @@ async function main() {
       FROM generate_series(1, ${SCALE}) g
   `);
   console.log(`[bench] inserted in ${(ms(t0) / 1000).toFixed(1)}s`);
+  // Fresh stats, as production would have them: without this the planner runs
+  // on pre-insert statistics and the measurement is of a state autovacuum
+  // would have already repaired.
+  await db.execute(sql`ANALYZE record_provenance`);
 
   const counts = await db.execute(sql`
     SELECT (SELECT count(*) FROM record_provenance) AS prov,

@@ -400,6 +400,20 @@ list's disposition, and gives the go.**
    degrading to a filter that scanned 299,800 rows) is replaced with a
    `VALUES`-join form that uses the composite index; re-benchmarked before
    any insert.
+
+   > **Amended 2026-08-21, on measurement.** The planned `VALUES`-join
+   > rewrite was built, benchmarked head-to-head, and rejected: the
+   > original degradation was a **stale-statistics artifact** — the
+   > benchmark queried 300k freshly inserted rows before any `ANALYZE`,
+   > a state autovacuum repairs on its own. With fresh statistics the
+   > existing `= ANY(string_to_array(…))` form index-scans and is the
+   > FASTER shape (p50 4.4ms vs 6.9ms for 500 ids at 600k rows); in the
+   > stale window it also degrades less (55ms vs 155ms). The scale fix
+   > stage 2 actually needs is: **the insert stages run
+   > `ANALYZE record_provenance` after bulk insert**, and the benchmark
+   > now does the same after seeding (so it measures steady state). Both
+   > shapes sit far under the agreed 200ms-per-render trigger; the query
+   > is unchanged.
 2. Insert per state, in batches: elections → results → `record_provenance`
    for every row (upstream ids per §2.6) → citations to the dataset's
    source row. Idempotent: re-running skips existing `(dataset,
