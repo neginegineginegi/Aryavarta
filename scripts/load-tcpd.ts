@@ -33,7 +33,9 @@ import {
   type Scope,
 } from "../src/lib/ingest/tcpd";
 
-const ROOT = join(process.cwd(), "data", "raw", "tcpd");
+/** The drop directory. Run from the repo root; TCPD_ROOT overrides the
+ *  location when the drop lives elsewhere (another disk, a smoke fixture). */
+const ROOT = process.env.TCPD_ROOT ?? join(process.cwd(), "data", "raw", "tcpd");
 
 type ManifestRow = {
   file: string;
@@ -367,6 +369,32 @@ function reportPartyIdentity(aggs: ElectionAggregate[], known: KnownParty[], lin
   }
 }
 
+/** The §5 stage-2 success measure has a BEFORE side, and this report is the
+ *  last moment before anything changes, so it is recorded here: how starved
+ *  each denominator-bearing insight panel is today, plus the picker and
+ *  browse counts. Stage 2's post-insert report repeats these for the AFTER. */
+async function reportStarvedBaseline(lines: string[]) {
+  const { fetchInsightRows } = await import("../src/lib/db/queries/insights");
+  const { computeInsights } = await import("../src/lib/insights");
+  const { termRows, electionRows } = await fetchInsightRows();
+  const groups = computeInsights(termRows, electionRows, new Date().toISOString().slice(0, 10));
+  const of = (key: string) => {
+    const g = groups.find((x) => x.key === key);
+    return g ? String(g.of ?? "stated without a denominator") : "panel absent (too starved to render)";
+  };
+
+  lines.push(`\n## Starved-panels baseline (§5 stage 2 success measure — the BEFORE side)`);
+  lines.push(`| panel | denominator today |`);
+  lines.push(`|---|---|`);
+  lines.push(`| Turnout extremes (n with recorded turnout) | ${of("turnout")} |`);
+  lines.push(`| Largest majorities (of) | ${of("largest-majority")} |`);
+  lines.push(`| Closest elections (of) | ${of("closest-election")} |`);
+  lines.push(`| Party dominance (of) | ${of("party-dominance")} |`);
+  lines.push(`| Compare picker options (elections) | ${electionRows.length} |`);
+  lines.push(`| Browse: elections | ${electionRows.length} |`);
+  lines.push(`| Browse: terms | ${termRows.length} |`);
+}
+
 async function dryRun() {
   const manifest = await verify();
   console.log(`[load-tcpd] stage 1 — dry run (read-only)`);
@@ -386,6 +414,7 @@ async function dryRun() {
   reportAggregate("Lok Sabha (general)", ge, lines);
   reportReconciliation(recs, lines);
   reportPartyIdentity(allAggs, allParties, lines);
+  await reportStarvedBaseline(lines);
   lines.push(`\n## Gate`);
   lines.push(`Decisions needed before stage 2: (1) disposition of every disagreement above; (2) the A1 unmapped-states ruling; (3) the would-create party list confirmed and every AMBIGUOUS party identity paired by a human. See docs/ELECTIONS_INGEST_SPEC.md §5.`);
 
