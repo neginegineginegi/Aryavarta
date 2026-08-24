@@ -123,6 +123,7 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
     { path: "/compare" },
     { path: "/network" },
     { path: "/network/connect" },
+    { path: "/accountability" },
     { path: "/archive" },
     { path: "/search" },
     { path: "/about" },

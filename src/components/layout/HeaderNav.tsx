@@ -36,7 +36,6 @@ export const NAV: NavItem[] = [
     panel: [
       { href: "/browse", label: "Everything", blurb: "States, parties, elections" },
       { href: "/browse#indicators", label: "Development indicators", blurb: "Sourced, never scored" },
-      { href: "/archive", label: "Media archive", blurb: "Manifestos and documents" },
     ],
   },
   {
@@ -45,6 +44,15 @@ export const NAV: NavItem[] = [
     panel: [
       { href: "/insights", label: "Patterns in the record", blurb: "Computed, not written" },
       { href: "/compare", label: "Compare", blurb: "Two elections side by side" },
+    ],
+  },
+  {
+    href: "/accountability",
+    label: "Accountability",
+    panel: [
+      { href: "/accountability#promises", label: "Manifesto promises", blurb: "What was promised, verbatim" },
+      { href: "/accountability#events", label: "Recorded events", blurb: "What happened, with sources" },
+      { href: "/archive", label: "Media archive", blurb: "Manifestos and documents" },
     ],
   },
   {
