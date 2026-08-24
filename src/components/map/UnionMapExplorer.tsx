@@ -7,6 +7,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { UnionMapData, UnionTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
+import {
+  NODATA_SWATCH,
+  fillStyle,
+  patterned,
+  toned,
+  tonedSwatch,
+} from "@/components/map/plate";
 import { YearScrubber } from "@/components/map/YearScrubber";
 import { useYearPlayback } from "@/lib/use-year-playback";
 
@@ -24,7 +31,9 @@ function personSlug(name: string): string {
 }
 
 const PLACEHOLDER = "var(--color-pr)";
-const NO_DATA = "var(--color-nodata)";
+// A year with no recorded PM term is a record gap, stippled like the state
+// map's, never a solid competing gray.
+const NO_DATA_FILL = "url(#u-nodata-stipple)";
 
 /** The term of the given office in effect at the end of the given year. */
 function governingAt(
@@ -48,7 +57,9 @@ function OfficeRow({ label, term }: { label: string; term: UnionTerm | null }) {
       <span
         aria-hidden
         className="mt-1.5 h-3 w-3 shrink-0 rounded-[2px] border border-black/10"
-        style={{ backgroundColor: term ? (term.partyColor ?? "#8a8a8a") : "#e9e9e5" }}
+        // The same toned mix the map renders, so panel and map match; a
+        // missing term shows the record-gap stipple, not a solid gray.
+        style={term ? tonedSwatch(term.partyColor ?? "var(--color-pr)") : NODATA_SWATCH}
       />
       <span>
         <span className="block font-mono text-[0.62rem] tracking-[0.1em] text-ink-faint">
@@ -172,7 +183,13 @@ export function UnionMapExplorer({
     [data.terms, year],
   );
 
-  const fill = pm ? (pm.partyColor ?? PLACEHOLDER) : NO_DATA;
+  const fill = pm ? toned(pm.partyColor ?? PLACEHOLDER) : patterned(NO_DATA_FILL);
+  // The annotation block's fact line, same rule as the state map: the most
+  // recent computed fact at or before this year.
+  const fact = data.facts.reduce<(typeof data.facts)[number] | null>(
+    (best, f) => (f.year <= year && (!best || f.year >= best.year) ? f : best),
+    null,
+  );
   const pmLine = pm
     ? `${pm.cmName}${pm.partyName ? ` · ${pm.partyName}` : ""}`
     : "No Prime Minister term recorded for this year";
@@ -194,7 +211,6 @@ export function UnionMapExplorer({
         min={data.minYear}
         max={data.maxYear}
         markers={data.markers}
-        facts={data.facts}
       />
 
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -205,7 +221,7 @@ export function UnionMapExplorer({
             role="link"
             tabIndex={0}
             aria-label={`Map of India, ${year}: Union governed by ${pmLine}. Open the ${year} record.`}
-            className="h-auto w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4"
+            className="map-plate h-auto w-full cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-4"
             onClick={open}
             onKeyDown={(e) => {
               if (e.key === "Enter" || e.key === " ") {
@@ -221,20 +237,45 @@ export function UnionMapExplorer({
             }}
             onPointerLeave={() => setTipOn(false)}
           >
+            <defs>
+              <pattern id="u-nodata-stipple" patternUnits="userSpaceOnUse" width="5" height="5">
+                <rect width="5" height="5" fill="var(--color-paper-sunken)" />
+                <circle cx="1.5" cy="1.5" r="0.7" fill="var(--color-rule-dark)" />
+              </pattern>
+            </defs>
             {india.locations.map((loc, i) => (
               <path
                 key={loc.id}
                 d={loc.path}
                 className="map-state map-reveal"
-                style={{ animationDelay: `${i * 14}ms` }}
-                fill={fill}
+                style={{ animationDelay: `${i * 14}ms`, ...fillStyle(fill) }}
                 aria-hidden
               />
             ))}
             {/* Lakshadweep's real islands are sub-pixel at this scale; the
                 marker keeps the territory visible. */}
-            <circle cx={98} cy={627} r={7} className="map-state" fill={fill} aria-hidden />
+            <circle cx={98} cy={627} r={7} className="map-state" style={fillStyle(fill)} aria-hidden />
           </svg>
+          {/* The plate's annotation, in the ocean bottom-left, mirroring the
+              state map. The block ignores the pointer (the whole svg is the
+              link); only the fact's own link takes it. */}
+          <div className="pointer-events-none absolute bottom-[17%] left-0 max-w-[22%] font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint">
+            {fact && (
+              <p>
+                <span className="mr-1.5 text-ink-meta">From the record</span>
+                <a
+                  href={`/election/${fact.electionId}`}
+                  className="pointer-events-auto text-ink-muted underline-offset-2 hover:text-accent hover:underline"
+                >
+                  {fact.text}
+                </a>
+              </p>
+            )}
+            <p className="mt-0.5">
+              Whole map: the Prime Minister&apos;s party, 31 Dec {year} · click for the
+              year&apos;s record · boundaries pre-2019, illustrative
+            </p>
+          </div>
           {tipOn && (
             <div
               ref={tipRef}
@@ -259,11 +300,6 @@ export function UnionMapExplorer({
             <OfficeRow label="Prime Minister" term={pm} />
             <OfficeRow label="President" term={president} />
           </ul>
-          <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-faint">
-            In Union mode the whole map takes the color of the Prime Minister&rsquo;s party in
-            office on 31 December of the selected year. Click anywhere on the map to open that
-            year&rsquo;s full Union record.
-          </p>
         </aside>
       </div>
     </div>

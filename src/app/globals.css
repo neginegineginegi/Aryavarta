@@ -30,6 +30,10 @@
   --color-approved: #166534;
   --color-nodata: #e9e9e5;
   --color-pr: #8a8a8a;
+  /* The atlas plate's resting ink density. The stored party color is a fact
+     and never changes; the map and its legend both render it mixed this far
+     toward the paper, and attention (hover/focus) restores the full color. */
+  --map-tone: 80%;
 
   /* Four voices, each with one job. */
   --font-display: var(--font-serif), "Iowan Old Style", Georgia, serif;
@@ -892,27 +896,44 @@ thead th {
   max-width: 65ch;
 }
 
-/* Map interactivity. */
+/* Map interactivity.
+   The stored color is a fact; the rendered fill is typography. Each path
+   carries two custom properties set at render time: --map-fill-rest (the
+   canonical color mixed toward the paper by --map-tone; color-mix does not
+   parse in an SVG fill attribute, hence properties) and --map-fill-live (the
+   full canonical color). Patterned absences set both to their pattern, so
+   attention never invents color where the record has none. */
 .map-state {
-  stroke: var(--color-paper);
-  stroke-width: 0.75;
+  stroke: color-mix(in oklab, var(--color-ink) 35%, var(--color-paper));
+  stroke-width: 0.5;
+  fill: var(--map-fill-rest);
   /* The slowest thing on the page, deliberately. When the year scrubs, a
      state's fill crossfading over 600ms is the archive showing a government
      change; snapping would read as a glitch rather than an event. */
   transition:
-    filter 120ms ease,
     opacity 120ms ease,
     fill var(--dur-fill) ease;
   cursor: pointer;
 }
 .map-state:hover,
 .map-state:focus-visible {
-  filter: brightness(0.88) saturate(1.15);
+  fill: var(--map-fill-live, var(--map-fill-rest));
+  /* Ink comes alive at attention speed; letting go settles back through the
+     600ms fill ease above, the plate's own tempo. */
+  transition:
+    opacity 120ms ease,
+    fill 120ms ease;
   outline: none;
 }
 .map-state:focus-visible {
   stroke: var(--color-ink);
   stroke-width: 1.5;
+}
+/* The plate impression: a hard offset silhouette in near-transparent ink,
+   the mark a printed plate leaves on its page. Deliberately unblurred, so it
+   cannot read as a UI shadow. */
+.map-plate {
+  filter: drop-shadow(2px 3px 0 color-mix(in srgb, var(--color-ink) 8%, transparent));
 }
 
 /* Year slider. */
@@ -1669,6 +1690,10 @@ a:hover .wordmark {
   .reveal,
   .card-hover,
   .map-state,
+  /* The hover rule declares its own faster transition, which would otherwise
+     out-rank this reset on specificity. */
+  .map-state:hover,
+  .map-state:focus-visible,
   .seat-seg,
   .seat-mark,
   .seg-ind,

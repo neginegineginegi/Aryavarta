@@ -6,16 +6,26 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { MapData, MapTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
+import {
+  NA_SWATCH,
+  NODATA_SWATCH,
+  fillStyle,
+  patterned,
+  toned,
+  tonedSwatch,
+  type Fill,
+} from "@/components/map/plate";
 import { YearScrubber } from "@/components/map/YearScrubber";
 import { useYearPlayback } from "@/lib/use-year-playback";
 
-const NO_DATA_COLOR = "var(--color-nodata)";
 const PR_COLOR = "var(--color-pr)";
 // Diagonal hatch used for states that did not exist as a separate entity in
 // the selected year (formed later, or since merged/reorganised).
 const NA_FILL = "url(#na-hatch)";
-const NA_SWATCH =
-  "repeating-linear-gradient(45deg, var(--color-paper-sunken) 0 2px, var(--color-rule-dark) 2px 3px)";
+// Stippled sunken paper for a record gap: the state existed, the archive
+// holds no government for it. A different absence from the hatch, kept
+// visually tellable apart.
+const NODATA_FILL = "url(#nodata-stipple)";
 const TOOLTIP_WIDTH = 260;
 const TOOLTIP_HEIGHT = 90;
 /** Per-state delay in the load-in wave; 14ms is the handoff's figure. */
@@ -125,32 +135,39 @@ export function MapExplorer({
   }, [data.states]);
 
   const view = useMemo(() => {
-    const fills = new Map<string, string>();
+    const fills = new Map<string, Fill>();
     const lines = new Map<string, string>();
     const legendCounts = new Map<
       string,
-      { label: string; color: string; count: number; order: number; hatch: boolean }
+      {
+        label: string;
+        color: string;
+        count: number;
+        order: number;
+        swatch: "color" | "hatch" | "stipple";
+      }
     >();
     for (const loc of india.locations) {
       const life = stateLifecycle.get(loc.id);
-      let color: string;
+      let fill: Fill;
+      let color = "";
       let key: string;
       let label: string;
       let order: number;
       let line: string;
-      let hatch = false;
+      let swatch: "color" | "hatch" | "stipple" = "color";
 
       if (life?.formedY != null && year < life.formedY) {
         // The state did not exist as a separate entity yet this year.
-        hatch = true;
-        color = NA_FILL;
+        swatch = "hatch";
+        fill = patterned(NA_FILL);
         key = "__na";
         label = "Not yet formed / n.a.";
         order = 3;
         line = `Not yet a separate state; established ${life.formedY}`;
       } else if (life?.dissolvedY != null && year >= life.dissolvedY) {
-        hatch = true;
-        color = NA_FILL;
+        swatch = "hatch";
+        fill = patterned(NA_FILL);
         key = "__na";
         label = "Not yet formed / n.a.";
         order = 3;
@@ -159,34 +176,48 @@ export function MapExplorer({
         const term = governingTermAt(termsByState.get(loc.id), year);
         line = describeTerm(term);
         if (!term) {
-          color = NO_DATA_COLOR;
+          swatch = "stipple";
+          fill = patterned(NODATA_FILL);
           key = "__nodata";
           label = "No data";
           order = 2;
         } else if (term.kind === "presidents_rule") {
           color = PR_COLOR;
+          fill = toned(color);
           key = "__pr";
           label = "President's Rule";
           order = 1;
         } else {
           color = term.partyColor ?? PR_COLOR;
+          fill = toned(color);
           key = term.partyId ?? "__unknown";
           label = term.partyName ?? "Unknown party";
           order = 0;
         }
       }
 
-      fills.set(loc.id, color);
+      fills.set(loc.id, fill);
       lines.set(loc.id, line);
       const entry = legendCounts.get(key);
       if (entry) entry.count += 1;
-      else legendCounts.set(key, { label, color, count: 1, order, hatch });
+      else legendCounts.set(key, { label, color, count: 1, order, swatch });
     }
     const legend = [...legendCounts.values()].sort(
       (a, b) => a.order - b.order || b.count - a.count || a.label.localeCompare(b.label),
     );
     return { fills, lines, legend };
   }, [termsByState, stateLifecycle, year]);
+
+  // The annotation block's fact line, by the same rule the scrubber caption
+  // uses for markers: the most recent computed fact at or before this year.
+  const fact = useMemo(
+    () =>
+      data.facts.reduce<(typeof data.facts)[number] | null>(
+        (best, f) => (f.year <= year && (!best || f.year >= best.year) ? f : best),
+        null,
+      ),
+    [data.facts, year],
+  );
 
   // Tooltip trail. The prototype lerps the tip toward the cursor at 0.22 per
   // frame so it arrives a beat late, which reads as weight. Position is
@@ -301,7 +332,6 @@ export function MapExplorer({
         min={data.minYear}
         max={data.maxYear}
         markers={data.markers}
-        facts={data.facts}
       />
 
       <div className="flex flex-col gap-8 lg:flex-row">
@@ -311,7 +341,7 @@ export function MapExplorer({
             viewBox={india.viewBox}
             role="group"
             aria-label={`Map of India showing the party in power in each state at the end of ${year}`}
-            className="h-auto w-full"
+            className="map-plate h-auto w-full"
           >
             <defs>
               <pattern
@@ -324,6 +354,13 @@ export function MapExplorer({
                 <rect width="6" height="6" fill="var(--color-paper-sunken)" />
                 <line x1="0" y1="0" x2="0" y2="6" stroke="var(--color-rule-dark)" strokeWidth="2" />
               </pattern>
+              {/* A record gap: sunken paper, quietly stippled. Not the hatch,
+                  because a gap in the archive and a state that did not exist
+                  are different absences. */}
+              <pattern id="nodata-stipple" patternUnits="userSpaceOnUse" width="5" height="5">
+                <rect width="5" height="5" fill="var(--color-paper-sunken)" />
+                <circle cx="1.5" cy="1.5" r="0.7" fill="var(--color-rule-dark)" />
+              </pattern>
             </defs>
             {india.locations.map((loc, i) => (
               <path
@@ -331,9 +368,13 @@ export function MapExplorer({
                 d={loc.path}
                 className="map-state map-reveal"
                 // The load-in wave: the country assembles state by state
-                // instead of appearing all at once.
-                style={{ animationDelay: `${i * REVEAL_STEP_MS}ms` }}
-                fill={view.fills.get(loc.id)}
+                // instead of appearing all at once. Fills ride the two custom
+                // properties .map-state reads (toned at rest, canonical on
+                // attention); color-mix cannot live in a fill attribute.
+                style={{
+                  animationDelay: `${i * REVEAL_STEP_MS}ms`,
+                  ...fillStyle(view.fills.get(loc.id)),
+                }}
                 tabIndex={0}
                 role="link"
                 aria-label={`${loc.name}, ${year}: ${view.lines.get(loc.id)}. Open details.`}
@@ -363,7 +404,7 @@ export function MapExplorer({
               cy={627}
               r={7}
               className="map-state"
-              fill={view.fills.get("ld")}
+              style={fillStyle(view.fills.get("ld"))}
               tabIndex={0}
               role="link"
               aria-label={`Lakshadweep, ${year}: ${view.lines.get("ld")}. Open details.`}
@@ -383,6 +424,28 @@ export function MapExplorer({
               }}
             />
           </svg>
+          {/* The plate's own annotation, a cartouche in the Arabian Sea west
+              of the Kerala coast and above the Lakshadweep group, so the
+              artwork and its words share one frame without touching the
+              geometry. The block ignores the pointer so the sea stays
+              hoverable; its link does not. */}
+          <div className="pointer-events-none absolute bottom-[17%] left-0 max-w-[22%] font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint">
+            {fact && (
+              <p>
+                <span className="mr-1.5 text-ink-meta">From the record</span>
+                <a
+                  href={`/election/${fact.electionId}`}
+                  className="pointer-events-auto text-ink-muted underline-offset-2 hover:text-accent hover:underline"
+                >
+                  {fact.text}
+                </a>
+              </p>
+            )}
+            <p className="mt-0.5">
+              Fills: party in office, 31 Dec {year} · hatch: not yet formed · stipple: no
+              record · boundaries pre-2019, illustrative
+            </p>
+          </div>
           {tooltip && tooltipContent && (
             <div
               ref={tipRef}
@@ -413,18 +476,21 @@ export function MapExplorer({
                 <span
                   aria-hidden
                   className="h-3 w-3 shrink-0 rounded-[2px] border border-black/10"
-                  style={l.hatch ? { background: NA_SWATCH } : { backgroundColor: l.color }}
+                  // Swatches carry the same toned mix the map renders, so map
+                  // and legend match by construction.
+                  style={
+                    l.swatch === "hatch"
+                      ? NA_SWATCH
+                      : l.swatch === "stipple"
+                        ? NODATA_SWATCH
+                        : tonedSwatch(l.color)
+                  }
                 />
                 <span className="flex-1 text-ink">{l.label}</span>
                 <span className="tabular-nums text-ink-faint">{l.count}</span>
               </li>
             ))}
           </ul>
-          <p className="mt-4 text-[0.75rem] leading-relaxed text-ink-faint">
-            Colors show the party of the government in office on 31 December of the selected
-            year. Hatched states did not exist as a separate entity that year (formed later or
-            since merged). Boundaries are pre-2019 and illustrative.
-          </p>
         </aside>
       </div>
     </div>
