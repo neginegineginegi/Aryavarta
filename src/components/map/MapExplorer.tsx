@@ -424,12 +424,14 @@ export function MapExplorer({
               }}
             />
           </svg>
-          {/* The plate's own annotation, a cartouche in the Arabian Sea west
-              of the Kerala coast and above the Lakshadweep group, so the
-              artwork and its words share one frame without touching the
-              geometry. The block ignores the pointer so the sea stays
-              hoverable; its link does not. */}
-          <div className="pointer-events-none absolute bottom-[17%] left-0 max-w-[22%] font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint">
+          {/* The plate's own annotation. From md up it is a cartouche in the
+              Arabian Sea west of the Kerala coast, above the Lakshadweep
+              group, so the artwork and its words share one frame without
+              touching the geometry; on narrow screens the sea is too small
+              to hold it and it flows below the plate as an ordinary caption.
+              The block ignores the pointer so the sea stays hoverable; its
+              link does not. */}
+          <div className="pointer-events-none mt-2 font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint md:absolute md:bottom-[17%] md:left-0 md:mt-0 md:max-w-[22%]">
             {fact && (
               <p>
                 <span className="mr-1.5 text-ink-meta">From the record</span>

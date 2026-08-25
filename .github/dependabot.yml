@@ -12,6 +12,13 @@ updates:
         applies-to: version-updates
         patterns: ["*"]
     open-pull-requests-limit: 5
+    ignore:
+      # TypeScript 7 (the Go rewrite) restructures the package so the
+      # compiler API the guarded-action invariant test is built on no longer
+      # resolves. That migration is a deliberate task, not a routine bump;
+      # majors are held back here until someone does it on purpose.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:

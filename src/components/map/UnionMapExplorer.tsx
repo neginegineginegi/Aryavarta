@@ -259,7 +259,7 @@ export function UnionMapExplorer({
           {/* The plate's annotation, in the ocean bottom-left, mirroring the
               state map. The block ignores the pointer (the whole svg is the
               link); only the fact's own link takes it. */}
-          <div className="pointer-events-none absolute bottom-[17%] left-0 max-w-[22%] font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint">
+          <div className="pointer-events-none mt-2 font-mono text-[9px] leading-tight tracking-[0.06em] text-ink-faint md:absolute md:bottom-[17%] md:left-0 md:mt-0 md:max-w-[22%]">
             {fact && (
               <p>
                 <span className="mr-1.5 text-ink-meta">From the record</span>
