@@ -1,0 +1,138 @@
+PASTE THIS INTO CLAUDE CODE, FROM YOUR REPO ROOT.
+
+Prerequisite: the folder 20-landing-expansion must exist inside your repo (drop
+it anywhere, e.g. design_handoff/20-landing-expansion/). Claude Code can only
+read files in the checkout it is running in.
+
+================================================================================
+RULES FOR THIS TASK — READ BEFORE TOUCHING ANYTHING
+================================================================================
+
+This is an ADDITIVE change to a landing page that already works. Build on top
+of the existing code. Do not improve it.
+
+DO NOT:
+  - refactor, rename, reorganise, or "clean up" any existing file
+  - reorder, restyle, or reword any section that already exists on the page
+  - rewrite existing components to share code with the new ones
+  - change any existing CSS rule, class name, or CSS variable
+  - reformat files (no prettier/eslint --fix runs across the repo)
+  - add, remove, or upgrade a single dependency
+  - convert page.tsx to a client component, or move it to another router
+  - touch tsconfig, next.config, layout.tsx (beyond nothing at all), or CI
+  - delete anything from handoff 19 — this builds beside it, not over it
+
+DO:
+  - add new files
+  - add import lines and JSX mount points in page.tsx, nothing else in it
+  - add ONE attribute (data-page) to the page's existing top-level wrapper
+  - append CSS at the end of globals.css
+  - replace exactly one asset: public/abhilekh-logo.svg
+
+If a step here conflicts with how the repo actually works, STOP and tell me
+what you found instead of guessing or "fixing" the surrounding code.
+
+================================================================================
+STEPS
+================================================================================
+
+Read design_handoff/20-landing-expansion/README.md first, then the .tsx/.ts
+files and the CSS beside it. Then do all of these.
+
+0. THE SEAL. Replace public/abhilekh-logo.svg with the abhilekh-logo.svg in
+   this folder. Its viewBox is now 260x272 (was 260x300) and the Latin
+   "ABHILEKH" wordmark is gone from inside the artwork.
+     - grep the repo for abhilekh-logo and check every usage: any place that
+       sets a fixed HEIGHT, or an aspect-ratio, or width+height together, needs
+       its numbers updated to the 260:272 ratio. Width-only usages are fine.
+     - if any component prints a Latin "ABHILEKH" wordmark immediately beside
+       the seal as a replacement for what used to be inside it, leave it alone
+       and tell me where it is — that is a design call, not a code fix.
+
+1. Copy the component files to src/components/landing/ (the folder handoff 19
+   created; if it does not exist, create it):
+     AudienceSection.tsx  SearchDemo.tsx  CollectionsSection.tsx
+     TranscribeSection.tsx  PressSection.tsx  ApiSection.tsx
+     NewsletterSection.tsx  SectionReveal.tsx  section-reveal.ts
+   SearchDemo.tsx imports ./QuestionChips from handoff 19. If that file lives
+   elsewhere, fix ONLY that import path.
+
+2. Append globals-additions.css to the END of src/app/globals.css, but BEFORE
+   the final prefers-reduced-motion block (that block stays last). Do not edit
+   any rule already in the file.
+
+3. Fonts: the CSS uses var(--font-serif) and var(--font-mono) with 'Newsreader'
+   and 'IBM Plex Mono' fallbacks — the same variables handoff 19 uses. If your
+   next/font variables are named differently, update the var() names in the new
+   CSS only.
+
+4. Mount the sections in src/app/page.tsx. Find each anchor by its CONTENT, not
+   by line number, and insert in this order:
+
+     <AudienceSection />        after the archive-features band, before stats
+     <SearchDemo />             after the stats band, before <NetworkSection />
+     <CollectionsSection />     after <TimelineSection />, before <OnThisDaySection />
+     <TranscribeSection />      after the about section, before <LedgerSection />
+     <PressSection />           after <LedgerSection />
+     <SourcesStrip />           directly after <PressSection />
+     <ApiSection />             after <OpenDataSection />
+     <NewsletterSection />      directly after <ApiSection />, before the CTA card
+     <SectionReveal />          once, as the LAST child of the page wrapper
+
+   PressSection and SourcesStrip are named exports from the same file:
+     import { PressSection, SourcesStrip } from "@/components/landing/PressSection";
+
+   page.tsx stays a server component. Only NewsletterSection.tsx and
+   SectionReveal.tsx carry "use client".
+
+5. THE QUESTION CHIPS MOVE. Handoff 19 put <QuestionChips /> inside the CTA
+   card. SearchDemo now renders it. Delete the <QuestionChips /> line from the
+   CTA card — that line only. Leave the CTA's heading and button untouched.
+
+6. Add data-page to the page's existing top-level wrapper — the element whose
+   direct children are the page's sections (hero first). One attribute, no other
+   change to that element:
+       <div data-page className="...unchanged...">
+   The reveal reads that element's children. If the sections are NOT siblings
+   under one wrapper, stop and tell me the actual structure.
+
+================================================================================
+CHECKS — run the dev server and report each result. Do not say it is done
+until all of them pass.
+================================================================================
+
+  document.querySelectorAll('.aud-card').length          -> 4
+  document.querySelectorAll('.coll-card').length          -> 4
+  document.querySelectorAll('.press-card').length         -> 3
+  document.querySelectorAll('.api-row').length            -> 4
+  document.querySelectorAll('.qchips a, .qchips button').length
+      -> the chips exist EXACTLY ONCE on the page (they must not appear in
+         both SearchDemo and the CTA)
+
+  document.body.scrollWidth === document.documentElement.clientWidth
+      -> true at 320px, 768px and 1440px. The .api-path row is the usual
+         culprit; it must scroll inside its own box, not stretch the page.
+
+  Reload at the top of the page and scroll down slowly:
+      -> each new band lifts in out of a soft blur, its own blocks a beat
+         behind. The hero never animates. Nothing already on screen at load
+         flashes or re-animates.
+
+  After a band has arrived:
+      getComputedStyle($0).filter   -> "none"   (styles are cleaned up)
+      $0.getAttribute('style')      -> null or ""
+
+  DevTools > Rendering > Emulate prefers-reduced-motion: reload and scroll
+      -> every section is visible immediately, no transitions, no observer.
+
+  The seal: open the landing page and any page with the logo in the header
+      -> the banyan renders, is not squashed or stretched, and no stray
+         "ABHILEKH" wordmark sits where the old one used to be inside the art.
+
+  npm run build
+      -> passes with no new warnings. Report any warning you see, even if you
+         believe it predates this change.
+
+If a check fails, fix the cause in the NEW files. If the cause is in existing
+code, stop and tell me — do not repair it yourself. Report what you changed,
+file by file.
