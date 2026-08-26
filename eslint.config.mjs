@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Design handoffs are archived verbatim as delivered, not app code;
+    // tsconfig already excludes them for the same reason.
+    "design_handoff/**",
   ]),
 ]);
 
