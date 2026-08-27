@@ -4,6 +4,10 @@ Prerequisite: the folder 20-landing-expansion must exist inside your repo (drop
 it anywhere, e.g. design_handoff/20-landing-expansion/). Claude Code can only
 read files in the checkout it is running in.
 
+Open design_handoff/20-landing-expansion/preview.html in a browser first. It is
+a static render of all eight new sections, each labelled with where it goes.
+screenshots/ has the same thing as PNGs. That is the target.
+
 ================================================================================
 RULES FOR THIS TASK — READ BEFORE TOUCHING ANYTHING
 ================================================================================
@@ -19,7 +23,7 @@ DO NOT:
   - reformat files (no prettier/eslint --fix runs across the repo)
   - add, remove, or upgrade a single dependency
   - convert page.tsx to a client component, or move it to another router
-  - touch tsconfig, next.config, layout.tsx (beyond nothing at all), or CI
+  - touch tsconfig, next.config, layout.tsx, or CI
   - delete anything from handoff 19 — this builds beside it, not over it
 
 DO:
@@ -33,15 +37,83 @@ If a step here conflicts with how the repo actually works, STOP and tell me
 what you found instead of guessing or "fixing" the surrounding code.
 
 ================================================================================
+STEP 0 — DIAGNOSE FIRST. NOTHING IS SHOWING ON VERCEL.
+Run this before writing any code, and report all nine answers back to me.
+================================================================================
+
+The live site does not show handoff 19's sections either, so something upstream
+of this handoff is wrong. Find out which, and tell me — do not start fixing.
+
+  1. git branch --show-current   and   git status --short
+     -> am I on the branch Vercel builds? Are there uncommitted changes?
+  2. git log --oneline -10
+     -> do handoff 19's commits exist at all?
+  3. Does src/components/landing/ exist? List it.
+     -> are NetworkSection.tsx, TimelineSection.tsx, OnThisDay.tsx,
+        LedgerSection.tsx, OpenDataSection.tsx, QuestionChips.tsx there?
+  4. grep -n "NetworkSection\|TimelineSection\|OnThisDay\|LedgerSection\|OpenDataSection\|QuestionChips" src/app/page.tsx
+     -> are they IMPORTED and MOUNTED, or just sitting on disk unused?
+  5. Print the full JSX return of src/app/page.tsx.
+     -> I need to see the actual section order that ships today.
+  6. Which file is the deployed landing page? Confirm it is src/app/page.tsx
+     and not a different route, a (marketing) group, or an old pages/ file.
+  7. git log --oneline -3 origin/<the branch Vercel builds>
+     -> has anything actually been PUSHED? Local commits do not deploy.
+  8. npm run build
+     -> does it pass on the current code, before my changes?
+  9. Check the Vercel project: which Git branch is set as Production, and did
+     the last deployment succeed or fail? If it failed, paste the error.
+
+The most likely answers, in order of how often they turn out to be the cause:
+  (a) handoff 19's files were created but never imported/mounted in page.tsx
+  (b) the work was committed locally and never pushed
+  (c) it was pushed to a branch Vercel does not build as Production
+  (d) the build failed on Vercel and the last good deployment is still live
+
+Tell me which one it is. Then continue to STEP 1.
+
+================================================================================
+THE PAGE, CHARTED. This is the target order, top to bottom, 20 bands.
+================================================================================
+
+ #   SECTION                  SOURCE            STATUS
+ --  -----------------------  ----------------  -----------------------------
+ 01  Hero                     existing          unchanged
+ 02  Archive features         existing          unchanged
+ 03  WHO IT'S FOR             AudienceSection   NEW (handoff 20)
+ 04  Stats                    existing          unchanged
+ 05  ASK THE ARCHIVE          SearchDemo        NEW (handoff 20) — owns chips
+ 06  Network                  handoff 19        unchanged
+ 07  Timeline                 handoff 19        unchanged
+ 08  FEATURED COLLECTIONS     CollectionsSection NEW (handoff 20)
+ 09  On this day              handoff 19        unchanged
+ 10  About                    existing          unchanged
+ 11  TRANSCRIBE               TranscribeSection NEW (handoff 20)
+ 12  Ledger + contribute      handoff 19        unchanged
+ 13  PRESS & MENTIONS         PressSection      NEW (handoff 20)
+ 14  DRAWN FROM               SourcesStrip      NEW (handoff 20)
+ 15  FAQ                      existing          unchanged
+ 16  Open data                handoff 19        unchanged
+ 17  DEVELOPER API            ApiSection        NEW (handoff 20)
+ 18  NEWSLETTER               NewsletterSection NEW (handoff 20)
+ 19  CTA                      existing          chips REMOVED from it
+ 20  Footer                   existing          unchanged
+
+Plus <SectionReveal /> mounted once as the last child of the page wrapper.
+
+Screenshot for each new band is in screenshots/, numbered to match this table.
+
+================================================================================
 STEPS
 ================================================================================
 
-Read design_handoff/20-landing-expansion/README.md first, then the .tsx/.ts
-files and the CSS beside it. Then do all of these.
+Read design_handoff/20-landing-expansion/README.md, then the .tsx/.ts files and
+the CSS beside it. Then do all of these.
 
 0. THE SEAL. Replace public/abhilekh-logo.svg with the abhilekh-logo.svg in
    this folder. Its viewBox is now 260x272 (was 260x300) and the Latin
-   "ABHILEKH" wordmark is gone from inside the artwork.
+   "ABHILEKH" wordmark is gone from inside the artwork. See
+   screenshots/21-seal-banyan.png for how it should look at three sizes.
      - grep the repo for abhilekh-logo and check every usage: any place that
        sets a fixed HEIGHT, or an aspect-ratio, or width+height together, needs
        its numbers updated to the 260:272 ratio. Width-only usages are fine.
@@ -49,8 +121,7 @@ files and the CSS beside it. Then do all of these.
        the seal as a replacement for what used to be inside it, leave it alone
        and tell me where it is — that is a design call, not a code fix.
 
-1. Copy the component files to src/components/landing/ (the folder handoff 19
-   created; if it does not exist, create it):
+1. Copy the component files to src/components/landing/ (create it if missing):
      AudienceSection.tsx  SearchDemo.tsx  CollectionsSection.tsx
      TranscribeSection.tsx  PressSection.tsx  ApiSection.tsx
      NewsletterSection.tsx  SectionReveal.tsx  section-reveal.ts
@@ -66,17 +137,17 @@ files and the CSS beside it. Then do all of these.
    next/font variables are named differently, update the var() names in the new
    CSS only.
 
-4. Mount the sections in src/app/page.tsx. Find each anchor by its CONTENT, not
-   by line number, and insert in this order:
+4. Mount the sections in src/app/page.tsx, matching the chart above. Find each
+   anchor by its CONTENT, not by line number:
 
      <AudienceSection />        after the archive-features band, before stats
      <SearchDemo />             after the stats band, before <NetworkSection />
-     <CollectionsSection />     after <TimelineSection />, before <OnThisDaySection />
+     <CollectionsSection />     after <TimelineSection />, before <OnThisDay… />
      <TranscribeSection />      after the about section, before <LedgerSection />
      <PressSection />           after <LedgerSection />
      <SourcesStrip />           directly after <PressSection />
      <ApiSection />             after <OpenDataSection />
-     <NewsletterSection />      directly after <ApiSection />, before the CTA card
+     <NewsletterSection />      directly after <ApiSection />, before the CTA
      <SectionReveal />          once, as the LAST child of the page wrapper
 
    PressSection and SourcesStrip are named exports from the same file:
@@ -84,6 +155,10 @@ files and the CSS beside it. Then do all of these.
 
    page.tsx stays a server component. Only NewsletterSection.tsx and
    SectionReveal.tsx carry "use client".
+
+   If STEP 0 found that handoff 19's sections are NOT mounted, mount those too,
+   in the positions the chart gives them. Do not redesign them; they already
+   exist as files.
 
 5. THE QUESTION CHIPS MOVE. Handoff 19 put <QuestionChips /> inside the CTA
    card. SearchDemo now renders it. Delete the <QuestionChips /> line from the
@@ -96,15 +171,20 @@ files and the CSS beside it. Then do all of these.
    The reveal reads that element's children. If the sections are NOT siblings
    under one wrapper, stop and tell me the actual structure.
 
+7. Commit and push to the branch Vercel builds as Production. Then confirm the
+   deployment succeeded and paste the deployment URL. Do not tell me it is done
+   before you have seen the new sections on that URL.
+
 ================================================================================
 CHECKS — run the dev server and report each result. Do not say it is done
 until all of them pass.
 ================================================================================
 
-  document.querySelectorAll('.aud-card').length          -> 4
-  document.querySelectorAll('.coll-card').length          -> 4
-  document.querySelectorAll('.press-card').length         -> 3
-  document.querySelectorAll('.api-row').length            -> 4
+  document.querySelectorAll('[data-page] > *').length      -> 20
+  document.querySelectorAll('.aud-card').length            -> 4
+  document.querySelectorAll('.coll-card').length            -> 4
+  document.querySelectorAll('.press-card').length           -> 3
+  document.querySelectorAll('.api-row').length              -> 4
   document.querySelectorAll('.qchips a, .qchips button').length
       -> the chips exist EXACTLY ONCE on the page (they must not appear in
          both SearchDemo and the CTA)
@@ -119,8 +199,9 @@ until all of them pass.
          flashes or re-animates.
 
   After a band has arrived:
-      getComputedStyle($0).filter   -> "none"   (styles are cleaned up)
-      $0.getAttribute('style')      -> null or ""
+      getComputedStyle($0).filter      -> "none"
+      getComputedStyle($0).willChange  -> "auto"   (must be cleaned up)
+      $0.getAttribute('style')         -> null or ""
 
   DevTools > Rendering > Emulate prefers-reduced-motion: reload and scroll
       -> every section is visible immediately, no transitions, no observer.
@@ -128,6 +209,8 @@ until all of them pass.
   The seal: open the landing page and any page with the logo in the header
       -> the banyan renders, is not squashed or stretched, and no stray
          "ABHILEKH" wordmark sits where the old one used to be inside the art.
+
+  Compare against screenshots/ band by band. Report any band that differs.
 
   npm run build
       -> passes with no new warnings. Report any warning you see, even if you

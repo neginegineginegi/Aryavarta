@@ -28,6 +28,15 @@ Approved in `Abhilekh Landing.dc.html` (design prototype).
     → CTA
     → Footer
 
+## See it before you build it
+
+- `preview.html` — static render of all eight new sections, each labelled with
+  its insertion point. Plain HTML + the new CSS, no app code. Open it directly.
+- `screenshots/00-new-sections-all.png` — the same thing as one tall image.
+- `screenshots/NN-<name>-NEW.png` — one per new section, numbered to match the
+  page chart in PROMPT.txt.
+- `screenshots/21-seal-banyan.png` — the redrawn seal at 300 / 150 / 64 px.
+
 ## Files
 
 | File | Exports | Kind |
@@ -43,6 +52,8 @@ Approved in `Abhilekh Landing.dc.html` (design prototype).
 | SectionReveal.tsx | default | client (mount once, renders null) |
 | globals-additions.css | l20/aud/sdemo/coll/tsc/press/src/api/nl namespaces | — |
 | abhilekh-logo.svg | the seal, redrawn | asset |
+| preview.html | static render of all eight sections | reference |
+| screenshots/ | per-section PNGs + seal | reference |
 
 ## The seal changed
 

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Handoff 20 — new landing sections, static reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,wght@0,300;0,400;0,500;1,400&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--font-serif:'Newsreader';--font-mono:'IBM Plex Mono';}
+*{box-sizing:border-box}
+body{margin:0;background:#eceae4;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;color:#1a1a18;-webkit-font-smoothing:antialiased;}
+.sheet{max-width:1440px;margin:0 auto;padding:16px;}
+.ref-head{padding:40px 8px 8px;}
+.ref-head h1{font-family:var(--font-serif),serif;font-weight:300;font-size:40px;margin:0 0 8px;}
+.ref-head p{font-size:14px;color:#71716c;max-width:640px;line-height:1.6;margin:0 0 4px;}
+.ref-label{font-family:var(--font-mono),monospace;font-size:10.5px;letter-spacing:.1em;color:#8a8a84;padding:28px 8px 8px;text-transform:uppercase;}
+.ref-label b{color:#c2410c;}
+/* chips: mirrors handoff 19's QuestionChips */
+.qchips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
+.qchips a{background:#fff;border-radius:999px;padding:9px 16px;font-size:13px;color:#52524e;box-shadow:0 1px 3px rgba(0,0,0,.06);text-decoration:none;}
+/* ==========================================================================
+   20 — Landing expansion. ADDITIVE ONLY.
+   Append this block to the END of globals.css, but BEFORE the final
+   prefers-reduced-motion block. Do not edit or reorder anything above it.
+   Namespaces used here: l20- aud- sdemo- coll- tsc- press- src- api- nl-
+   None of them appear in the existing stylesheet.
+   ========================================================================== */
+
+/* shared section shell ---------------------------------------------------- */
+.l20{background:#fff;border-radius:24px;margin-top:16px;padding:88px 24px;}
+.l20-tint{background:linear-gradient(180deg,#e9eaec,#f3f3f4 55%,#e8e9ea);}
+.l20-wrap{max-width:1080px;margin:0 auto;}
+.l20-head{text-align:center;max-width:600px;margin:0 auto 48px;}
+.l20-eyebrow{display:inline-block;font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:10px;letter-spacing:.18em;color:#71716c;background:#f1f1ee;border-radius:999px;padding:6px 12px;}
+.l20-tint .l20-eyebrow{background:#fff;}
+.l20-h2{font-family:var(--font-serif,'Newsreader'),serif;font-weight:300;font-size:clamp(34px,4vw,52px);line-height:1.1;margin:20px 0 14px;color:#1a1a18;}
+.l20-h2--sm{font-size:clamp(30px,3.4vw,44px);margin:18px 0 12px;}
+.l20-lede{font-size:14.5px;color:#71716c;line-height:1.6;margin:0;}
+.l20-split{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:64px;align-items:start;}
+.l20-btn{display:inline-block;background:#1a1a18;color:#fff;border-radius:999px;padding:11px 20px;font-size:13.5px;font-weight:500;text-decoration:none;transition:background .2s ease;}
+.l20-btn:hover{background:#333330;color:#fff;}
+@media (max-width:640px){.l20{padding:56px 18px;}.l20-split{gap:40px;}.l20-head{margin-bottom:36px;}}
+
+/* who it's for ------------------------------------------------------------ */
+.aud-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:16px;max-width:1100px;margin:0 auto;}
+.aud-card{background:#f6f6f4;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px;}
+.aud-glyph{width:36px;height:36px;border-radius:10px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.08);display:flex;align-items:center;justify-content:center;font-size:16px;color:#c2410c;}
+.aud-t{font-family:var(--font-serif,'Newsreader'),serif;font-size:19px;font-weight:500;color:#1a1a18;}
+.aud-p{font-size:13.5px;color:#71716c;line-height:1.6;}
+
+/* ask the archive --------------------------------------------------------- */
+.sdemo-inner{max-width:640px;margin:0 auto;}
+.sdemo-bar{background:#fff;border-radius:999px;padding:8px 8px 8px 22px;display:flex;align-items:center;gap:12px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.sdemo-icon{color:#9c9c96;font-size:15px;flex-shrink:0;}
+.sdemo-q{color:#3a3a36;font-size:15px;flex:1;min-width:0;}
+.sdemo-ask{background:#1a1a18;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:500;flex-shrink:0;cursor:default;}
+.sdemo-ans{background:#fff;border-radius:20px;padding:26px 28px;margin-top:14px;}
+.sdemo-flag{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:9px;letter-spacing:.14em;color:#0369a1;margin-bottom:10px;}
+.sdemo-a-h{font-family:var(--font-serif,'Newsreader'),serif;font-size:20px;line-height:1.4;margin-bottom:8px;color:#1a1a18;}
+.sdemo-a-p{font-size:13.5px;color:#71716c;line-height:1.6;margin-bottom:12px;}
+.sdemo-src{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:10px;letter-spacing:.08em;color:#9c9c96;}
+.sdemo-try{text-align:center;font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:9px;letter-spacing:.16em;color:#9c9c96;margin:28px 0 12px;}
+@media (max-width:520px){.sdemo-q{font-size:13.5px;}}
+
+/* featured collections ---------------------------------------------------- */
+.coll-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+.coll-card{background:#fff;border-radius:20px;padding:26px;display:flex;flex-direction:column;gap:10px;box-shadow:0 1px 3px rgba(0,0,0,.06);text-decoration:none;transition:box-shadow .25s ease;}
+.coll-card:hover{box-shadow:0 4px 14px rgba(0,0,0,.1);}
+.coll-years{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:10px;letter-spacing:.1em;color:#c2410c;}
+.coll-t{font-family:var(--font-serif,'Newsreader'),serif;font-size:19px;font-weight:500;line-height:1.3;color:#1a1a18;}
+.coll-p{font-size:13px;color:#71716c;line-height:1.55;flex:1;}
+.coll-n{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:9px;letter-spacing:.1em;color:#9c9c96;}
+
+/* transcribe ------------------------------------------------------------- */
+.tsc-stats{display:flex;flex-direction:column;gap:10px;font-size:14px;color:#52524e;margin:0 0 24px;}
+.tsc-stats strong{color:#1a1a18;}
+.tsc-panel{background:#f6f6f4;border-radius:20px;padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.tsc-scan{background:#e3e2dc;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:7px;}
+.tsc-cap{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:8.5px;letter-spacing:.1em;color:#8a8a84;margin-bottom:6px;}
+.tsc-line{height:6px;border-radius:2px;background:#c8c6bc;}
+.tsc-out{background:#fff;border-radius:12px;padding:16px;display:flex;flex-direction:column;gap:8px;}
+.tsc-out-h{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:8.5px;letter-spacing:.1em;color:#0369a1;}
+.tsc-out-p{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:11px;line-height:1.7;color:#3a3a36;}
+@media (max-width:420px){.tsc-panel{grid-template-columns:1fr;}}
+
+/* press ------------------------------------------------------------------ */
+.press-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;max-width:1080px;margin:0 auto;}
+.press-card{background:#fff;border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:14px;border:1px dashed #d8d6cc;}
+.press-kind{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:9px;letter-spacing:.14em;color:#9c9c96;}
+.press-quote{font-family:var(--font-serif,'Newsreader'),serif;font-style:italic;font-size:16px;line-height:1.5;color:#8a8a84;flex:1;}
+.press-pending{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:9px;letter-spacing:.1em;color:#b0b0aa;}
+
+/* drawn-from strip ------------------------------------------------------- */
+.src-strip{padding:56px 24px;text-align:center;}
+.src-row{display:flex;flex-wrap:wrap;justify-content:center;gap:36px;margin-top:24px;}
+.src-name{font-family:var(--font-serif,'Newsreader'),serif;font-size:17px;color:#52524e;}
+@media (max-width:640px){.src-row{gap:20px;}.src-name{font-size:15px;}}
+
+/* developer api ---------------------------------------------------------- */
+.api-free{font-size:14px;color:#52524e;line-height:1.6;margin:0 0 22px;}
+.api-free strong{color:#1a1a18;}
+.api-list{display:flex;flex-direction:column;}
+.api-row{padding:16px 2px;border-bottom:1px solid #f1f1ee;}
+.api-path{font-family:var(--font-mono,'IBM Plex Mono'),monospace;font-size:12px;color:#0369a1;overflow-x:auto;white-space:nowrap;}
+.api-desc{font-size:13px;color:#71716c;margin-top:5px;}
+
+/* newsletter ------------------------------------------------------------- */
+.nl{text-align:center;}
+.nl-form{max-width:420px;margin:0 auto;background:#fff;border-radius:999px;padding:6px 6px 6px 20px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 3px rgba(0,0,0,.08);}
+.nl-input{flex:1;min-width:0;border:0;outline:0;background:transparent;font:inherit;font-size:14px;color:#1a1a18;}
+.nl-input::placeholder{color:#9c9c96;}
+.nl-btn{background:#1a1a18;color:#fff;border:0;border-radius:999px;padding:10px 18px;font-size:13px;font-weight:500;flex-shrink:0;cursor:pointer;}
+.nl-btn:disabled{opacity:.5;cursor:default;}
+.nl-fine{font-size:12px;color:#9c9c96;margin-top:14px;}
+
+/* section reveal --------------------------------------------------------- */
+/* The observer writes inline styles; these two rules only guarantee that a
+   section which is waiting to be revealed cannot be clicked through. */
+[data-sv-armed]{pointer-events:none;}
+[data-sv-shown]{pointer-events:auto;}
+@media (prefers-reduced-motion:reduce){
+  [data-sv-armed]{opacity:1!important;transform:none!important;filter:none!important;pointer-events:auto;}
+}
+
+</style></head>
+<body>
+<div class="sheet">
+<div class="ref-head">
+<h1>Handoff 20 — the eight new sections</h1>
+<p>Static reference build. Every section below is the approved design, rendered from <code>globals-additions.css</code> — no app code, no scroll reveal, no animation. Each label states where the section goes in <code>page.tsx</code>.</p>
+<p>Sections that already exist on the page (hero, features, stats, network, timeline, on&nbsp;this&nbsp;day, about, ledger, FAQ, open data, CTA, footer) are <b>not</b> shown here and must not be changed.</p>
+</div>
+<div class="ref-label"><b>01</b> WHO IT’S FOR — after archive features, before stats</div>
+<section class="l20" id="s-who">
+  <div class="l20-head"><span class="l20-eyebrow">WHO IT&rsquo;S FOR</span>
+  <h2 class="l20-h2">One record,<br>read differently by everyone.</h2></div>
+  <div class="aud-grid">
+    <div class="aud-card"><div class="aud-glyph">&#9672;</div><div class="aud-t">Researchers</div><div class="aud-p">Cross-reference officeholders, elections and events without re-deriving them from primary sources each time.</div></div>
+    <div class="aud-card"><div class="aud-glyph">&#9998;</div><div class="aud-t">Journalists</div><div class="aud-p">Verify who held office when, on deadline, with a citation ready to publish.</div></div>
+    <div class="aud-card"><div class="aud-glyph">&#9636;</div><div class="aud-t">Students</div><div class="aud-p">See a period of Indian political history laid out year by year, with sources attached.</div></div>
+    <div class="aud-card"><div class="aud-glyph">&#9678;</div><div class="aud-t">Genealogists &amp; local historians</div><div class="aud-p">Trace who governed a state or district across the years a family or place was there.</div></div>
+  </div>
+</section>
+
+<div class="ref-label"><b>02</b> ASK THE ARCHIVE — after stats, before NetworkSection (chips live here now)</div>
+<section class="l20 l20-tint" id="s-ask">
+  <div class="l20-head"><span class="l20-eyebrow">ASK THE ARCHIVE</span>
+  <h2 class="l20-h2">Ask it in<br>plain language.</h2>
+  <p class="l20-lede">Type a question the way you&rsquo;d ask a person. The answer comes back with the office, the dates, and the source.</p></div>
+  <div class="sdemo-inner">
+    <div class="sdemo-bar"><span class="sdemo-icon">&#8981;</span><span class="sdemo-q">Who was the chief minister of Punjab in 1987?</span><span class="sdemo-ask">Ask</span></div>
+    <div class="sdemo-ans">
+      <div class="sdemo-flag">&#10003; VERIFIED ANSWER</div>
+      <div class="sdemo-a-h">Punjab was under President&rsquo;s Rule for all of 1987.</div>
+      <div class="sdemo-a-p">No chief minister held office that year. The state was under central administration from May 1987 to February 1992.</div>
+      <div class="sdemo-src">SOURCE: MINISTRY OF HOME AFFAIRS, ANNUAL REPORT 1987&ndash;88</div>
+    </div>
+    <div class="sdemo-try">TRY ONE OF THESE</div>
+    <div class="qchips">
+      <a href="#">Who was CM of Bihar in 1990?</a><a href="#">Every Governor of Assam</a><a href="#">Turnout in Kerala, 1957</a><a href="#">Union Home Ministers, in order</a><a href="#">What changed in 1956?</a>
+    </div>
+  </div>
+</section>
+
+<div class="ref-label"><b>03</b> FEATURED COLLECTIONS — after TimelineSection, before OnThisDay</div>
+<section class="l20 l20-tint" id="s-collections">
+  <div class="l20-wrap">
+    <div class="l20-head"><span class="l20-eyebrow">FEATURED COLLECTIONS</span>
+    <h2 class="l20-h2">Curated entry points<br>into the record.</h2></div>
+    <div class="coll-grid">
+      <a class="coll-card" href="#"><div class="coll-years">1946 &mdash; 1949</div><div class="coll-t">The Constituent Assembly</div><div class="coll-p">The drafting of the Constitution, session by session.</div><div class="coll-n">310 ENTRIES</div></a>
+      <a class="coll-card" href="#"><div class="coll-years">1956</div><div class="coll-t">States Reorganisation</div><div class="coll-p">How today&rsquo;s state boundaries were drawn along linguistic lines.</div><div class="coll-n">180 ENTRIES</div></a>
+      <a class="coll-card" href="#"><div class="coll-years">1975 &mdash; 1977</div><div class="coll-t">The Emergency</div><div class="coll-p">Suspended elections, press censorship, and the amendments that followed.</div><div class="coll-n">240 ENTRIES</div></a>
+      <a class="coll-card" href="#"><div class="coll-years">1989 &mdash; 2014</div><div class="coll-t">The Coalition Era</div><div class="coll-p">Two decades without a single-party majority in the Lok Sabha.</div><div class="coll-n">410 ENTRIES</div></a>
+    </div>
+  </div>
+</section>
+
+<div class="ref-label"><b>04</b> TRANSCRIBE — after about, before LedgerSection</div>
+<section class="l20" id="s-transcribe">
+  <div class="l20-wrap l20-split">
+    <div>
+      <span class="l20-eyebrow">TRANSCRIBE</span>
+      <h2 class="l20-h2 l20-h2--sm">Some of the record<br>is still a photograph.</h2>
+      <p class="l20-lede" style="margin-bottom:22px">Older gazettes and reports exist only as scanned pages. Transcribing one into searchable text is a separate task from correcting a fact &mdash; no source judgment needed, just careful typing.</p>
+      <div class="tsc-stats"><div><strong>2,180</strong> pages transcribed</div><div><strong>640</strong> pages left in the current batch</div></div>
+      <a class="l20-btn" href="#">Transcribe a page</a>
+    </div>
+    <div class="tsc-panel">
+      <div class="tsc-scan"><div class="tsc-cap">BIHAR GAZETTE &middot; 1952 &middot; P.14</div>
+        <div class="tsc-line" style="width:92%"></div><div class="tsc-line" style="width:78%"></div><div class="tsc-line" style="width:85%"></div><div class="tsc-line" style="width:40%"></div><div class="tsc-line" style="width:88%"></div><div class="tsc-line" style="width:72%"></div><div class="tsc-line" style="width:55%"></div>
+      </div>
+      <div class="tsc-out"><div class="tsc-out-h">TRANSCRIBED</div><div class="tsc-out-p">&ldquo;...the Governor is pleased to notify the appointment of the Chief Secretary to the Government, with effect from the 4th of March, 1952...&rdquo;</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="ref-label"><b>05</b> PRESS & MENTIONS — after LedgerSection</div>
+<section class="l20 l20-tint" id="s-press">
+  <div class="l20-head"><span class="l20-eyebrow">PRESS &amp; MENTIONS</span>
+  <h2 class="l20-h2">Coverage,<br>as it comes in.</h2>
+  <p class="l20-lede">This section fills in as the archive gets written about. The slots below show the shape it&rsquo;ll take.</p></div>
+  <div class="press-grid">
+    <div class="press-card"><div class="press-kind">PRINT / DIGITAL</div><div class="press-quote">Pull quote goes here once a publication covers the archive.</div><div class="press-pending">&mdash; PENDING</div></div>
+    <div class="press-card"><div class="press-kind">BROADCAST</div><div class="press-quote">Pull quote goes here once a broadcaster covers the archive.</div><div class="press-pending">&mdash; PENDING</div></div>
+    <div class="press-card"><div class="press-kind">POLICY / ACADEMIC</div><div class="press-quote">Pull quote goes here once a journal or institution cites the archive.</div><div class="press-pending">&mdash; PENDING</div></div>
+  </div>
+</section>
+
+<div class="ref-label"><b>06</b> DRAWN FROM — directly after PressSection</div>
+<section class="l20 src-strip" id="s-drawnfrom">
+  <div class="l20-wrap"><span class="l20-eyebrow">DRAWN FROM</span>
+  <div class="src-row"><span class="src-name">National Archives of India</span><span class="src-name">Doordarshan Archives</span><span class="src-name">Prasar Bharati Archives</span><span class="src-name">Election Commission of India</span><span class="src-name">State Gazettes</span></div></div>
+</section>
+
+<div class="ref-label"><b>07</b> DEVELOPER API — after OpenDataSection</div>
+<section class="l20" id="s-api">
+  <div class="l20-wrap l20-split">
+    <div>
+      <span class="l20-eyebrow">DEVELOPER API</span>
+      <h2 class="l20-h2 l20-h2--sm">Query it<br>directly.</h2>
+      <p class="l20-lede" style="margin-bottom:22px">The same data that renders the site, as JSON. No key needed for public read access.</p>
+      <p class="api-free"><strong>Free tier:</strong> 1,000 requests / day, no key required</p>
+      <a class="l20-btn" href="#">Full API documentation</a>
+    </div>
+    <div class="api-list">
+      <div class="api-row"><div class="api-path">GET /v1/office/:state/:role?year=</div><div class="api-desc">Officeholder for a state and role in a given year</div></div>
+      <div class="api-row"><div class="api-path">GET /v1/elections/:state/:year</div><div class="api-desc">Results and turnout for a specific election</div></div>
+      <div class="api-row"><div class="api-path">GET /v1/events?date=</div><div class="api-desc">Recorded events for a calendar date, any year</div></div>
+      <div class="api-row"><div class="api-path">GET /v1/timeline/:state</div><div class="api-desc">Full officeholder timeline for one state</div></div>
+    </div>
+  </div>
+</section>
+
+<div class="ref-label"><b>08</b> NEWSLETTER — directly after ApiSection, before the CTA card</div>
+<section class="l20 l20-tint nl" id="s-newsletter">
+  <span class="l20-eyebrow">STAY UPDATED</span>
+  <h2 class="l20-h2 l20-h2--sm">One email,<br>every time the record moves.</h2>
+  <p class="l20-lede" style="margin:0 auto 28px;max-width:420px">Corrections, new collections, and new coverage. At most twice a month.</p>
+  <form class="nl-form" onsubmit="return false"><input class="nl-input" type="email" placeholder="you@email.com"><button class="nl-btn" type="submit">Subscribe</button></form>
+  <div class="nl-fine">No spam. Unsubscribe anytime.</div>
+</section>
+</div>
+</body></html>
