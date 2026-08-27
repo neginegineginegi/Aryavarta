@@ -19,6 +19,12 @@ updates:
       # majors are held back here until someone does it on purpose.
       - dependency-name: typescript
         update-types: ["version-update:semver-major"]
+      # eslint 10 removed the legacy context.getFilename() API and the react
+      # plugin inside eslint-config-next still calls it (verified on PR #7:
+      # "contextOrFilename.getFilename is not a function"). Majors wait until
+      # Next's own config supports the new eslint line.
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
