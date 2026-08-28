@@ -24,6 +24,7 @@ import {
   aggregateEarly,
   checkEarlyHeader,
   checkHeader,
+  checkPartyResolutions,
   matchKnownParty,
   parseEarlyRow,
   parseRow,
@@ -31,8 +32,10 @@ import {
   type AggregateOutcome,
   type EarlyAggregateOutcome,
   type ElectionAggregate,
+  type GeStateSlice,
   type HandElection,
   type KnownParty,
+  type PartyDisposition,
   type Reconciliation,
   type Scope,
 } from "../src/lib/ingest/tcpd";
@@ -234,6 +237,47 @@ function readAliases(parseCsv: (t: string) => Record<string, string>[]): { map: 
     return { variant, canonical, rows, note: (r.note ?? "").trim() };
   });
   return { map: Object.fromEntries(committed.map((a) => [a.variant, a.canonical])), committed };
+}
+
+/** Committed dispositions for every early-file party label (gate ruling 5,
+ *  corrected: exact-abbreviation matching is still an identity decision, and
+ *  the SP era collision proved it). Missing file stops the insert. */
+function readPartyResolutions(parseCsv: (t: string) => Record<string, string>[]): PartyDisposition[] {
+  const path = join(ROOT, "PARTY_RESOLUTIONS.csv");
+  if (!existsSync(path))
+    fail("data/raw/tcpd/PARTY_RESOLUTIONS.csv is missing: every early-file party label needs a committed disposition before anything resolves or creates.");
+  return parseCsv(readFileSync(path, "utf8")).map((r) => {
+    const label = (r.label ?? "").trim();
+    const disposition = (r.disposition ?? "").trim();
+    if (!label || (disposition !== "create" && disposition !== "resolve"))
+      fail(`PARTY_RESOLUTIONS.csv: row "${label}" needs disposition create or resolve.`);
+    return {
+      label,
+      disposition: disposition as "create" | "resolve",
+      partyId: (r.party_id ?? "").trim() || null,
+      reason: (r.reason ?? "").trim(),
+    };
+  });
+}
+
+/** The GE state-slices, written as committed CSVs (gate ruling 3): the A9
+ *  rollup must stay reversible from what the repository stores, so the
+ *  per-state facts the national rows absorb are recorded here, regenerated
+ *  deterministically by stage 1 and diffed like any committed data. */
+function writeGeSliceArtifacts(slices: GeStateSlice[]) {
+  const q = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+  const totals = ["ge_upstream_id,state_name,constituencies,seats,electors_total,ballots_cast,votes_valid"];
+  const parties = ["ge_upstream_id,state_name,party,candidates,seats_won,votes"];
+  for (const s of slices) {
+    const up = `GE-${s.year}-L${s.assemblyNo}`;
+    totals.push([up, q(s.stateName), s.constituencies, s.seats, s.electorsTotal ?? "", s.ballotsCast ?? "", s.votesValid ?? ""].join(","));
+    for (const p of s.parties) {
+      parties.push([up, q(s.stateName), q(p.label), p.candidates, p.seatsWon, p.votes].join(","));
+    }
+  }
+  writeFileSync(join(ROOT, "D3_GE_STATE_TOTALS.csv"), totals.join("\n") + "\n");
+  writeFileSync(join(ROOT, "D3_GE_STATE_SLICES.csv"), parties.join("\n") + "\n");
+  return { totalRows: totals.length - 1, partyRows: parties.length - 1 };
 }
 
 function aggregateFiles(manifest: ManifestRow[], parseCsv: (t: string) => Record<string, string>[]) {
@@ -556,11 +600,9 @@ function reportEarly(
   );
 }
 
-/** The §5 stage-2 success measure has a BEFORE side, and this report is the
- *  last moment before anything changes, so it is recorded here: how starved
- *  each denominator-bearing insight panel is today, plus the picker and
- *  browse counts. Stage 2's post-insert report repeats these for the AFTER. */
-async function reportStarvedBaseline(lines: string[]) {
+/** The denominator-bearing insight panels plus picker/browse counts — the §5
+ *  stage-2 success measure, computed the same way before and after. */
+async function starvedCounts(): Promise<Record<string, string>> {
   const { fetchInsightRows } = await import("../src/lib/db/queries/insights");
   const { computeInsights } = await import("../src/lib/insights");
   const { termRows, electionRows } = await fetchInsightRows();
@@ -569,17 +611,26 @@ async function reportStarvedBaseline(lines: string[]) {
     const g = groups.find((x) => x.key === key);
     return g ? String(g.of ?? "stated without a denominator") : "panel absent (too starved to render)";
   };
+  return {
+    "Turnout extremes (n with recorded turnout)": of("turnout"),
+    "Largest majorities (of)": of("largest-majority"),
+    "Closest elections (of)": of("closest-election"),
+    "Party dominance (of)": of("party-dominance"),
+    "Compare picker options (elections)": String(electionRows.length),
+    "Browse: elections": String(electionRows.length),
+    "Browse: terms": String(termRows.length),
+  };
+}
 
+/** The §5 stage-2 success measure has a BEFORE side, and this report is the
+ *  last moment before anything changes, so it is recorded here. Stage 2's
+ *  post-insert report repeats these for the AFTER. */
+async function reportStarvedBaseline(lines: string[]) {
+  const counts = await starvedCounts();
   lines.push(`\n## Starved-panels baseline (§5 stage 2 success measure — the BEFORE side)`);
   lines.push(`| panel | denominator today |`);
   lines.push(`|---|---|`);
-  lines.push(`| Turnout extremes (n with recorded turnout) | ${of("turnout")} |`);
-  lines.push(`| Largest majorities (of) | ${of("largest-majority")} |`);
-  lines.push(`| Closest elections (of) | ${of("closest-election")} |`);
-  lines.push(`| Party dominance (of) | ${of("party-dominance")} |`);
-  lines.push(`| Compare picker options (elections) | ${electionRows.length} |`);
-  lines.push(`| Browse: elections | ${electionRows.length} |`);
-  lines.push(`| Browse: terms | ${termRows.length} |`);
+  for (const [k, v] of Object.entries(counts)) lines.push(`| ${k} | ${v} |`);
 }
 
 async function dryRun() {
@@ -606,7 +657,34 @@ async function dryRun() {
   } else {
     lines.push(`\nNo modern-schema (ae/ge) files in this drop: D1 and D2 remain unfetched, and the spec's §2.1 column expectations for them stay explicitly unverified.`);
   }
-  if (early) reportEarly(early, committedAliases, earlyRefused, lines);
+  if (early) {
+    reportEarly(early, committedAliases, earlyRefused, lines);
+
+    // Gate ruling 3: the GE slices are preserved as committed artifacts,
+    // regenerated here so a drifted file shows up as a diff.
+    const art = writeGeSliceArtifacts(early.geSlices);
+    lines.push(`\n### GE state-slices preserved (gate ruling 3)`);
+    lines.push(
+      `- ${early.geSlices.length} slices written: D3_GE_STATE_TOTALS.csv (${art.totalRows} rows) and D3_GE_STATE_SLICES.csv (${art.partyRows} party rows). The national GE rows are their sums; the rollup is reversible from the repository.`,
+    );
+
+    // Gate ruling 5 (corrected): every label's disposition is committed data.
+    lines.push(`\n### Party dispositions (PARTY_RESOLUTIONS.csv)`);
+    if (existsSync(join(ROOT, "PARTY_RESOLUTIONS.csv"))) {
+      const committed = readPartyResolutions(parseCsv);
+      const labels = [...new Set(early.elections.flatMap((e) => e.parties.map((p) => p.recordedLabel)))];
+      const chk = checkPartyResolutions(labels, allParties, committed);
+      if (chk.ok) {
+        lines.push(`- coherent: ${chk.resolve.size} resolve, ${chk.create.length} create`);
+        for (const d of committed.filter((c) => c.reason)) lines.push(`    - override: ${d.label} -> ${d.disposition}${d.partyId ? ` ${d.partyId}` : ""} (${d.reason})`);
+      } else {
+        lines.push(`- PROBLEMS — the insert stage will refuse until these are fixed:`);
+        for (const p of chk.problems) lines.push(`    - ${p}`);
+      }
+    } else {
+      lines.push(`- file not present; the insert stage refuses without it`);
+    }
+  }
   const coverage =
     allAggs.length > 0
       ? { min: Math.min(...allAggs.map((e) => e.year)), max: Math.max(...allAggs.map((e) => e.year)) }
@@ -624,17 +702,291 @@ async function dryRun() {
   console.log(`[load-tcpd] report written to ${outPath}`);
 }
 
+// ---------------------------------------------------------------------------
+// Stage 2 for the early file — authorised by the gate rulings of 2026-08-28.
+// ---------------------------------------------------------------------------
+
+/** Canonical file name -> archive state row for the 12 approved historical
+ *  states (gate ruling 4). First-class rows, NO successor links, no dates
+ *  (dates are curatorial facts that arrive through review with sources, not
+ *  through a loader), hasGeometry=false: the atlas holds a state it cannot
+ *  draw and says so. Bilaspur and Kutch are deliberately absent: their rows
+ *  are GE-only and fold into the national GE under A9. */
+const HISTORICAL_STATES: Readonly<Record<string, { id: string; name: string }>> = {
+  Ajmer: { id: "ajmer", name: "Ajmer" },
+  Bhopal: { id: "bhopal", name: "Bhopal" },
+  Bombay: { id: "bombay", name: "Bombay" },
+  Coorg: { id: "coorg", name: "Coorg" },
+  Hyderabad: { id: "hyderabad", name: "Hyderabad" },
+  Madhya_Bharat: { id: "madhya-bharat", name: "Madhya Bharat" },
+  Madras: { id: "madras", name: "Madras" },
+  Mysore: { id: "mysore", name: "Mysore" },
+  "Patiala_&_East_Punjab_States_Union_(PEPSU)": { id: "pepsu", name: "Patiala & East Punjab States Union (PEPSU)" },
+  Saurashtra: { id: "saurashtra", name: "Saurashtra" },
+  Travancore_Cochin: { id: "travancore-cochin", name: "Travancore-Cochin" },
+  Vindhya_Pradesh: { id: "vindhya-pradesh", name: "Vindhya Pradesh" },
+};
+
+const D3_DATASET_SLUG = "tcpd-ied-1951-62";
+
+const partySlug = (label: string) =>
+  label.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+
+/**
+ * Stage 2 insert for the early file, on the gate's exact terms:
+ * NULL turnout with the reason in the dataset notes (ruling 1); 669
+ * file-view rows = 431 insertable rows, zero-seat parties included
+ * (ruling 2); the A9 rollup with the GE slices preserved as committed
+ * artifacts (ruling 3); 12 first-class historical states, no successor
+ * links (ruling 4); party dispositions from the committed file (ruling 5).
+ * Refuses to run without a recorded restore drill, refuses a drop whose
+ * numbers differ from the approved run, refuses to run twice.
+ */
+async function insertEarly() {
+  const manifest = await verify();
+
+  const drillPath = join(ROOT, "RESTORE_DRILL.md");
+  if (!existsSync(drillPath))
+    fail("data/raw/tcpd/RESTORE_DRILL.md is missing: the verified backup restore precedes any stage-2 insert (standing gate). Run scripts/restore-drill.sh and commit its record.");
+  const drill = readFileSync(drillPath, "utf8");
+  if (!/verified/i.test(drill))
+    fail("RESTORE_DRILL.md exists but does not say 'verified': the drill record must state its outcome.");
+  console.log(`[load-tcpd] restore drill record found:\n${drill.split("\n").slice(0, 6).join("\n")}\n`);
+
+  const { parseCsv } = await import("../src/lib/csv");
+  const { early, earlyRefused, committedAliases } = aggregateFiles(manifest, parseCsv);
+  if (!early) fail("no early-schema (kind=both) file in the manifest; nothing for insert-early to do.");
+
+  // The drop must measure exactly as the approved stage-1 run did. Any
+  // difference means a different file is on disk, and the approval does not
+  // transfer to a file nobody looked at.
+  const f = early.fileGroups;
+  if (f.elections !== 82 || f.partyRowsWithSeats !== 371 || f.partyRowsAll !== 669)
+    fail(`file grouping measures ${f.elections}/${f.partyRowsWithSeats}/${f.partyRowsAll}, not the approved 82/371/669.`);
+  if (early.elections.length !== 41) fail(`insertable view has ${early.elections.length} elections, not the approved 41.`);
+  if (Object.keys(earlyRefused).length > 0 || Object.keys(early.refused).length > 0 || early.duplicateRowCount > 0)
+    fail("the approved run had zero refusals and zero duplicates; this run does not.");
+  for (const a of committedAliases) {
+    if ((early.aliasApplications[a.variant]?.rows ?? 0) !== a.rows)
+      fail(`alias "${a.variant}" measures ${early.aliasApplications[a.variant]?.rows ?? 0} rows, committed says ${a.rows}.`);
+  }
+
+  if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
+  const dbLabel = process.env.DATABASE_URL.replace(/\/\/[^@]*@/, "//…@");
+  const { db } = await import("../src/lib/db");
+  const schema = await import("../src/lib/db/schema");
+  const { eq, sql, inArray } = await import("drizzle-orm");
+  const { v7: uuidv7 } = await import("uuid");
+
+  // Idempotency FIRST, so a re-run is told the true reason it stops (after
+  // an insert the created parties exist, and the disposition check below
+  // would otherwise refuse with a misleading complaint about reasons).
+  const already = await db
+    .select({ id: schema.datasets.id })
+    .from(schema.datasets)
+    .where(eq(schema.datasets.slug, D3_DATASET_SLUG));
+  if (already.length > 0) {
+    const prov = await db.execute(
+      sql`SELECT count(*)::int AS n FROM record_provenance WHERE dataset_id = ${already[0].id}`,
+    );
+    if (Number((prov.rows[0] as { n: number }).n) > 0)
+      fail(`dataset ${D3_DATASET_SLUG} already has provenance rows: this drop is already ingested. Supersession is a designed flow, not a re-run.`);
+  }
+
+  // Party dispositions: the committed file, checked against data and matcher.
+  const committed = readPartyResolutions(parseCsv);
+  const known: KnownParty[] = await db
+    .select({ id: schema.parties.id, name: schema.parties.name, abbreviation: schema.parties.abbreviation, isPseudo: schema.parties.isPseudo })
+    .from(schema.parties);
+  const labels = [...new Set(early.elections.flatMap((e) => e.parties.map((p) => p.recordedLabel)))];
+  const check = checkPartyResolutions(labels, known, committed);
+  if (!check.ok) fail(`PARTY_RESOLUTIONS.csv problems:\n  - ${check.problems.join("\n  - ")}`);
+
+  // Created-party ids: deterministic slugs, refused on any collision.
+  const existingPartyIds = new Set(known.map((p) => p.id));
+  const createdIds = new Map<string, string>();
+  for (const label of check.create) {
+    const slug = partySlug(label);
+    if (!slug) fail(`party label "${label}" slugs to nothing.`);
+    if (existingPartyIds.has(slug)) fail(`party id "${slug}" (for label "${label}") already exists; a human must pick the id.`);
+    if ([...createdIds.values()].includes(slug)) fail(`two labels slug to "${slug}"; a human must disambiguate.`);
+    createdIds.set(label, slug);
+  }
+  const partyIdFor = (label: string): string => check.resolve.get(label) ?? createdIds.get(label)!;
+
+  const existingDataset = already;
+
+  // States that must not already exist (fresh first-class rows).
+  const histIds = Object.values(HISTORICAL_STATES).map((s) => s.id);
+  const clash = await db.select({ id: schema.states.id }).from(schema.states).where(inArray(schema.states.id, histIds));
+  if (clash.length > 0) fail(`state id(s) already exist: ${clash.map((c) => c.id).join(", ")} — refusing to touch existing rows.`);
+
+  const before = await starvedCounts();
+  const today = new Date().toISOString().slice(0, 10);
+  const csvRow = manifest.find((m) => m.kind === "both")!;
+
+  console.log(`[load-tcpd] stage 2 — inserting into ${dbLabel}`);
+
+  let electionCount = 0;
+  let resultCount = 0;
+
+  await db.transaction(async (tx) => {
+    const datasetId = existingDataset[0]?.id ?? uuidv7();
+    if (!existingDataset[0]) {
+      await tx.insert(schema.datasets).values({
+        id: datasetId,
+        slug: D3_DATASET_SLUG,
+        name: "TCPD Indian Elections dataset (TCPD-IED), 1951-1962",
+        publisher: "Trivedi Centre for Political Data, Ashoka University",
+        version: csvRow.source_version,
+        licence: "TCPD terms: non-commercial use only, citation required, no endorsement (captured in data/raw/tcpd/TERMS.md)",
+        licenceUrl: csvRow.source_url,
+        retrievedOn: csvRow.downloaded_on || today,
+        upstreamUrl: csvRow.source_url,
+        curator: "ai@cdswindia.org",
+        notes:
+          "turnout_percent is NULL on every row of this dataset by gate ruling (2026-08-28): " +
+          "the file's ElectorsWhoVoted column counts BALLOTS, not persons — in multi-member " +
+          "constituencies each elector cast one vote per seat, and the column equals VotesValid " +
+          "everywhere except one Kerala election — so a stored quotient would read as person-turnout " +
+          "and be wrong. The null is a refusal, not missing data: do NOT recompute turnout from the " +
+          "raw counts on any re-ingest (docs/ELECTIONS_INGEST_SPEC.md §2.8). " +
+          "The two national GE rows aggregate 43 per-state slices (TCPD's own GE identity ignores " +
+          "State_Name); the slices are preserved verbatim-derived in data/raw/tcpd/D3_GE_STATE_SLICES.csv " +
+          "and D3_GE_STATE_TOTALS.csv so the rollup stays reversible from the repository. " +
+          "Zero-seat contesting parties are included by ruling. Party dispositions, including the SP " +
+          "era-collision override, are committed in data/raw/tcpd/PARTY_RESOLUTIONS.csv. " +
+          "Errata against D3_FINDINGS.md are recorded in the spec §2.8; the findings file is unedited.",
+      });
+    }
+
+    await tx.insert(schema.states).values(
+      Object.values(HISTORICAL_STATES).map((s) => ({
+        id: s.id,
+        name: s.name,
+        kind: "state" as const,
+        formedOn: null,
+        dissolvedOn: null,
+        hasGeometry: false,
+      })),
+    );
+
+    if (check.create.length > 0) {
+      await tx.insert(schema.parties).values(
+        check.create.map((label) => ({
+          id: createdIds.get(label)!,
+          name: label, // verbatim TCPD label; renaming is review's job, with sources
+          abbreviation: label,
+          isPseudo: false,
+        })),
+      );
+    }
+
+    // One source row for the dataset; every election cites it with its own
+    // upstream reference, per the TERMS.md citation requirement.
+    const srcExisting = await tx
+      .select({ id: schema.sources.id })
+      .from(schema.sources)
+      .where(eq(schema.sources.url, csvRow.source_url));
+    const sourceId = srcExisting[0]?.id ?? uuidv7();
+    if (!srcExisting[0]) {
+      await tx.insert(schema.sources).values({
+        id: sourceId,
+        title: "TCPD Indian Elections dataset (TCPD-IED), 1951-1962",
+        url: csvRow.source_url,
+        publisher: "Trivedi Centre for Political Data, Ashoka University",
+        publishedOn: "2023-05-08", // codebook 1.0, last updated
+        accessedOn: csvRow.downloaded_on || today,
+        kind: "research",
+        isOfficial: false, // derived from ECI statistical reports, issued by TCPD
+        isPrimary: true, // the dataset itself, not coverage of it
+      });
+    }
+
+    for (const e of early.elections) {
+      const stateId =
+        e.scope === "lok_sabha" ? "in" : (e.stateId ?? HISTORICAL_STATES[e.stateName]?.id);
+      if (!stateId) fail(`no state id for "${e.stateName}" — not mapped and not in the approved historical list.`);
+      const electionId = uuidv7();
+      await tx.insert(schema.elections).values({
+        id: electionId,
+        stateId,
+        scope: e.scope,
+        assemblyNumber: e.assemblyNo,
+        electionDate: e.electionDate ?? `${e.year}-01-01`,
+        electionDatePrecision: e.datePrecision,
+        totalSeats: e.totalSeats,
+        turnoutPercent: null, // gate ruling 1; the WHY is in the dataset notes
+        resultSummary: null,
+      });
+      electionCount++;
+      await tx.insert(schema.electionResults).values(
+        e.parties.map((p) => ({
+          electionId,
+          partyId: partyIdFor(p.recordedLabel),
+          seatsWon: p.seatsWon,
+          // Candidacies, not constituencies: the honest measure in the
+          // multi-member era (§2.8).
+          seatsContested: p.seatsContested,
+          voteSharePercent: p.voteSharePercent === null ? null : String(p.voteSharePercent),
+        })),
+      );
+      resultCount += e.parties.length;
+      await tx.insert(schema.recordProvenance).values({
+        subjectType: "election",
+        subjectId: electionId,
+        datasetId,
+        upstreamId: e.upstreamId,
+        ingestedOn: today,
+      });
+      await tx.insert(schema.citations).values({
+        subjectType: "election",
+        subjectId: electionId,
+        sourceId,
+        note: `${e.upstreamId} rows of TCPD-IED 1951-1962; cite as: "TCPD Indian Elections dataset (TCPD-IED), 1951-1962", Trivedi Centre for Political Data, Ashoka University.`,
+      });
+    }
+  });
+
+  // The recordPath amendment: fresh statistics after a bulk insert, query
+  // shapes unchanged. This is the fix the benchmark chose.
+  for (const t of ["elections", "election_results", "record_provenance", "citations", "parties", "states", "datasets", "sources"]) {
+    await db.execute(sql.raw(`ANALYZE ${t}`));
+  }
+
+  const after = await starvedCounts();
+
+  const lines: string[] = [];
+  lines.push(`# TCPD ingest — stage 2 insert report (early file, D3)`);
+  lines.push(`\nGenerated ${today} against database ${dbLabel}.`);
+  lines.push(`\n- elections inserted: ${electionCount} (39 AE + 2 GE)`);
+  lines.push(`- election_results inserted: ${resultCount} (zero-seat parties included)`);
+  lines.push(`- historical states created: ${histIds.length} (first-class, no successor links, has_geometry=false)`);
+  lines.push(`- parties created: ${check.create.length}; resolved to existing: ${check.resolve.size}`);
+  lines.push(`- provenance rows: ${electionCount}; citations: ${electionCount}; turnout_percent: NULL on all rows (ruling 1)`);
+  lines.push(`- ANALYZE run on all touched tables (recordPath amendment)`);
+  lines.push(`\n## Starved panels — before/after (§5 success measure)`);
+  lines.push(`| panel | before | after |`);
+  lines.push(`|---|---|---|`);
+  for (const k of Object.keys(before)) lines.push(`| ${k} | ${before[k]} | ${after[k]} |`);
+  const report = lines.join("\n");
+  console.log("\n" + report + "\n");
+  writeFileSync(join(ROOT, "insert-report.md"), report);
+  console.log(`[load-tcpd] report written to ${join(ROOT, "insert-report.md")}`);
+}
+
 async function main() {
   const stage = process.argv.find((a) => a.startsWith("--stage="))?.slice(8);
   if (stage === "verify") return void (await verify());
   if (stage === "dry-run") return void (await dryRun());
+  if (stage === "insert-early") return void (await insertEarly());
   if (stage === "insert-ae" || stage === "insert-ge") {
     console.error(
-      `[load-tcpd] GATED: the insert stages are built only after the stage-1 dry-run report returns with a go, because the gate's decisions (historical states, conflicts, new parties) shape them. See docs/ELECTIONS_INGEST_SPEC.md §5.`,
+      `[load-tcpd] GATED: the D1/D2 insert stages are built only after their own stage-1 dry-run reports return with a go. The early file (D3) inserts via --stage=insert-early, authorised by the gate rulings of 2026-08-28. See docs/ELECTIONS_INGEST_SPEC.md §5.`,
     );
     process.exit(2);
   }
-  console.error("usage: pnpm tsx scripts/load-tcpd.ts --stage=verify|dry-run");
+  console.error("usage: pnpm tsx scripts/load-tcpd.ts --stage=verify|dry-run|insert-early");
   process.exit(2);
 }
 

@@ -219,6 +219,13 @@ export function MapExplorer({
     [data.facts, year],
   );
 
+  // States the record holds for this year that the plate cannot draw
+  // (has_geometry = false, an election recorded in the selected year).
+  const heldUndrawable = useMemo(
+    () => data.undrawable.filter((u) => u.electionYears.includes(year)),
+    [data.undrawable, year],
+  );
+
   // Tooltip trail. The prototype lerps the tip toward the cursor at 0.22 per
   // frame so it arrives a beat late, which reads as weight. Position is
   // written straight to the node inside the animation frame rather than held
@@ -493,6 +500,32 @@ export function MapExplorer({
               </li>
             ))}
           </ul>
+          {/* States the record holds for this year that this plate cannot
+              draw: the 1950s entities (Madras, Bombay, PEPSU, …) have no
+              geometry in the map package, and the atlas says so rather than
+              staying silent about a third of that era's elections. The list
+              lives here, not in the sea cartouche: twelve names would climb
+              over the artwork. Each name links to the state page, where the
+              archive CAN hold the state it cannot draw. */}
+          {heldUndrawable.length > 0 && (
+            <div className="mt-4 border-t border-rule pt-2.5 text-[0.78rem] leading-snug text-ink-faint">
+              <h3 className="section-label">{`Held in ${year}, not drawable`}</h3>
+              <p className="mt-1.5">
+                {heldUndrawable.map((u, i) => (
+                  <span key={u.id}>
+                    {i > 0 && " · "}
+                    <a href={`/state/${u.id}`} className="text-ink-muted underline-offset-2 hover:text-accent hover:underline">
+                      {u.name}
+                    </a>
+                  </span>
+                ))}
+              </p>
+              <p className="mt-1.5">
+                States of that era with no geometry on this plate. Their elections are in
+                the record; follow a name for the details.
+              </p>
+            </div>
+          )}
         </aside>
       </div>
     </div>

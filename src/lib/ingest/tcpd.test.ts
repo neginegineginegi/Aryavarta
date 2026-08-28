@@ -361,6 +361,7 @@ describe("matchKnownParty", () => {
 import {
   aggregateEarly,
   checkEarlyHeader,
+  checkPartyResolutions,
   EARLY_REQUIRED_COLUMNS,
   parseEarlyDate,
   parseEarlyRow,
@@ -635,5 +636,79 @@ describe("aggregateEarly (§2.8)", () => {
     expect(e.anomalies.join(" ")).toMatch(/ElectorsWhoVoted differs from VotesValid/);
     expect(e.electorsWhoVoted).toBe(900);
     expect(e.validVotesTotal).toBe(1000);
+  });
+
+  it("preserves per-state GE slices beneath the national rollup (ruling 3)", () => {
+    const rows = [
+      earlyParsed({ Election_Type: "GE", State_Name: "Assam", Constituency_No: "1", Candidate: "A", Party: "INC", Votes: "600.0" }),
+      earlyParsed({ Election_Type: "GE", State_Name: "Assam", Constituency_No: "1", Candidate: "B", Party: "SP", Winner: "False", Votes: "400.0" }),
+      earlyParsed({ Election_Type: "GE", State_Name: "Bihar", Constituency_No: "1", Candidate: "C", Party: "INC", Votes: "700.0" }),
+    ];
+    const out = aggregateEarly(rows);
+    expect(out.elections).toHaveLength(1); // the national rollup stands (A9)
+    expect(out.geSlices).toHaveLength(2); // and the slices survive beside it
+    const assam = out.geSlices.find((s) => s.stateName === "Assam")!;
+    expect(assam).toMatchObject({ assemblyNo: 1, year: 1952, constituencies: 1, seats: 1, electorsTotal: 1500, ballotsCast: 1000, votesValid: 1000 });
+    expect(assam.parties).toEqual([
+      { label: "INC", candidates: 1, seatsWon: 1, votes: 600 },
+      { label: "SP", candidates: 1, seatsWon: 0, votes: 400 },
+    ]);
+    // Reversibility: the national totals are the slice sums.
+    const [nat] = out.elections;
+    expect(nat.totalSeats).toBe(out.geSlices.reduce((n, s) => n + s.seats, 0));
+    expect(nat.validVotesTotal).toBe(out.geSlices.reduce((n, s) => n + (s.votesValid ?? 0), 0));
+  });
+});
+
+describe("checkPartyResolutions (ruling 5, corrected)", () => {
+  const known: KnownParty[] = [
+    { id: "samajwadi-party", name: "Samajwadi Party", abbreviation: "SP", isPseudo: false },
+    { id: "ind", name: "Independent", abbreviation: "IND", isPseudo: true },
+  ];
+  const disp = (over: Partial<import("@/lib/ingest/tcpd").PartyDisposition> = {}) => ({
+    label: "XYZ",
+    disposition: "create" as const,
+    partyId: null,
+    reason: "",
+    ...over,
+  });
+
+  it("accepts a coherent file, splitting resolve from create", () => {
+    const res = checkPartyResolutions(["IND", "SP", "XYZ"], known, [
+      disp({ label: "IND", disposition: "resolve", partyId: "ind" }),
+      disp({ label: "SP", disposition: "create", reason: "era collision: the 1950s SP is the Socialist Party" }),
+      disp({ label: "XYZ" }),
+    ]);
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.resolve.get("IND")).toBe("ind");
+      expect(res.create.sort()).toEqual(["SP", "XYZ"]);
+    }
+  });
+
+  it("refuses a data label with no committed disposition", () => {
+    const res = checkPartyResolutions(["XYZ", "ABC"], known, [disp()]);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.problems.join(" ")).toMatch(/"ABC" is in the data/);
+  });
+
+  it("refuses a resolve to a party that does not exist", () => {
+    const res = checkPartyResolutions(["XYZ"], known, [disp({ disposition: "resolve", partyId: "no-such" })]);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.problems.join(" ")).toMatch(/does not exist/);
+  });
+
+  it("refuses an override of the matcher without a stated reason", () => {
+    // SP auto-matches samajwadi-party; declaring create with no reason is a
+    // silent identity decision, which is the thing this file exists to stop.
+    const res = checkPartyResolutions(["SP"], known, [disp({ label: "SP" })]);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.problems.join(" ")).toMatch(/needs a stated reason/);
+  });
+
+  it("refuses committed labels the data no longer carries (drift)", () => {
+    const res = checkPartyResolutions(["XYZ"], known, [disp(), disp({ label: "GONE" })]);
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.problems.join(" ")).toMatch(/drifted/);
   });
 });

@@ -628,6 +628,77 @@ export function matchKnownParty(known: KnownParty[], label: string, name: string
 }
 
 // ---------------------------------------------------------------------------
+// Committed party dispositions (gate ruling 5, corrected)
+// ---------------------------------------------------------------------------
+//
+// The dry run resolved 6 labels by exact abbreviation, and one of them was an
+// era collision: the 1950s "SP" is the Socialist Party, not the 1992
+// Samajwadi Party the abbreviation matches today. Exact matching is still an
+// identity DECISION, so for the early file every label's disposition lives in
+// a committed file (data/raw/tcpd/PARTY_RESOLUTIONS.csv), reviewed at the
+// gate. This checker verifies the file against the data and the matcher:
+// coverage both ways, resolve targets that exist, and a stated reason
+// wherever a human overrode what the matcher would have done.
+
+export type PartyDisposition = {
+  label: string;
+  disposition: "create" | "resolve";
+  partyId: string | null; // required for resolve
+  reason: string;
+};
+
+export type ResolutionCheck =
+  | { ok: true; resolve: Map<string, string>; create: string[] }
+  | { ok: false; problems: string[] };
+
+export function checkPartyResolutions(
+  labels: string[],
+  known: KnownParty[],
+  committed: PartyDisposition[],
+): ResolutionCheck {
+  const problems: string[] = [];
+  const byLabel = new Map<string, PartyDisposition>();
+  for (const d of committed) {
+    if (byLabel.has(d.label)) problems.push(`"${d.label}" appears twice in PARTY_RESOLUTIONS.csv`);
+    byLabel.set(d.label, d);
+  }
+  const dataLabels = new Set(labels);
+  for (const l of dataLabels) {
+    if (!byLabel.has(l)) problems.push(`label "${l}" is in the data but has no committed disposition`);
+  }
+  for (const d of committed) {
+    if (!dataLabels.has(d.label)) problems.push(`"${d.label}" is committed but not in the data — the file has drifted`);
+    const auto = matchKnownParty(known, d.label, d.label);
+    if (d.disposition === "resolve") {
+      if (!d.partyId) {
+        problems.push(`"${d.label}" says resolve but names no party_id`);
+        continue;
+      }
+      const target = known.find((p) => p.id === d.partyId);
+      if (!target) {
+        problems.push(`"${d.label}" resolves to "${d.partyId}", which does not exist`);
+        continue;
+      }
+      const agreesWithAuto = auto.kind === "one" && auto.party.id === d.partyId;
+      if (!agreesWithAuto && !d.reason)
+        problems.push(`"${d.label}" -> ${d.partyId} is a human pairing the matcher would not make; it needs a stated reason`);
+    } else {
+      if (auto.kind === "one" && !d.reason)
+        problems.push(`"${d.label}" is set to create although it matches ${auto.party.id}; overriding the matcher needs a stated reason`);
+    }
+  }
+  if (problems.length > 0) return { ok: false, problems };
+  const resolve = new Map<string, string>();
+  const create: string[] = [];
+  for (const l of dataLabels) {
+    const d = byLabel.get(l)!;
+    if (d.disposition === "resolve") resolve.set(l, d.partyId!);
+    else create.push(l);
+  }
+  return { ok: true, resolve, create: create.sort() };
+}
+
+// ---------------------------------------------------------------------------
 // Early schema: TCPD-IED 1951–62 (spec §2.8, the D3 drop)
 // ---------------------------------------------------------------------------
 //
@@ -824,6 +895,26 @@ export type EarlyElectionAggregate = Omit<ElectionAggregate, "parties"> & {
   turnoutBasis: "persons" | "ballots";
 };
 
+/** One per-state slice of a national GE — the recorded facts the A9 rollup
+ *  would otherwise discard at insert time. Gate ruling 3 (2026-08-28):
+ *  aggregation must be reversible from what we store, so these are written
+ *  to committed CSVs beside the manifest and referenced from the dataset
+ *  notes. Party rows and constituency-level sums are both kept because the
+ *  sums are not derivable from the party rows. */
+export type GeStateSlice = {
+  assemblyNo: number;
+  year: number;
+  stateName: string;
+  constituencies: number;
+  seats: number;
+  electorsTotal: number | null;
+  /** ElectorsWhoVoted summed once per constituency — BALLOTS, not persons,
+   *  wherever a multi-member constituency is in the sum (§2.8). */
+  ballotsCast: number | null;
+  votesValid: number | null;
+  parties: Array<{ label: string; candidates: number; seatsWon: number; votes: number }>;
+};
+
 export type EarlyAggregateOutcome = {
   elections: EarlyElectionAggregate[];
   refused: Record<string, number>;
@@ -841,6 +932,8 @@ export type EarlyAggregateOutcome = {
    *  measured (82 / 371 / 669) and what the gate's expected-numbers check
    *  runs against. */
   fileGroups: { elections: number; partyRowsWithSeats: number; partyRowsAll: number };
+  /** The per-state GE slices, preserved (gate ruling 3). */
+  geSlices: GeStateSlice[];
 };
 
 /**
@@ -866,6 +959,7 @@ export function aggregateEarly(rows: ParsedEarlyRow[]): EarlyAggregateOutcome {
 
   const groups = new Map<string, ParsedEarlyRow[]>();
   const fileGroupParties = new Map<string, Map<string, number>>(); // file-view group -> party -> seats
+  const geRows: ParsedEarlyRow[] = []; // deduped GE rows, for the preserved slices
 
   for (const r of rows) {
     if (r.stateNameRaw !== r.stateName) {
@@ -891,7 +985,45 @@ export function aggregateEarly(rows: ParsedEarlyRow[]): EarlyAggregateOutcome {
     const g = groups.get(key) ?? [];
     g.push(r);
     groups.set(key, g);
+    if (r.electionType === "GE") geRows.push(r);
   }
+
+  // The per-state GE slices (gate ruling 3). Same first-seen-per-constituency
+  // discipline as the main path; a disagreement would already be an anomaly on
+  // the national aggregate, so here the sums simply follow the same rows.
+  const sliceMap = new Map<string, GeStateSlice>();
+  for (const r of geRows) {
+    const k = `${r.assemblyNo}|${r.stateName}`;
+    const s =
+      sliceMap.get(k) ??
+      ({ assemblyNo: r.assemblyNo, year: r.year, stateName: r.stateName, constituencies: 0, seats: 0, electorsTotal: 0, ballotsCast: 0, votesValid: 0, parties: [] } as GeStateSlice);
+    s.year = Math.min(s.year, r.year);
+    sliceMap.set(k, s);
+  }
+  for (const [k, s] of sliceMap) {
+    const rowsHere = geRows.filter((r) => `${r.assemblyNo}|${r.stateName}` === k);
+    const byConst = new Map<string, ParsedEarlyRow>();
+    for (const r of rowsHere) if (!byConst.has(r.constituencyNo)) byConst.set(r.constituencyNo, r);
+    s.constituencies = byConst.size;
+    for (const c of byConst.values()) {
+      s.seats += c.numberOfSeats;
+      s.electorsTotal = s.electorsTotal === null || c.electorsTotal === null ? null : s.electorsTotal + c.electorsTotal;
+      s.ballotsCast = s.ballotsCast === null || c.electorsWhoVoted === null ? null : s.ballotsCast + c.electorsWhoVoted;
+      s.votesValid = s.votesValid === null || c.votesValid === null ? null : s.votesValid + c.votesValid;
+    }
+    const byParty = new Map<string, { label: string; candidates: number; seatsWon: number; votes: number }>();
+    for (const r of rowsHere) {
+      const p = byParty.get(r.party) ?? { label: r.party, candidates: 0, seatsWon: 0, votes: 0 };
+      p.candidates++;
+      if (r.winner) p.seatsWon++;
+      p.votes += r.votes ?? 0;
+      byParty.set(r.party, p);
+    }
+    s.parties = [...byParty.values()].sort((a, b) => b.seatsWon - a.seatsWon || b.votes - a.votes || a.label.localeCompare(b.label));
+  }
+  const geSlices = [...sliceMap.values()].sort(
+    (a, b) => a.assemblyNo - b.assemblyNo || a.stateName.localeCompare(b.stateName),
+  );
 
   let partyRowsWithSeats = 0;
   let partyRowsAll = 0;
@@ -1050,5 +1182,6 @@ export function aggregateEarly(rows: ParsedEarlyRow[]): EarlyAggregateOutcome {
     aliasApplications,
     statesWithoutId,
     fileGroups: { elections: fileGroupParties.size, partyRowsWithSeats, partyRowsAll },
+    geSlices,
   };
 }

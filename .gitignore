@@ -56,3 +56,9 @@ data/raw/tcpd/*
 !data/raw/tcpd/TERMS.md
 !data/raw/tcpd/D3_FINDINGS.md
 !data/raw/tcpd/STATE_ALIASES.csv
+!data/raw/tcpd/PARTY_RESOLUTIONS.csv
+!data/raw/tcpd/D3_GE_STATE_SLICES.csv
+!data/raw/tcpd/D3_GE_STATE_TOTALS.csv
+!data/raw/tcpd/RESTORE_DRILL.md
+# Local database recovery points from scripts/restore-drill.sh.
+data/backups/

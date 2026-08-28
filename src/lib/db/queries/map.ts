@@ -49,11 +49,23 @@ export type MapMarker = {
   eventId: string;
 };
 
+/** A state the archive holds that the map package cannot draw — the
+ *  historical states of the 1950s (Madras, Bombay, PEPSU, …) whose
+ *  elections are in the record but whose geometry predates the plate. The
+ *  atlas holds a state it cannot draw and says so, rather than erroring or
+ *  staying silent. */
+export type UndrawableState = {
+  id: string;
+  name: string;
+  electionYears: number[];
+};
+
 export type MapData = {
   states: MapState[];
   terms: MapTerm[];
   markers: MapMarker[];
   facts: MapFact[];
+  undrawable: UndrawableState[];
   minYear: number;
   maxYear: number;
 };
@@ -69,7 +81,7 @@ export type MapData = {
  */
 const getCachedMapData = unstable_cache(
   async (): Promise<Omit<MapData, "maxYear" | "markers" | "facts">> => {
-    const [stateRows, termRows] = await Promise.all([
+    const [stateRows, termRows, undrawableRows] = await Promise.all([
       db
         .select({
           id: states.id,
@@ -97,16 +109,45 @@ const getCachedMapData = unstable_cache(
         // live on /union and would bloat the payload for no pixel.
         .where(and(isNull(terms.deletedAt), inArray(terms.kind, ["cm", "presidents_rule"])))
         .orderBy(asc(terms.startDate)),
+      // States the record holds that the plate cannot draw, with the years
+      // of their recorded elections. The union pseudo-state also has no
+      // geometry but is not a plate state; national records live on /union.
+      db
+        .select({
+          id: states.id,
+          name: states.name,
+          electionDate: elections.electionDate,
+        })
+        .from(states)
+        .innerJoin(elections, eq(elections.stateId, states.id))
+        .where(and(eq(states.hasGeometry, false), sql`${states.id} <> 'in'`, isNull(elections.deletedAt)))
+        .orderBy(asc(states.name)),
     ]);
 
-    const minYear = termRows.length
-      ? Math.min(...termRows.map((t) => yearOf(t.startDate)))
-      : 1950;
+    const undrawableBy = new Map<string, UndrawableState>();
+    for (const r of undrawableRows) {
+      const u = undrawableBy.get(r.id) ?? { id: r.id, name: r.name, electionYears: [] };
+      const y = yearOf(r.electionDate);
+      if (!u.electionYears.includes(y)) u.electionYears.push(y);
+      undrawableBy.set(r.id, u);
+    }
+    const undrawable = [...undrawableBy.values()];
+    for (const u of undrawable) u.electionYears.sort((a, b) => a - b);
+
+    // The scrubber must reach every year the record speaks about: terms give
+    // the usual floor, and the undrawable states' recorded elections can
+    // predate every term (the 1950s entities have no CM rows yet).
+    const candidates = [
+      ...termRows.map((t) => yearOf(t.startDate)),
+      ...undrawable.flatMap((u) => u.electionYears),
+    ];
+    const minYear = candidates.length ? Math.min(...candidates) : 1950;
 
     return {
       states: stateRows,
       // Safe cast: the inArray filter above restricts kinds to cm/presidents_rule.
       terms: termRows as MapTerm[],
+      undrawable,
       minYear: Math.max(1947, minYear),
     };
   },

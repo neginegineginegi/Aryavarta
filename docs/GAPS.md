@@ -48,6 +48,35 @@ Five decisions, received together, recorded verbatim in effect:
    > content is enabled. Error reports are kept by Sentry for its standard
    > retention window and are visible only to the archive's maintainers.
 
+## TCPD D3 gate rulings — 2026-08-28 (decided; do not relitigate)
+
+Stage 2 was authorised on these terms and executed against the sandbox
+archive the same day (production requires its own restore drill first):
+
+1. **Turnout: NULL throughout D3.** ElectorsWhoVoted counts ballots, not
+   persons. The WHY is recorded in the dataset row's notes so a re-ingest
+   cannot mistake the null for missing data and recompute it.
+2. **Row basis: 669** — zero-seat contesting parties included.
+3. **GE rollup: 41 insertable elections** (39 AE + 2 GE), with the 43
+   per-state GE slices preserved as committed artifacts
+   (`data/raw/tcpd/D3_GE_STATE_SLICES.csv`, `D3_GE_STATE_TOTALS.csv`) so
+   the aggregation stays reversible from the repository.
+4. **Historical states: 12 first-class rows, no successor links,**
+   `has_geometry = false`; Bilaspur and Kutch get no row (GE-only, fold
+   into the national GE). The map states what it cannot draw ("Held in
+   {year}, not drawable" in the plate legend).
+5. **Parties: created verbatim, no auto-merge** — via the committed
+   `data/raw/tcpd/PARTY_RESOLUTIONS.csv` (85 create + 5 resolve after the
+   SP era-collision correction: the 1950s SP is the Socialist Party, not
+   the 1992 Samajwadi Party its abbreviation matches).
+6. **Licence: option (a)** — TCPD-derived rows ship as a separate artifact
+   under TCPD's own terms, never inside a mixed-licence CC BY-SA file;
+   nothing TCPD-derived ships in any export until that artifact exists.
+7. **Errata folded into the spec** (§2.8); D3_FINDINGS.md stays unedited.
+
+Process rule, standing: **main moves only on the user's say-so** — develop
+on the branch, ask before any push to main, even for trivial changes.
+
 ## Standing gates (restated, still in force)
 
 - The **verified backup restore precedes TCPD stage 2** (no insert stage
