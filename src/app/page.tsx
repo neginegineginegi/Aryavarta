@@ -17,7 +17,6 @@ import { OnThisDaySection } from "@/components/landing/OnThisDay";
 import { TranscribeSection } from "@/components/landing/TranscribeSection";
 import { LedgerSection } from "@/components/landing/LedgerSection";
 import { PressSection, SourcesStrip } from "@/components/landing/PressSection";
-import { NewsletterSection } from "@/components/landing/NewsletterSection";
 import { SectionReveal } from "@/components/landing/SectionReveal";
 import { RollingNumber } from "@/components/ui/RollingNumber";
 import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
@@ -429,7 +428,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      <NewsletterSection />
+      {/* NewsletterSection stays unmounted: parked 2026-08-28 pending the
+          privacy policy and a provider decision (docs/GAPS.md, item 2). */}
 
       {/* ----------------------------------------------------------------- CTA */}
       <section className="section-card section-tint relative px-6 py-28 text-center sm:py-32">

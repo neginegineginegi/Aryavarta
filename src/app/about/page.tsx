@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
 
@@ -16,6 +17,17 @@ export default function AboutPage() {
       <header className="section-card section-tint tricolor-strip relative px-6 py-16 sm:px-10">
         <TricolorRibbon variant="soft" />
         <div className="relative mx-auto max-w-[560px]">
+          {/* The seal's primary mount (decision 3, 2026-08-28): About page
+              only; the masthead stays type-only. 130x136 keeps the file's
+              260x272 canvas ratio exactly. */}
+          <Image
+            src="/abhilekh-logo.svg"
+            alt="The Abhilekh seal: a banyan tree within an arched border"
+            width={130}
+            height={136}
+            priority
+            className="mb-6"
+          />
           <span lang="hi" className="deva-eyebrow">
             परिचय
           </span>
