@@ -21,11 +21,15 @@ import { join } from "node:path";
 
 import {
   aggregate,
+  aggregateEarly,
+  checkEarlyHeader,
   checkHeader,
   matchKnownParty,
+  parseEarlyRow,
   parseRow,
   reconcileAll,
   type AggregateOutcome,
+  type EarlyAggregateOutcome,
   type ElectionAggregate,
   type HandElection,
   type KnownParty,
@@ -37,6 +41,11 @@ import {
  *  location when the drop lives elsewhere (another disk, a smoke fixture). */
 const ROOT = process.env.TCPD_ROOT ?? join(process.cwd(), "data", "raw", "tcpd");
 
+/** "both" = the early 1951–62 file (one file, AE and GE rows separated by
+ *  Election_Type, early schema per spec §2.8); "doc" = a checksummed
+ *  document (codebook), verified but never parsed. */
+type ManifestKind = Scope | "both" | "doc";
+
 type ManifestRow = {
   file: string;
   sha256: string;
@@ -44,7 +53,7 @@ type ManifestRow = {
   downloaded_on: string;
   source_url: string;
   source_version: string;
-  kind: Scope | null;
+  kind: ManifestKind | null;
   notes: string;
 };
 
@@ -92,14 +101,16 @@ async function readManifest(): Promise<ManifestRow[]> {
     if (!file) fail("MANIFEST.csv row with empty `file`.");
     const dir = file.split("/")[0];
     const kindRaw = (r.kind ?? "").trim().toLowerCase();
-    const kind: Scope | null =
+    const kind: ManifestKind | null =
       kindRaw === "ae" ? "state_assembly"
       : kindRaw === "ge" ? "lok_sabha"
+      : kindRaw === "both" ? "both"
+      : kindRaw === "doc" ? "doc"
       : dir === "ae" ? "state_assembly"
       : dir === "ge" ? "lok_sabha"
       : null;
     if (kind === null)
-      fail(`cannot tell whether "${file}" is assembly or general data: files under early/ need kind=ae or kind=ge in the manifest.`);
+      fail(`cannot tell whether "${file}" is assembly or general data: files under early/ need kind=ae, kind=ge, kind=both, or kind=doc in the manifest.`);
     const bytes = Number((r.bytes ?? "").trim());
     if (!Number.isInteger(bytes) || bytes <= 0) fail(`"${file}": bytes must be a positive integer.`);
     if (!/^[0-9a-f]{64}$/i.test((r.sha256 ?? "").trim())) fail(`"${file}": sha256 must be 64 hex characters.`);
@@ -130,11 +141,15 @@ async function verify(): Promise<ManifestRow[]> {
     const digest = await sha256(path);
     if (digest !== m.sha256) fail(`"${m.file}": sha256 mismatch.\n  disk:     ${digest}\n  manifest: ${m.sha256}`);
 
+    if (m.kind === "doc") {
+      console.log(`  ok: ${m.file} (${(m.bytes / 1e6).toFixed(1)} MB, sha256 verified; document, never parsed)`);
+      continue;
+    }
     const firstLine = readHead(path).split(/\r?\n/)[0];
     const header = firstLine.split(",").map((c) => c.replace(/^"|"$/g, "").trim());
-    const check = checkHeader(header);
+    const check = m.kind === "both" ? checkEarlyHeader(header) : checkHeader(header);
     if (!check.ok)
-      fail(`"${m.file}": header is missing required column(s): ${check.missing.join(", ")}. The export schema has drifted from the spec's expectation (§2.1); a person must look before anything proceeds.`);
+      fail(`"${m.file}": header is missing required column(s): ${check.missing.join(", ")}. The export schema has drifted from the spec's expectation (§2.1/§2.8); a person must look before anything proceeds.`);
     if (check.unknown.length > 0)
       console.log(`  note: "${m.file}" carries column(s) the spec has never heard of: ${check.unknown.join(", ")} (ignored by this pass, flagged for the report)`);
     console.log(`  ok: ${m.file} (${(m.bytes / 1e6).toFixed(1)} MB, sha256 verified, header verified)`);
@@ -200,26 +215,64 @@ async function loadHandElections(): Promise<{ hand: HandElection[]; allParties: 
   return { hand: [...byElection.values()], allParties, dbLabel };
 }
 
+type CommittedAlias = { variant: string; canonical: string; rows: number; note: string };
+
+/** The committed state-spelling alias map (spec §2.8): a typo corrected
+ *  invisibly is still a silent transformation, so the corrections live in
+ *  data/raw/tcpd/STATE_ALIASES.csv, are applied visibly, and the dry-run
+ *  report checks the measured row counts against the committed ones. */
+function readAliases(parseCsv: (t: string) => Record<string, string>[]): { map: Record<string, string>; committed: CommittedAlias[] } {
+  const path = join(ROOT, "STATE_ALIASES.csv");
+  if (!existsSync(path))
+    fail("data/raw/tcpd/STATE_ALIASES.csv is missing: the early file's spelling conflicts must resolve through the committed alias map, never in code (§2.8).");
+  const committed: CommittedAlias[] = parseCsv(readFileSync(path, "utf8")).map((r) => {
+    const variant = (r.variant ?? "").trim();
+    const canonical = (r.canonical ?? "").trim();
+    const rows = Number((r.rows ?? "").trim());
+    if (!variant || !canonical) fail("STATE_ALIASES.csv row with empty variant or canonical.");
+    if (!Number.isInteger(rows) || rows <= 0) fail(`STATE_ALIASES.csv "${variant}": rows must be a positive integer.`);
+    return { variant, canonical, rows, note: (r.note ?? "").trim() };
+  });
+  return { map: Object.fromEntries(committed.map((a) => [a.variant, a.canonical])), committed };
+}
+
 function aggregateFiles(manifest: ManifestRow[], parseCsv: (t: string) => Record<string, string>[]) {
   const rowsByScope: Record<Scope, ReturnType<typeof parseRow>[]> = { state_assembly: [], lok_sabha: [] };
   const parseRefused: Record<string, number> = {};
+  const earlyFiles = manifest.filter((m) => m.kind === "both");
+  const aliases = earlyFiles.length > 0 ? readAliases(parseCsv) : { map: {}, committed: [] as CommittedAlias[] };
+  const earlyRows: ReturnType<typeof parseEarlyRow>[] = [];
+  const earlyRefused: Record<string, number> = {};
 
   for (const m of manifest) {
+    if (m.kind === "doc") continue;
     const raw = parseCsv(readFileSync(join(ROOT, m.file), "utf8"));
-    for (const r of raw) {
-      const p = parseRow(r);
-      if ("refused" in p) {
-        parseRefused[p.refused] = (parseRefused[p.refused] ?? 0) + 1;
-        continue;
+    if (m.kind === "both") {
+      for (const r of raw) {
+        const p = parseEarlyRow(r, aliases.map);
+        if ("refused" in p) {
+          earlyRefused[p.refused] = (earlyRefused[p.refused] ?? 0) + 1;
+          continue;
+        }
+        earlyRows.push(p);
       }
-      rowsByScope[m.kind!].push(p);
+    } else {
+      for (const r of raw) {
+        const p = parseRow(r);
+        if ("refused" in p) {
+          parseRefused[p.refused] = (parseRefused[p.refused] ?? 0) + 1;
+          continue;
+        }
+        rowsByScope[m.kind!].push(p);
+      }
     }
     console.log(`  read ${m.file}: ${raw.length} rows`);
   }
 
   const ae = aggregate(rowsByScope.state_assembly.filter((r) => !("refused" in r)) as never, "state_assembly");
   const ge = aggregate(rowsByScope.lok_sabha.filter((r) => !("refused" in r)) as never, "lok_sabha");
-  return { ae, ge, parseRefused };
+  const early = earlyRows.length > 0 ? aggregateEarly(earlyRows.filter((r) => !("refused" in r)) as never) : null;
+  return { ae, ge, parseRefused, early, earlyRefused, committedAliases: aliases.committed };
 }
 
 function reportAggregate(label: string, out: AggregateOutcome, lines: string[]) {
@@ -256,7 +309,7 @@ function reportAggregate(label: string, out: AggregateOutcome, lines: string[]) 
   if (anomalous.length > 40) lines.push(`    - … and ${anomalous.length - 40} more (full list in the data, not truncated silently: count above is exact)`);
 }
 
-function reportReconciliation(recs: Reconciliation[], lines: string[]) {
+function reportReconciliation(recs: Reconciliation[], lines: string[], coverage: { min: number; max: number } | null) {
   lines.push(`\n## Reconciliation (spec §4)`);
   const matches = recs.filter((r) => r.outcome === "match");
   const disagreements = matches.flatMap((m) =>
@@ -283,8 +336,29 @@ function reportReconciliation(recs: Reconciliation[], lines: string[]) {
   if (disagreements.length === 0) lines.push(`| — | — | — | (none) | | | | |`);
 
   lines.push(`\n### Coverage boundary (hand rows not checkable against this dataset version)`);
-  for (const h of handOnly) {
-    lines.push(`- ${h.hand.stateId} ${h.hand.scope} ${h.hand.electionDate} (citations: ${h.hand.citationCount}) — not in the TCPD export; explicitly NOT evidence against the row`);
+  // Hand rows INSIDE the drop's year window are individually interesting:
+  // TCPD reaches those years yet lacks the election. Rows OUTSIDE it are just
+  // the drop's edges, and listing hundreds of them would bury the gate, so
+  // they compress to per-state counts. Neither kind is evidence against a row.
+  const inside = handOnly.filter((h) => {
+    const y = Number(h.hand.electionDate.slice(0, 4));
+    return coverage !== null && y >= coverage.min && y <= coverage.max;
+  });
+  const outside = handOnly.filter((h) => !inside.includes(h));
+  for (const h of inside) {
+    lines.push(`- ${h.hand.stateId} ${h.hand.scope} ${h.hand.electionDate} (citations: ${h.hand.citationCount}) — within the drop's ${coverage!.min}–${coverage!.max} window yet not in the export; explicitly NOT evidence against the row, but worth a look`);
+  }
+  if (inside.length === 0) lines.push(`- no hand-only elections inside the drop's year window${coverage ? ` (${coverage.min}–${coverage.max})` : ""}`);
+  if (outside.length > 0) {
+    const byState = new Map<string, number[]>();
+    for (const h of outside) {
+      const k = `${h.hand.stateId} ${h.hand.scope}`;
+      byState.set(k, [...(byState.get(k) ?? []), Number(h.hand.electionDate.slice(0, 4))]);
+    }
+    lines.push(`- outside the drop's window entirely, so not checkable and not listed one by one: ${outside.length} hand elections — ${[...byState.entries()]
+      .sort()
+      .map(([k, ys]) => `${k}: ${ys.length} (${Math.min(...ys)}–${Math.max(...ys)})`)
+      .join("; ")}`);
   }
 
   const partial = matches.filter((m) => m.unmatchedHandParties.length || m.unmatchedTcpdParties.length);
@@ -369,6 +443,119 @@ function reportPartyIdentity(aggs: ElectionAggregate[], known: KnownParty[], lin
   }
 }
 
+/** The early-file (D3) sections of the dry-run report: the expected-numbers
+ *  gate check, the alias audit, the insertable A9 view, the multi-member and
+ *  turnout-semantics findings, the historical-states decision block, and the
+ *  licence flag. Everything here is measured; nothing is repaired. */
+function reportEarly(
+  early: EarlyAggregateOutcome,
+  committedAliases: CommittedAlias[],
+  earlyRefused: Record<string, number>,
+  lines: string[],
+) {
+  lines.push(`\n## Early file: TCPD-IED 1951–62 (D3, spec §2.8)`);
+
+  // The gate's expected numbers, from the delivery instruction and
+  // D3_FINDINGS.md, measured on the file's own grouping (Election_Type,
+  // canonical State_Name, Assembly_No) BEFORE the A9 national GE rollup.
+  const exp = { elections: 82, withSeats: 371, all: 669 };
+  const f = early.fileGroups;
+  const mark = (got: number, want: number) => (got === want ? "matches" : `EXPECTED ${want} — MISMATCH, stop and look`);
+  lines.push(`\n### Expected-numbers check (file grouping: Election_Type × state × Assembly_No)`);
+  lines.push(`- election groups: ${f.elections} (${mark(f.elections, exp.elections)})`);
+  lines.push(`- party result rows, parties with ≥1 seat: ${f.partyRowsWithSeats} (${mark(f.partyRowsWithSeats, exp.withSeats)})`);
+  lines.push(`- party result rows, zero-seat contesting parties included: ${f.partyRowsAll} (${mark(f.partyRowsAll, exp.all)})`);
+  lines.push(
+    `- RECOMMENDATION — insert ${exp.all} (zero-seat parties included): the modern aggregate already keeps every contesting party, a recorded vote total is a fact whether or not it converted to a seat, and vote-share denominators stay honest only when every counted vote has a row. Dropping zero-seat parties would also silently erase parties that mattered (runners-up, regional formations before their first win).`,
+  );
+  for (const [reason, n] of Object.entries(earlyRefused)) lines.push(`- unparseable rows — ${reason}: ${n}`);
+  lines.push(`- exact duplicate candidate rows refused: ${early.duplicateRowCount}`);
+  for (const [reason, n] of Object.entries(early.refused)) lines.push(`- refused rows — ${reason}: ${n}`);
+
+  lines.push(`\n### State-spelling aliases applied (committed in STATE_ALIASES.csv, §2.8)`);
+  lines.push(`| variant in file | canonical | rows measured | rows committed | agree |`);
+  lines.push(`|---|---|---|---|---|`);
+  const seen = new Set<string>();
+  for (const a of committedAliases) {
+    const m = early.aliasApplications[a.variant];
+    seen.add(a.variant);
+    lines.push(`| ${a.variant} | ${a.canonical} | ${m?.rows ?? 0} | ${a.rows} | ${m?.rows === a.rows ? "yes" : "NO — drift, stop"} |`);
+  }
+  for (const [variant, m] of Object.entries(early.aliasApplications)) {
+    if (!seen.has(variant)) lines.push(`| ${variant} | ${m.canonical} | ${m.rows} | (NOT COMMITTED — refuse) | NO |`);
+  }
+
+  const insertAe = early.elections.filter((e) => e.scope === "state_assembly");
+  const insertGe = early.elections.filter((e) => e.scope === "lok_sabha");
+  lines.push(`\n### Insertable view (A9: GE rows roll up nationally on Assembly_No, per the codebook's own rule)`);
+  lines.push(
+    `The ${f.elections} file groups become ${early.elections.length} insertable elections: ${insertAe.length} state assembly + ${insertGe.length} national Lok Sabha. The per-state GE slices fold into the national rows; nothing is discarded, the identity just follows the archive's (and TCPD's) definition of a distinct GE.`,
+  );
+  lines.push(`- insertable party result rows: ${early.elections.reduce((n, e) => n + e.parties.length, 0)} (zero-seat included), ${early.elections.reduce((n, e) => n + e.parties.filter((p) => p.seatsWon > 0).length, 0)} with seats`);
+  const dayPrec = early.elections.filter((e) => e.datePrecision === "day");
+  lines.push(`- election dates: ${dayPrec.length} at day precision (PollingDate is a recorded fact, correction 1); ${early.elections.length - dayPrec.length} undated → year precision`);
+  const histAe = insertAe.filter((e) => e.stateId === null);
+  lines.push(`- ${histAe.length} of the ${insertAe.length} assembly elections belong to historical states with no state row yet; they are EXCLUDED from the reconciliation section below and wait on the decision block further down`);
+
+  lines.push(`\n| upstream_id | state | year | date | precision | seats | constituencies (by magnitude) | turnout | basis | parties (≥1 seat / all) |`);
+  lines.push(`|---|---|---|---|---|---|---|---|---|---|`);
+  for (const e of early.elections) {
+    const mag = Object.entries(e.seatsByMagnitude).map(([k, v]) => `${v}×${k}-seat`).join(", ");
+    lines.push(
+      `| ${e.upstreamId} | ${e.stateName}${e.stateId === null ? " (no state row)" : ""} | ${e.year} | ${e.electionDate ?? "—"} | ${e.datePrecision} | ${e.totalSeats} | ${e.constituencies} (${mag}) | ${e.turnoutPercent ?? "—"} | ${e.turnoutBasis} | ${e.parties.filter((p) => p.seatsWon > 0).length} / ${e.parties.length} |`,
+    );
+  }
+
+  const multi = early.elections.filter((e) => Object.keys(e.seatsByMagnitude).some((k) => Number(k) > 1));
+  lines.push(`\n### Multi-member constituencies (correction 3)`);
+  const totalMag: Record<string, number> = {};
+  for (const e of early.elections)
+    for (const [k, v] of Object.entries(e.seatsByMagnitude)) totalMag[k] = (totalMag[k] ?? 0) + v;
+  lines.push(`- constituency magnitude across the file: ${Object.entries(totalMag).map(([k, v]) => `${v} ${k}-seat`).join(", ")}`);
+  lines.push(`- elections containing at least one multi-member constituency: ${multi.length} of ${early.elections.length}`);
+  lines.push(`- total_seats is Σ NumberOfSeats once per constituency, NEVER a constituency count; the seat arithmetic (Σ seats = Winner=True rows) is checked per election and any break appears under anomalies below.`);
+
+  lines.push(`\n### Turnout semantics — a finding the gate must rule on (beyond correction 2)`);
+  lines.push(
+    `Correction 2 is right that raw counts exist, but the measured file shows ElectorsWhoVoted ≡ VotesValid everywhere except Kerala AE-2 (the codebook's own note 5), and Σ candidate Votes equals VotesValid in 6,292 of 6,293 constituencies. In a multi-member constituency each elector cast one vote PER SEAT, so the column counts BALLOTS, not persons — 372 constituencies record more "electors who voted" than registered electors, 367 of them two-seaters. The quotient Σvoted/Σelectors is therefore votes-per-elector, not person-turnout, wherever a multi-member constituency is in the sum.`,
+  );
+  const persons = early.elections.filter((e) => e.turnoutBasis === "persons");
+  lines.push(`- elections where the quotient is honest person-turnout (every constituency single-member): ${persons.length}`);
+  lines.push(`- elections where it is ballots-per-elector: ${early.elections.length - persons.length}`);
+  lines.push(
+    persons.length > 0
+      ? `- RECOMMENDATION: store turnout_percent only for the ${persons.length} persons-basis elections (noting it is valid-vote turnout, slightly under ECI's ballots-cast figure); store NULL for the ballots-basis elections rather than a number that reads as person-turnout and is not. If the gate wants the ballots figure kept, it needs its own labelled column, not this one.`
+      : `- RECOMMENDATION: every insertable election in this drop contains at least one multi-member constituency, so NO election here gets an honest person-turnout — correction 2's "honestly computable for all 82" does not survive the measurement. Store NULL turnout_percent for all ${early.elections.length}; if the gate wants the ballots-per-elector figure kept, it needs its own labelled column, never turnout_percent. The figures in the table above are shown WITH their basis so the gate can see what it would be approving.`,
+  );
+
+  lines.push(`\n### Historical states — the gate's A1 decision, decision-ready (correction 5)`);
+  const histRows = Object.entries(early.statesWithoutId).sort((a, b) => b[1] - a[1]);
+  const histTotal = histRows.reduce((n, [, v]) => n + v, 0);
+  lines.push(`${histRows.length} canonical state names have no archive state row; together they carry ${histTotal} candidate rows.`);
+  lines.push(`| state (canonical) | candidate rows | AE elections here | note |`);
+  lines.push(`|---|---|---|---|`);
+  for (const [name, n] of histRows) {
+    const aeHere = insertAe.filter((e) => e.stateName === name).length;
+    lines.push(`| ${name} | ${n} | ${aeHere} | ${aeHere === 0 ? "GE rows only — folds into the national GE under A9, needs NO state row" : "needs a state row before its AE elections can insert"} |`);
+  }
+  lines.push(
+    `\nPROPOSAL (standing counsel, D3_FINDINGS.md): create the states that need rows as FIRST-CLASS historical state rows with no successor links — mapping Madras onto Tamil Nadu would destroy the fact that those elections were held by an entity that no longer exists. The map package has no geometry for them: the atlas must hold a state it cannot draw, and say so. Nothing is created by this stage; the gate approves the list or the AE elections of the unapproved states stay out.`,
+  );
+
+  lines.push(`\n### Licence flag — decision needed BEFORE the bulk download ships`);
+  lines.push(
+    `TCPD's terms (data/raw/tcpd/TERMS.md, codebook §2) are non-commercial use only, citation required, no endorsement. That does not compose with the archive's CC BY-SA publication licence: TCPD-derived rows cannot ship inside a CC BY-SA bulk export. Either the export excludes them or it carries TCPD's terms separately and says so. This decision belongs in docs/API_DESIGN.md before /data goes live — not after.`,
+  );
+
+  const anomalous = early.elections.filter((e) => e.anomalies.length > 0);
+  lines.push(`\n### Early-file anomalies (stated, never repaired)`);
+  lines.push(`- elections with anomalies: ${anomalous.length}`);
+  for (const e of anomalous) lines.push(`    - ${e.upstreamId}: ${e.anomalies.join("; ")}`);
+  lines.push(
+    `- known single data error: Travancore_Cochin AE-1 constituency 95 (WADAKANCHERRY), Σ candidate Votes 49,758 vs VotesValid 49,740 — the source's own discrepancy, kept as recorded.`,
+  );
+}
+
 /** The §5 stage-2 success measure has a BEFORE side, and this report is the
  *  last moment before anything changes, so it is recorded here: how starved
  *  each denominator-bearing insight panel is today, plus the picker and
@@ -399,10 +586,13 @@ async function dryRun() {
   const manifest = await verify();
   console.log(`[load-tcpd] stage 1 — dry run (read-only)`);
   const { parseCsv } = await import("../src/lib/csv");
-  const { ae, ge, parseRefused } = aggregateFiles(manifest, parseCsv);
+  const { ae, ge, parseRefused, early, earlyRefused, committedAliases } = aggregateFiles(manifest, parseCsv);
   const { hand, allParties, dbLabel } = await loadHandElections();
 
-  const allAggs = [...ae.elections, ...ge.elections];
+  // Early aggregates join reconciliation and party identity like any others;
+  // reconcileAll already leaves stateId-null rows (the historical states) to
+  // the decision block rather than pairing them.
+  const allAggs = [...ae.elections, ...ge.elections, ...(early?.elections ?? [])];
   const recs = reconcileAll(hand, allAggs);
 
   const lines: string[] = [];
@@ -410,13 +600,22 @@ async function dryRun() {
   lines.push(`\nGenerated ${new Date().toISOString().slice(0, 10)} against database ${dbLabel}.`);
   lines.push(`No writes were performed. This report is the §5 stage-1 gate deliverable.`);
   for (const [reason, n] of Object.entries(parseRefused)) lines.push(`- unparseable rows — ${reason}: ${n}`);
-  reportAggregate("Vidhan Sabha (assembly)", ae, lines);
-  reportAggregate("Lok Sabha (general)", ge, lines);
-  reportReconciliation(recs, lines);
+  if (ae.elections.length > 0 || ge.elections.length > 0) {
+    reportAggregate("Vidhan Sabha (assembly)", ae, lines);
+    reportAggregate("Lok Sabha (general)", ge, lines);
+  } else {
+    lines.push(`\nNo modern-schema (ae/ge) files in this drop: D1 and D2 remain unfetched, and the spec's §2.1 column expectations for them stay explicitly unverified.`);
+  }
+  if (early) reportEarly(early, committedAliases, earlyRefused, lines);
+  const coverage =
+    allAggs.length > 0
+      ? { min: Math.min(...allAggs.map((e) => e.year)), max: Math.max(...allAggs.map((e) => e.year)) }
+      : null;
+  reportReconciliation(recs, lines, coverage);
   reportPartyIdentity(allAggs, allParties, lines);
   await reportStarvedBaseline(lines);
   lines.push(`\n## Gate`);
-  lines.push(`Decisions needed before stage 2: (1) disposition of every disagreement above; (2) the A1 unmapped-states ruling; (3) the would-create party list confirmed and every AMBIGUOUS party identity paired by a human. See docs/ELECTIONS_INGEST_SPEC.md §5.`);
+  lines.push(`Decisions needed before stage 2: (1) disposition of every disagreement above; (2) the A1 ruling — for D3 that is the historical-states block; (3) the would-create party list confirmed and every AMBIGUOUS party identity paired by a human; (4) for D3: turnout storage rule (persons-basis only, recommended) and zero-seat party inclusion (include, recommended); (5) the TCPD-licence/CC BY-SA export composition, before /data ships. See docs/ELECTIONS_INGEST_SPEC.md §5 and §2.8. The verified backup restore precedes any stage-2 insert.`);
 
   const report = lines.join("\n");
   console.log("\n" + report + "\n");

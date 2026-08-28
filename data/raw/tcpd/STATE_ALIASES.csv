@@ -1,0 +1,5 @@
+variant,canonical,rows,note
+Orissa,Odisha,58,same entity; file's dominant spelling kept
+Orrisa,Odisha,57,typo in source; corrected via this committed map only
+Sourastra,Saurashtra,225,same entity; file's minority spelling is the typo
+Patiala_And_East_Punjab_States_Union,Patiala_&_East_Punjab_States_Union_(PEPSU),31,same entity; parenthesised form dominant

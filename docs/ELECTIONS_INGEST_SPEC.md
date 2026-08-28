@@ -265,6 +265,78 @@ See A2 for why, and part 2 stage 2 for the render-side guarantee.
 
 ---
 
+### 2.8 Amended 2026-08-28: measured against the delivered D3
+
+D3 (`early/TCPD_IED_1951-62.csv`, sha256 `9891c366…`, 30,439 rows, 82
+elections) landed and was measured; `data/raw/tcpd/D3_FINDINGS.md` is the
+measurement record, and every figure below was re-verified independently in
+this repository before this amendment. Five §2 assumptions change **for D3
+only** — the D1/D2 expectations above stay explicitly unverified until those
+files land.
+
+1. **A2 largely dissolves for D3.** `PollingDate` is populated on 96.4% of
+   rows. Two formats coexist — `DD/MM/YY` and `DD-MM-YYYY` (the findings file
+   recorded only the first; both were measured here) — and the loader parses
+   both with an explicit century rule: a two-digit year is 19xx, and any
+   parsed year outside 1950–1970 is refused, never guessed. Dated elections
+   carry `election_date_precision = 'day'`; the 3.6% undated fall back to the
+   year anchor exactly as §2.5 designed.
+
+2. **A3 dissolves only PARTIALLY for D3 (amended again after the stage-1
+   run).** `ElectorsTotal` / `ElectorsWhoVoted` / `VotesValid` are populated
+   on 100% of rows, and any quotient is computed by summing raw counts once
+   per unique constituency — never by averaging percentages, never per
+   candidate row. But the stage-1 measurement shows `ElectorsWhoVoted` is
+   identical to `VotesValid` everywhere except Kerala AE-2 (the codebook's
+   own note 5), and 372 constituencies record more "electors who voted" than
+   registered electors, 367 of them two-seaters: in a multi-member
+   constituency each elector cast one vote per seat, so the column counts
+   BALLOTS, not persons. The quotient is votes-per-elector, not turnout,
+   wherever a multi-member constituency is in the sum — and every insertable
+   D3 election contains at least one. The dry-run recommendation is NULL
+   `turnout_percent` throughout D3, with the ballots-per-elector figure kept
+   only if the gate gives it its own labelled column.
+
+3. **Multi-member constituencies are real and load-bearing.** 4,919
+   single-member, 1,372 two-member, 2 three-member; `NumberOfSeats` is a
+   column and never conflicts within a constituency (verified). `total_seats`
+   is the SUM of per-constituency `NumberOfSeats`, never a count of
+   constituencies; a winner row exists per seat (7,669 `Winner=True` rows =
+   4,919 + 2x1,372 + 3x2, verified exactly). 22 of 82 elections would be
+   silently wrong under the old rule. (Erratum: D3_FINDINGS.md's worked
+   examples say Ajmer 1952 has 27 seats and Assam 1952 has 94; the file's
+   own arithmetic closes at 30 and 105, matching the historical assemblies.
+   The findings' thesis stands; its example figures do not.)
+
+4. **Source-internal spelling variants are alias DATA, not loader fixes.**
+   `data/raw/tcpd/STATE_ALIASES.csv` is the committed map (Orissa/Orrisa to
+   Odisha; Sourastra to Saurashtra; the long PEPSU form to the parenthesised
+   one). The dry run lists every applied alias with row counts; the gate
+   approves them.
+
+5. **Historical states are a third of D3, not an edge case.** 14 pre-1956
+   entities absent from `states` carry 9,979 rows (D3_FINDINGS.md says
+   9,999; the recount against the file says 9,979 — a second erratum, noted,
+   not repaired). The gate decision is
+   presented decision-ready in the dry-run report: create them as
+   first-class historical state rows, no successor links (mapping Madras
+   onto Tamil Nadu would destroy the fact that a different polity held those
+   elections), and the atlas must be able to hold a state it cannot draw.
+
+Also amended: `MANIFEST.csv` may declare `kind=both` for an early file whose
+`Election_Type` column separates AE from GE rows; the loader splits on that
+column. GE rows roll up NATIONALLY on `Assembly_No` alone — A9's rule, and
+the codebook's own ("For GE, we ignore the State_Name") — so D3's 82 file
+groups become 41 insertable elections (39 AE + 2 GE). The `Winner` column is the string `True`/`False`. Candidate-level
+columns stay out of scope for the aggregate spine, and the no-auto-merge
+identity condition applies to the candidate names now staged.
+
+**Licence consequence (decision needed before any bulk export ships):** the
+TCPD terms are non-commercial-use with citation; that does not compose with
+CC BY-SA. TCPD-derived rows either stay out of the bulk export or ship under
+their own stated terms beside it. Recorded in `docs/API_DESIGN.md` as an open
+decision.
+
 ## 3. Identity design
 
 Binding condition 1, applied concretely:

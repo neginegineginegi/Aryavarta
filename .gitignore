@@ -54,3 +54,5 @@ data/raw/tcpd/*
 !data/raw/tcpd/MANIFEST.csv
 !data/raw/tcpd/MANIFEST.csv.example
 !data/raw/tcpd/TERMS.md
+!data/raw/tcpd/D3_FINDINGS.md
+!data/raw/tcpd/STATE_ALIASES.csv

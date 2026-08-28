@@ -353,3 +353,287 @@ describe("matchKnownParty", () => {
     expect(matchKnownParty(known, "XYZ", "Party Of Xyz").kind).toBe("none");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Early schema: TCPD-IED 1951–62 (§2.8, the D3 drop)
+// ---------------------------------------------------------------------------
+
+import {
+  aggregateEarly,
+  checkEarlyHeader,
+  EARLY_REQUIRED_COLUMNS,
+  parseEarlyDate,
+  parseEarlyRow,
+  type ParsedEarlyRow,
+} from "@/lib/ingest/tcpd";
+
+const ALIASES = {
+  Orissa: "Odisha",
+  Orrisa: "Odisha",
+  Sourastra: "Saurashtra",
+  Patiala_And_East_Punjab_States_Union: "Patiala_&_East_Punjab_States_Union_(PEPSU)",
+} as const;
+
+const earlyRaw = (over: Partial<Record<string, string>> = {}): Record<string, string> => ({
+  Election_Type: "AE",
+  State_Name: "Assam",
+  Assembly_No: "1",
+  Constituency_No: "1",
+  Candidate: "A CANDIDATE",
+  Party: "INC",
+  Votes: "600.0",
+  Winner: "True",
+  NumberOfSeats: "1",
+  ElectorsTotal: "1500",
+  ElectorsWhoVoted: "1000",
+  VotesValid: "1000",
+  PollingDate: "27/03/52",
+  Year: "1952",
+  ...over,
+});
+
+const earlyParsed = (over: Partial<Record<string, string>> = {}): ParsedEarlyRow => {
+  const p = parseEarlyRow(earlyRaw(over), ALIASES);
+  if ("refused" in p) throw new Error(`fixture refused: ${p.refused}`);
+  return p;
+};
+
+describe("checkEarlyHeader (§2.8)", () => {
+  const realHeader = [
+    ...EARLY_REQUIRED_COLUMNS,
+    "Gender", "Constituency_Name", "Idx", "Party_Type", "Party_Expanded",
+    "Runner up.PARTY", "Runner up.CANDIDATE", "Runner up.VOTES",
+    "Winner 1.PARTY", "Winner 1.CANDIDATE", "Winner 1.VOTES",
+    "Winner 2.PARTY", "Winner 2.CANDIDATE", "Winner 2.VOTES",
+    "Winner 3.PARTY", "Winner 3.CANDIDATE", "Winner 3.VOTES",
+  ];
+
+  it("passes the delivered file's full header", () => {
+    expect(checkEarlyHeader(realHeader)).toEqual({ ok: true, unknown: [] });
+  });
+
+  it("fails on a missing required column, naming it", () => {
+    const res = checkEarlyHeader(realHeader.filter((c) => c !== "NumberOfSeats"));
+    expect(res.ok).toBe(false);
+    if (!res.ok) expect(res.missing).toEqual(["NumberOfSeats"]);
+  });
+
+  it("reports drift columns for a person to look at", () => {
+    const res = checkEarlyHeader([...realHeader, "Brand_New"]);
+    expect(res.ok && res.unknown).toEqual(["Brand_New"]);
+  });
+});
+
+describe("parseEarlyDate (§2.8: two formats, explicit century rule)", () => {
+  it("reads DD/MM/YY with the 19YY century rule", () => {
+    expect(parseEarlyDate("27/03/52")).toEqual({ iso: "1952-03-27", year: 1952 });
+  });
+
+  it("reads DD-MM-YYYY verbatim", () => {
+    expect(parseEarlyDate("01-03-1960")).toEqual({ iso: "1960-03-01", year: 1960 });
+  });
+
+  it("treats empty as absent, not as an error", () => {
+    expect(parseEarlyDate("")).toBeNull();
+    expect(parseEarlyDate("  ")).toBeNull();
+  });
+
+  it("refuses a two-digit year the century rule cannot honestly cover", () => {
+    // 19YY would put "85" at 1985, outside the file's 1950–1970 band: the
+    // rule no longer applies, so the row is refused, never guessed at.
+    expect(parseEarlyDate("01/01/85")).toHaveProperty("refused");
+    expect(parseEarlyDate("01-01-1949")).toHaveProperty("refused");
+  });
+
+  it("refuses impossible calendar dates and unknown formats", () => {
+    expect(parseEarlyDate("31/02/57")).toHaveProperty("refused");
+    expect(parseEarlyDate("1952-03-27")).toHaveProperty("refused");
+    expect(parseEarlyDate("27/3/52")).toHaveProperty("refused");
+  });
+});
+
+describe("parseEarlyRow (§2.8)", () => {
+  it("reads Winner as the strings True/False and refuses anything else", () => {
+    expect(earlyParsed({ Winner: "True" }).winner).toBe(true);
+    expect(earlyParsed({ Winner: "False" }).winner).toBe(false);
+    expect(parseEarlyRow(earlyRaw({ Winner: "1" }), ALIASES)).toHaveProperty("refused");
+    expect(parseEarlyRow(earlyRaw({ Winner: "TRUE" }), ALIASES)).toHaveProperty("refused");
+  });
+
+  it("reads the file's float-formatted vote counts as integers", () => {
+    expect(earlyParsed({ Votes: "5549.0" }).votes).toBe(5549);
+  });
+
+  it("applies the committed alias map visibly, keeping the raw spelling", () => {
+    const p = earlyParsed({ State_Name: "Orrisa" });
+    expect(p.stateNameRaw).toBe("Orrisa");
+    expect(p.stateName).toBe("Odisha");
+    expect(p.stateId).toBe("or");
+  });
+
+  it("leaves historical states unmapped but parseable (the gate decides)", () => {
+    const p = earlyParsed({ State_Name: "Madras" });
+    expect(p.stateId).toBeNull();
+    expect(p.stateName).toBe("Madras");
+  });
+
+  it("refuses rows outside the contract", () => {
+    expect(parseEarlyRow(earlyRaw({ Election_Type: "BE" }), ALIASES)).toHaveProperty("refused");
+    expect(parseEarlyRow(earlyRaw({ Year: "1972" }), ALIASES)).toHaveProperty("refused");
+    expect(parseEarlyRow(earlyRaw({ NumberOfSeats: "0" }), ALIASES)).toHaveProperty("refused");
+    // Year is documented as derived from PollingDate; a clash is drift.
+    expect(parseEarlyRow(earlyRaw({ Year: "1953" }), ALIASES)).toHaveProperty("refused");
+  });
+});
+
+describe("aggregateEarly (§2.8)", () => {
+  it("sums NumberOfSeats per constituency, never counts constituencies (correction 3)", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "A", Party: "INC", Winner: "True" }),
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "B", Party: "SCF", Winner: "True" }),
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "C", Party: "IND", Winner: "False" }),
+      earlyParsed({ Constituency_No: "2", NumberOfSeats: "1", Candidate: "D", Party: "INC", Winner: "True" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.totalSeats).toBe(3); // 2 constituencies would say 2 and be wrong
+    expect(e.constituencies).toBe(2);
+    expect(e.seatsByMagnitude).toEqual({ 1: 1, 2: 1 });
+    expect(e.anomalies.filter((a) => a.includes("seat arithmetic"))).toEqual([]);
+  });
+
+  it("computes turnout from raw counts once per constituency, and labels its basis", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", Candidate: "A", Party: "X", ElectorsTotal: "1000", ElectorsWhoVoted: "600", VotesValid: "600" }),
+      earlyParsed({ Constituency_No: "1", Candidate: "B", Party: "Y", Winner: "False", ElectorsTotal: "1000", ElectorsWhoVoted: "600", VotesValid: "600" }),
+      earlyParsed({ Constituency_No: "2", Candidate: "C", Party: "X", ElectorsTotal: "1000", ElectorsWhoVoted: "800", VotesValid: "800" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.electorsTotal).toBe(2000);
+    expect(e.electorsWhoVoted).toBe(1400);
+    expect(e.turnoutPercent).toBe(70);
+    expect(e.turnoutBasis).toBe("persons");
+  });
+
+  it("marks the basis 'ballots' when any constituency is multi-member (§2.8 finding)", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "A", Party: "X", ElectorsTotal: "1000", ElectorsWhoVoted: "1400", VotesValid: "1400" }),
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "B", Party: "Y", Winner: "True", ElectorsTotal: "1000", ElectorsWhoVoted: "1400", VotesValid: "1400" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.turnoutBasis).toBe("ballots");
+    expect(e.turnoutPercent).toBe(140); // stated with its basis, never passed off as person-turnout
+  });
+
+  it("withholds impossible persons-basis turnout as a data error", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "1", Candidate: "A", Party: "X", ElectorsTotal: "1000", ElectorsWhoVoted: "1100", VotesValid: "1100" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.turnoutPercent).toBeNull();
+    expect(e.anomalies.join(" ")).toMatch(/single-member/);
+  });
+
+  it("keeps zero-seat contesting parties, with their recorded vote share", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", Candidate: "A", Party: "INC", Winner: "True", Votes: "600.0", VotesValid: "1000", ElectorsWhoVoted: "1000" }),
+      earlyParsed({ Constituency_No: "1", Candidate: "B", Party: "KMPP", Winner: "False", Votes: "400.0", VotesValid: "1000", ElectorsWhoVoted: "1000" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    const kmpp = e.parties.find((p) => p.recordedLabel === "KMPP")!;
+    expect(kmpp.seatsWon).toBe(0);
+    expect(kmpp.voteSharePercent).toBe(40);
+  });
+
+  it("counts a party's seatsContested as candidacies, not constituencies, in this era", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "A", Party: "INC", Winner: "True" }),
+      earlyParsed({ Constituency_No: "1", NumberOfSeats: "2", Candidate: "B", Party: "INC", Winner: "True" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    const inc = e.parties[0];
+    expect(inc.seatsContested).toBe(2);
+    expect(inc.constituenciesContested).toBe(1);
+    expect(inc.seatsWon).toBe(2);
+  });
+
+  it("rolls GE rows up nationally on Assembly_No alone (A9, codebook rule)", () => {
+    const rows = [
+      earlyParsed({ Election_Type: "GE", State_Name: "Assam", Constituency_No: "1", Candidate: "A", Party: "INC" }),
+      earlyParsed({ Election_Type: "GE", State_Name: "Bihar", Constituency_No: "1", Candidate: "B", Party: "INC" }),
+    ];
+    const out = aggregateEarly(rows);
+    expect(out.elections).toHaveLength(1);
+    const [e] = out.elections;
+    expect(e.stateId).toBe("in");
+    // Constituency_No repeats across states: identity must include the state.
+    expect(e.constituencies).toBe(2);
+    expect(e.totalSeats).toBe(2);
+    expect(e.upstreamId).toBe("GE-1952-L1");
+    // The file-level view still counts the two state slices separately,
+    // which is what the 82/371/669 expectation is measured against.
+    expect(out.fileGroups).toEqual({ elections: 2, partyRowsWithSeats: 2, partyRowsAll: 2 });
+  });
+
+  it("uses the recorded PollingDate as a day-precision fact, year precision only when undated", () => {
+    const dated = aggregateEarly([earlyParsed()]).elections[0];
+    expect(dated.electionDate).toBe("1952-03-27");
+    expect(dated.datePrecision).toBe("day");
+
+    const undated = aggregateEarly([earlyParsed({ PollingDate: "" })]).elections[0];
+    expect(undated.electionDate).toBeNull();
+    expect(undated.datePrecision).toBe("year");
+  });
+
+  it("anchors a polling-date spread to the earliest and states it (mirrors the month rule)", () => {
+    const rows = [
+      earlyParsed({ Constituency_No: "1", Candidate: "A", PollingDate: "27/03/52" }),
+      earlyParsed({ Constituency_No: "2", Candidate: "B", PollingDate: "29/03/52" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.electionDate).toBe("1952-03-27");
+    expect(e.datePrecision).toBe("day");
+    expect(e.anomalies.join(" ")).toMatch(/polling spans 2 recorded dates/);
+  });
+
+  it("tallies alias applications and aggregates historical states instead of dropping them", () => {
+    const rows = [
+      earlyParsed({ State_Name: "Orrisa", Candidate: "A" }),
+      earlyParsed({ State_Name: "Orrisa", Candidate: "B", Constituency_No: "2" }),
+      earlyParsed({ State_Name: "Madras", Candidate: "C" }),
+    ];
+    const out = aggregateEarly(rows);
+    expect(out.aliasApplications).toEqual({ Orrisa: { canonical: "Odisha", rows: 2 } });
+    expect(out.statesWithoutId).toEqual({ Madras: 1 });
+    // Madras aggregates (the gate needs it in front of it), with no state id.
+    const madras = out.elections.find((e) => e.stateName === "Madras")!;
+    expect(madras.stateId).toBeNull();
+    expect(madras.totalSeats).toBe(1);
+  });
+
+  it("aggregates the era's independents under the pseudo-party (A5)", () => {
+    const rows = [
+      earlyParsed({ Party: "IND", Candidate: "X" }),
+      earlyParsed({ Party: "IND", Candidate: "Y", Constituency_No: "2" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.parties[0].recordedLabel).toBe("IND");
+    expect(e.parties[0].partyName).toBe(INDEPENDENTS_PARTY_NAME);
+    expect(e.parties[0].seatsWon).toBe(2);
+  });
+
+  it("refuses exact duplicate rows and counts them", () => {
+    const out = aggregateEarly([earlyParsed(), earlyParsed()]);
+    expect(out.duplicateRowCount).toBe(1);
+    expect(out.elections[0].parties[0].seatsWon).toBe(1);
+  });
+
+  it("flags the ElectorsWhoVoted≠VotesValid exception without repairing either", () => {
+    const rows = [
+      earlyParsed({ ElectorsWhoVoted: "900", VotesValid: "1000" }),
+    ];
+    const [e] = aggregateEarly(rows).elections;
+    expect(e.anomalies.join(" ")).toMatch(/ElectorsWhoVoted differs from VotesValid/);
+    expect(e.electorsWhoVoted).toBe(900);
+    expect(e.validVotesTotal).toBe(1000);
+  });
+});

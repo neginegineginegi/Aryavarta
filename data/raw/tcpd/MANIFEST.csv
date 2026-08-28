@@ -1,0 +1,3 @@
+file,kind,sha256,bytes,downloaded_on,source_url,source_version,notes
+early/TCPD_IED_1951-62.csv,both,9891c366e5850ee562efea9fa123c9b955222ad73a520dcd91a0b83acb50b6bb,6263707,2026-08-28,https://github.com/tcpd/IndianElectionsDataset_1951-to-1962,repo HEAD 2026-08-28,"D3. Candidate-level. Holds BOTH AE and GE rows; Election_Type separates them. 30439 rows / 82 elections / 32 State_Name values."
+early/TCPD_IED_1951-62_Codebook.pdf,doc,be0f7864e16160a23809b826102b578935a57f3a7a0269b6a9f0b3279bd0ec8a,77174,2026-08-28,https://github.com/tcpd/IndianElectionsDataset_1951-to-1962,Codebook 1.0,"Variable definitions. Cited separately per TERMS.md."

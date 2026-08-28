@@ -258,7 +258,9 @@ export type ElectionAggregate = {
    *  a rule for a multi-phase election; the FIRST recorded month is used and
    *  the spread is reported as an anomaly instead of silently narrowed. */
   month: number | null;
-  datePrecision: "month" | "year";
+  /** "day" is produced only by the early-schema path (§2.8), where
+   *  PollingDate is a recorded fact; the modern path never claims it. */
+  datePrecision: "day" | "month" | "year";
   assemblyNo: number | null;
   totalSeats: number;
   upstreamId: string;
@@ -623,4 +625,430 @@ export function matchKnownParty(known: KnownParty[], label: string, name: string
   if (byName.length === 1) return { kind: "one", party: byName[0] };
   if (byName.length > 1) return { kind: "many", parties: byName };
   return { kind: "none" };
+}
+
+// ---------------------------------------------------------------------------
+// Early schema: TCPD-IED 1951–62 (spec §2.8, the D3 drop)
+// ---------------------------------------------------------------------------
+//
+// The pre-1962 file is a different export with a different contract: one file
+// holds BOTH assembly and general rows (Election_Type separates them), Winner
+// is the string True/False with no Position column (multi-member seats make
+// ranking impossible, per the codebook), NumberOfSeats/ElectorsTotal/
+// ElectorsWhoVoted/VotesValid are per-constituency columns repeated on every
+// candidate row, and PollingDate arrives in two formats. Everything below is
+// measured against the delivered file, not assumed — see the spec amendment
+// and data/raw/tcpd/D3_FINDINGS.md.
+
+/** Columns the early pass READS; any missing stops stage 0. */
+export const EARLY_REQUIRED_COLUMNS = [
+  "Election_Type",
+  "State_Name",
+  "Assembly_No",
+  "Constituency_No",
+  "Candidate",
+  "Party",
+  "Votes",
+  "Winner",
+  "NumberOfSeats",
+  "ElectorsTotal",
+  "ElectorsWhoVoted",
+  "VotesValid",
+  "PollingDate",
+  "Year",
+] as const;
+
+/** Columns the early file carries that this pass deliberately ignores
+ *  (candidate spine lands later; derived Runner-up/Winner-N columns are
+ *  recomputable from the rows they were derived from). */
+export const EARLY_KNOWN_IGNORED_COLUMNS = [
+  "Gender", "Constituency_Name", "Idx", "Party_Type", "Party_Expanded",
+  "Runner up.PARTY", "Runner up.CANDIDATE", "Runner up.VOTES",
+  "Winner 1.PARTY", "Winner 1.CANDIDATE", "Winner 1.VOTES",
+  "Winner 2.PARTY", "Winner 2.CANDIDATE", "Winner 2.VOTES",
+  "Winner 3.PARTY", "Winner 3.CANDIDATE", "Winner 3.VOTES",
+] as const;
+
+/** Stage-0 gate for the early header, same contract shape as checkHeader. */
+export function checkEarlyHeader(actual: string[]): HeaderCheck {
+  const have = new Set(actual.map((c) => c.trim()));
+  const missing = EARLY_REQUIRED_COLUMNS.filter((c) => !have.has(c));
+  const known = new Set<string>([...EARLY_REQUIRED_COLUMNS, ...EARLY_KNOWN_IGNORED_COLUMNS]);
+  const unknown = [...have].filter((c) => !known.has(c));
+  if (missing.length > 0) return { ok: false, missing, unknown };
+  return { ok: true, unknown };
+}
+
+export type EarlyDate = { iso: string; year: number };
+
+/**
+ * PollingDate arrives in TWO formats (measured: 16,363 DD/MM/YY rows,
+ * 12,982 DD-MM-YYYY rows, 1,094 empty). The century rule for the two-digit
+ * form is explicit, never implied: this file covers 1951–62, so YY maps to
+ * 19YY, and any resulting year outside 1950–1970 is REFUSED — a two-digit
+ * year that lands outside the sanity band means the rule no longer applies
+ * and a person must look. Impossible calendar dates are refused, not clamped.
+ */
+export function parseEarlyDate(raw: string): EarlyDate | null | { refused: string } {
+  const v = raw.trim();
+  if (!v) return null;
+  let d: number, mo: number, y: number;
+  let m = /^(\d{2})\/(\d{2})\/(\d{2})$/.exec(v);
+  if (m) {
+    d = Number(m[1]); mo = Number(m[2]); y = 1900 + Number(m[3]);
+  } else if ((m = /^(\d{2})-(\d{2})-(\d{4})$/.exec(v))) {
+    d = Number(m[1]); mo = Number(m[2]); y = Number(m[3]);
+  } else {
+    return { refused: `PollingDate "${v}" matches neither DD/MM/YY nor DD-MM-YYYY` };
+  }
+  if (y < 1950 || y > 1970)
+    return { refused: `PollingDate "${v}" resolves to ${y}, outside the 1950–1970 sanity band` };
+  const dt = new Date(Date.UTC(y, mo - 1, d));
+  if (dt.getUTCFullYear() !== y || dt.getUTCMonth() !== mo - 1 || dt.getUTCDate() !== d)
+    return { refused: `PollingDate "${v}" is not a real calendar date` };
+  return { iso: `${y}-${String(mo).padStart(2, "0")}-${String(d).padStart(2, "0")}`, year: y };
+}
+
+export type ParsedEarlyRow = {
+  electionType: "AE" | "GE";
+  /** Exactly as the file wrote it. */
+  stateNameRaw: string;
+  /** After the committed alias map (data/raw/tcpd/STATE_ALIASES.csv); equals
+   *  stateNameRaw when no alias applied. Aliases are committed data, applied
+   *  visibly and tallied — never a silent in-code normalisation. */
+  stateName: string;
+  stateId: string | null; // STATE_MAP on the canonical name; null = historical state (§2.8)
+  assemblyNo: number;
+  constituencyNo: string;
+  candidate: string;
+  party: string;
+  votes: number | null;
+  winner: boolean;
+  numberOfSeats: number;
+  electorsTotal: number | null;
+  electorsWhoVoted: number | null;
+  votesValid: number | null;
+  date: EarlyDate | null;
+  year: number;
+};
+
+/** Read one early-schema CSV row. Same case-insensitive key rule as parseRow
+ *  (the shared parseCsv lowercases header keys; the contract itself is
+ *  enforced on the raw header line by checkEarlyHeader). */
+export function parseEarlyRow(
+  input: TcpdRow,
+  aliases: Readonly<Record<string, string>>,
+): ParsedEarlyRow | { refused: string } {
+  const row: TcpdRow = {};
+  for (const k of Object.keys(input)) row[k.toLowerCase()] = input[k];
+
+  const electionType = (row.election_type ?? "").trim();
+  if (electionType !== "AE" && electionType !== "GE")
+    return { refused: `Election_Type "${electionType}" is neither AE nor GE` };
+
+  const stateNameRaw = (row.state_name ?? "").trim();
+  if (!stateNameRaw) return { refused: "empty State_Name" };
+  const stateName = aliases[stateNameRaw] ?? stateNameRaw;
+
+  const assemblyNo = int(row.assembly_no);
+  if (assemblyNo === null) return { refused: `Assembly_No "${row.assembly_no}" is not an integer` };
+  const constituencyNo = (row.constituency_no ?? "").trim();
+  if (!constituencyNo) return { refused: "empty Constituency_No" };
+
+  const winnerRaw = (row.winner ?? "").trim();
+  if (winnerRaw !== "True" && winnerRaw !== "False")
+    return { refused: `Winner "${winnerRaw}" is neither True nor False` };
+
+  const numberOfSeats = int(row.numberofseats);
+  if (numberOfSeats === null || numberOfSeats < 1)
+    return { refused: `NumberOfSeats "${row.numberofseats}" is not a positive integer` };
+
+  const year = int(row.year);
+  if (year === null || year < 1950 || year > 1970)
+    return { refused: `Year "${row.year}" is outside the file's 1950–1970 band` };
+
+  const date = parseEarlyDate(row.pollingdate ?? "");
+  if (date !== null && "refused" in date) return date;
+  // Year is documented as derived from PollingDate (codebook §19); a clash
+  // between them is drift, and drift stops a person rather than being picked.
+  if (date !== null && date.year !== year)
+    return { refused: `PollingDate year ${date.year} disagrees with Year "${row.year}"` };
+
+  return {
+    electionType,
+    stateNameRaw,
+    stateName,
+    stateId: STATE_MAP[stateName] ?? null,
+    assemblyNo,
+    constituencyNo,
+    candidate: (row.candidate ?? "").trim(),
+    party: (row.party ?? "").trim(),
+    votes: int(row.votes),
+    winner: winnerRaw === "True",
+    numberOfSeats,
+    electorsTotal: int(row.electorstotal),
+    electorsWhoVoted: int(row.electorswhovoted),
+    votesValid: int(row.votesvalid),
+    date,
+    year,
+  };
+}
+
+export type EarlyPartyAggregate = PartyAggregate & {
+  /** Distinct constituencies the party stood in. seatsContested itself is the
+   *  CANDIDACY count for this era: in a two-seat constituency a party could
+   *  field two candidates, so distinct constituencies undercounts what it
+   *  contested. Both figures are kept; neither is estimated. */
+  constituenciesContested: number;
+};
+
+export type EarlyElectionAggregate = Omit<ElectionAggregate, "parties"> & {
+  parties: EarlyPartyAggregate[];
+  /** ISO date when datePrecision is "day" (anchored to the earliest polling
+   *  date, with any spread reported as an anomaly, mirroring the modern
+   *  month rule); null when the election carries no dated rows at all. */
+  electionDate: string | null;
+  constituencies: number;
+  /** NumberOfSeats value -> how many constituencies carry it. */
+  seatsByMagnitude: Record<number, number>;
+  electorsTotal: number | null;
+  electorsWhoVoted: number | null;
+  /** electorsWhoVoted / electorsTotal, 2dp; null when either sum is poisoned
+   *  or when a persons-basis figure would exceed 100 (a data error, refused). */
+  turnoutPercent: number | null;
+  /** "persons" only when every constituency is single-member. Measured fact
+   *  (§2.8): ElectorsWhoVoted ≡ VotesValid on all but one election, so in a
+   *  multi-member constituency the column counts BALLOTS, not people, and the
+   *  quotient is votes-per-elector, not turnout. The basis travels with the
+   *  number so the gate can rule on what is storable. */
+  turnoutBasis: "persons" | "ballots";
+};
+
+export type EarlyAggregateOutcome = {
+  elections: EarlyElectionAggregate[];
+  refused: Record<string, number>;
+  duplicateRowCount: number;
+  /** variant spelling -> canonical + how many rows it covered. The dry-run
+   *  report checks these against the committed STATE_ALIASES.csv counts. */
+  aliasApplications: Record<string, { canonical: string; rows: number }>;
+  /** Canonical state names with no archive id (the historical states) ->
+   *  candidate-row count. These AGGREGATE (unlike the modern A1 refusal):
+   *  whether they become first-class state rows is the gate's decision, and
+   *  the gate needs the aggregates in front of it to decide. */
+  statesWithoutId: Record<string, number>;
+  /** The file's own grouping — (Election_Type, canonical state, Assembly_No)
+   *  — before the A9 national GE rollup. This is the view D3_FINDINGS.md
+   *  measured (82 / 371 / 669) and what the gate's expected-numbers check
+   *  runs against. */
+  fileGroups: { elections: number; partyRowsWithSeats: number; partyRowsAll: number };
+};
+
+/**
+ * Group parsed early rows into election aggregates.
+ *
+ * Rulings, in one visible place: AE elections keyed per state; GE rows roll
+ * up NATIONALLY on Assembly_No alone (A9, and the codebook's own instruction:
+ * "For GE, we ignore the State_Name"). Constituency identity always includes
+ * the state, because Constituency_No repeats across states. total_seats is
+ * the sum of NumberOfSeats once per constituency, never a constituency count
+ * (multi-member seats, §2.8). Turnout is summed from raw counts once per
+ * constituency and carries its basis. Zero-seat contesting parties are kept:
+ * a recorded vote total is a fact whether or not it won a seat, and the
+ * modern path keeps them too. Independents aggregate under the existing
+ * pseudo-party (A5). Exact duplicate rows are refused and counted.
+ */
+export function aggregateEarly(rows: ParsedEarlyRow[]): EarlyAggregateOutcome {
+  const refused: Record<string, number> = {};
+  const aliasApplications: Record<string, { canonical: string; rows: number }> = {};
+  const statesWithoutId: Record<string, number> = {};
+  const seenRow = new Set<string>();
+  let duplicateRowCount = 0;
+
+  const groups = new Map<string, ParsedEarlyRow[]>();
+  const fileGroupParties = new Map<string, Map<string, number>>(); // file-view group -> party -> seats
+
+  for (const r of rows) {
+    if (r.stateNameRaw !== r.stateName) {
+      const a = aliasApplications[r.stateNameRaw] ?? { canonical: r.stateName, rows: 0 };
+      a.rows++;
+      aliasApplications[r.stateNameRaw] = a;
+    }
+    if (r.stateId === null) statesWithoutId[r.stateName] = (statesWithoutId[r.stateName] ?? 0) + 1;
+
+    const rowKey = [r.electionType, r.stateNameRaw, r.assemblyNo, r.constituencyNo, r.candidate, r.party, r.votes].join("|");
+    if (seenRow.has(rowKey)) {
+      duplicateRowCount++;
+      continue;
+    }
+    seenRow.add(rowKey);
+
+    const fileKey = `${r.electionType}|${r.stateName}|${r.assemblyNo}`;
+    const fp = fileGroupParties.get(fileKey) ?? new Map<string, number>();
+    fp.set(r.party, (fp.get(r.party) ?? 0) + (r.winner ? 1 : 0));
+    fileGroupParties.set(fileKey, fp);
+
+    const key = r.electionType === "GE" ? `GE|${r.assemblyNo}` : `AE|${r.stateName}|${r.assemblyNo}`;
+    const g = groups.get(key) ?? [];
+    g.push(r);
+    groups.set(key, g);
+  }
+
+  let partyRowsWithSeats = 0;
+  let partyRowsAll = 0;
+  for (const fp of fileGroupParties.values()) {
+    partyRowsAll += fp.size;
+    for (const wins of fp.values()) if (wins > 0) partyRowsWithSeats++;
+  }
+
+  const elections: EarlyElectionAggregate[] = [];
+
+  for (const g of groups.values()) {
+    const first = g[0];
+    const isGE = first.electionType === "GE";
+    const anomalies: string[] = [];
+
+    // Year: no group in the delivered file spans years, but the rule for one
+    // that did mirrors the modern month rule — earliest wins, spread stated.
+    const years = [...new Set(g.map((r) => r.year))].sort((a, b) => a - b);
+    if (years.length > 1) anomalies.push(`election spans Year values ${years.join(", ")}; anchored to the earliest`);
+    const year = years[0];
+
+    // Election date: a national GE legitimately polls on many days across
+    // states; anchored to the earliest, spread stated, precision stays "day"
+    // because every date in the spread is a recorded day.
+    const dates = [...new Set(g.map((r) => r.date?.iso).filter((d): d is string => d != null))].sort();
+    if (dates.length > 1)
+      anomalies.push(`polling spans ${dates.length} recorded dates (${dates[0]} to ${dates[dates.length - 1]}); anchored to the earliest`);
+    const electionDate = dates.length > 0 ? dates[0] : null;
+
+    // Per-constituency facts, keyed WITH the state (Constituency_No repeats
+    // across states, which matters for the national GE groups). Disagreement
+    // between rows of one constituency poisons that fact for the election
+    // (A7 discipline): a total over "most of the rows" is a silent repair.
+    type ConstFacts = { seats: number | null; electors: number | null; voted: number | null; valid: number | null };
+    const byConst = new Map<string, ConstFacts>();
+    for (const r of g) {
+      const ck = `${r.stateName}|${r.constituencyNo}`;
+      const c = byConst.get(ck);
+      if (!c) {
+        byConst.set(ck, { seats: r.numberOfSeats, electors: r.electorsTotal, voted: r.electorsWhoVoted, valid: r.votesValid });
+        continue;
+      }
+      if (c.seats !== r.numberOfSeats) {
+        anomalies.push(`constituency ${ck}: NumberOfSeats disagrees between rows; seat total unreliable`);
+        c.seats = null;
+      }
+      if (c.electors !== r.electorsTotal) { anomalies.push(`constituency ${ck}: ElectorsTotal disagrees between rows`); c.electors = null; }
+      if (c.voted !== r.electorsWhoVoted) { anomalies.push(`constituency ${ck}: ElectorsWhoVoted disagrees between rows`); c.voted = null; }
+      if (c.valid !== r.votesValid) { anomalies.push(`constituency ${ck}: VotesValid disagrees between rows`); c.valid = null; }
+    }
+
+    let totalSeats = 0;
+    const seatsByMagnitude: Record<number, number> = {};
+    let electorsTotal: number | null = 0;
+    let electorsWhoVoted: number | null = 0;
+    let validVotesTotal: number | null = 0;
+    let votedNeValid = 0;
+    for (const [ck, c] of byConst) {
+      if (c.seats !== null) {
+        totalSeats += c.seats;
+        seatsByMagnitude[c.seats] = (seatsByMagnitude[c.seats] ?? 0) + 1;
+      }
+      electorsTotal = c.electors === null || electorsTotal === null ? null : electorsTotal + c.electors;
+      electorsWhoVoted = c.voted === null || electorsWhoVoted === null ? null : electorsWhoVoted + c.voted;
+      validVotesTotal = c.valid === null || validVotesTotal === null ? null : validVotesTotal + c.valid;
+      if (c.voted !== null && c.valid !== null && c.voted !== c.valid) votedNeValid++;
+      if (c.seats === 1 && c.voted !== null && c.electors !== null && c.voted > c.electors)
+        anomalies.push(`constituency ${ck}: more votes than electors in a single-member seat`);
+    }
+    if (votedNeValid > 0)
+      anomalies.push(`${votedNeValid} constituencies where ElectorsWhoVoted differs from VotesValid (the codebook's own Kerala exception)`);
+    if (validVotesTotal === null) anomalies.push("vote shares withheld: incomplete VotesValid (A7)");
+
+    // Seat arithmetic must close: Σ NumberOfSeats over constituencies equals
+    // the Winner=True row count, or something is corrupt and the report says.
+    const winnerRows = g.filter((r) => r.winner).length;
+    if (totalSeats !== winnerRows)
+      anomalies.push(`seat arithmetic broken: total_seats ${totalSeats} vs ${winnerRows} Winner=True rows`);
+
+    const turnoutBasis: "persons" | "ballots" = Object.keys(seatsByMagnitude).some((k) => Number(k) > 1)
+      ? "ballots"
+      : "persons";
+    let turnoutPercent: number | null = null;
+    if (electorsTotal !== null && electorsWhoVoted !== null && electorsTotal > 0) {
+      const t = Math.round((electorsWhoVoted / electorsTotal) * 10000) / 100;
+      if (turnoutBasis === "persons" && t > 100) {
+        anomalies.push(`turnout withheld: ${t}% of electors is impossible on a persons basis`);
+      } else {
+        turnoutPercent = t;
+      }
+    }
+
+    // Party aggregation. NOTA does not exist in this era; the era's
+    // independents aggregate exactly as the modern path's (A5).
+    const byParty = new Map<string, { label: string; name: string; seats: number; cands: number; cons: Set<string>; votes: number }>();
+    for (const r of g) {
+      const isInd = r.party === IND_LABEL;
+      const label = isInd ? IND_LABEL : r.party;
+      const name = isInd ? INDEPENDENTS_PARTY_NAME : r.party;
+      if (!label) {
+        refused["empty Party label"] = (refused["empty Party label"] ?? 0) + 1;
+        continue;
+      }
+      const p = byParty.get(label) ?? { label, name, seats: 0, cands: 0, cons: new Set<string>(), votes: 0 };
+      if (r.winner) p.seats++;
+      p.cands++;
+      p.cons.add(`${r.stateName}|${r.constituencyNo}`);
+      p.votes += r.votes ?? 0;
+      byParty.set(label, p);
+    }
+
+    const parties: EarlyPartyAggregate[] = [...byParty.values()]
+      .map((p) => ({
+        recordedLabel: p.label,
+        partyName: p.name,
+        seatsWon: p.seats,
+        seatsContested: p.cands,
+        constituenciesContested: p.cons.size,
+        votes: p.votes,
+        voteSharePercent:
+          validVotesTotal && validVotesTotal > 0
+            ? Math.round((p.votes / validVotesTotal) * 10000) / 100
+            : null,
+      }))
+      .sort((a, b) => b.seatsWon - a.seatsWon || b.votes - a.votes || a.partyName.localeCompare(b.partyName));
+
+    elections.push({
+      scope: isGE ? "lok_sabha" : "state_assembly",
+      stateId: isGE ? "in" : first.stateId,
+      stateName: isGE ? "India" : first.stateName,
+      year,
+      month: electionDate !== null ? Number(electionDate.slice(5, 7)) : null,
+      datePrecision: electionDate !== null ? "day" : "year",
+      electionDate,
+      assemblyNo: first.assemblyNo,
+      totalSeats,
+      constituencies: byConst.size,
+      seatsByMagnitude,
+      upstreamId: electionUpstreamId(isGE ? "lok_sabha" : "state_assembly", isGE ? "IN" : first.stateName, year, first.assemblyNo),
+      parties,
+      validVotesTotal,
+      electorsTotal,
+      electorsWhoVoted,
+      turnoutPercent,
+      turnoutBasis,
+      notaVotes: 0,
+      anomalies,
+    });
+  }
+
+  elections.sort((a, b) => a.year - b.year || a.stateName.localeCompare(b.stateName) || (a.assemblyNo ?? 0) - ((b.assemblyNo ?? 0)));
+  return {
+    elections,
+    refused,
+    duplicateRowCount,
+    aliasApplications,
+    statesWithoutId,
+    fileGroups: { elections: fileGroupParties.size, partyRowsWithSeats, partyRowsAll },
+  };
 }
