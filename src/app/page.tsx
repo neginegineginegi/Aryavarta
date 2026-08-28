@@ -8,6 +8,17 @@ import { getArchiveStats } from "@/lib/db/queries/stats";
 import { revisions } from "@/lib/db/schema";
 import { formatNumber } from "@/lib/format";
 import { and, desc, eq } from "drizzle-orm";
+import { AudienceSection } from "@/components/landing/AudienceSection";
+import { SearchDemo } from "@/components/landing/SearchDemo";
+import { NetworkSection } from "@/components/landing/UnionNetwork";
+import { TimelineSection } from "@/components/landing/PmTimeline";
+import { CollectionsSection } from "@/components/landing/CollectionsSection";
+import { OnThisDaySection } from "@/components/landing/OnThisDay";
+import { TranscribeSection } from "@/components/landing/TranscribeSection";
+import { LedgerSection } from "@/components/landing/LedgerSection";
+import { PressSection, SourcesStrip } from "@/components/landing/PressSection";
+import { NewsletterSection } from "@/components/landing/NewsletterSection";
+import { SectionReveal } from "@/components/landing/SectionReveal";
 import { RollingNumber } from "@/components/ui/RollingNumber";
 import { TricolorRibbon } from "@/components/ui/TricolorRibbon";
 import { Wordmark } from "@/components/ui/Wordmark";
@@ -64,6 +75,10 @@ async function recentAudit() {
     .limit(4);
   return rows;
 }
+
+// On-this-day and the landing bands' queries want a page that re-renders on
+// a clock, not only per deploy (handoff 21's instruction).
+export const revalidate = 3600;
 
 export default async function HomePage() {
   // Note: the ?y= year param is read client-side inside MapExplorer so this
@@ -188,7 +203,12 @@ export default async function HomePage() {
         </p>
       </section>
 
-      <div className="mx-auto max-w-[1440px] px-4 pb-4 pt-4">
+      {/* data-page: the reveal script reads this element's children. The
+          existing container already wraps every band after the hero, so it
+          carries the attribute instead of a new wrapper (handoff 21 step 5,
+          adapted: the hero sits outside this container by design, so the
+          script's first-child hero rule is satisfied by construction). */}
+      <div data-page className="mx-auto max-w-[1440px] px-4 pb-4 pt-4">
       {/* ----------------------------------------------------------------- MAP */}
       <section id="map" className="section-card scroll-mt-24 px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto mb-12 max-w-[640px] text-center">
@@ -337,6 +357,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <AudienceSection />
+
       {/* --------------------------------------------------------------- STATS */}
       <section className="section-card px-6 py-16">
         <div className="mx-auto grid max-w-[1000px] grid-cols-2 gap-4 text-center lg:grid-cols-4">
@@ -350,6 +372,12 @@ export default async function HomePage() {
           ))}
         </div>
       </section>
+
+      <SearchDemo />
+      <NetworkSection />
+      <TimelineSection />
+      <CollectionsSection />
+      <OnThisDaySection />
 
       {/* --------------------------------------------------------------- ABOUT */}
       <section id="about" className="section-card section-tint relative px-6 py-24 sm:py-28">
@@ -377,6 +405,11 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <TranscribeSection />
+      <LedgerSection />
+      <PressSection />
+      <SourcesStrip />
+
       {/* ----------------------------------------------------------------- FAQ */}
       <section id="faq" className="section-card relative px-6 py-20 sm:py-24">
         <TricolorRibbon variant="faq" />
@@ -396,6 +429,8 @@ export default async function HomePage() {
         </div>
       </section>
 
+      <NewsletterSection />
+
       {/* ----------------------------------------------------------------- CTA */}
       <section className="section-card section-tint relative px-6 py-28 text-center sm:py-32">
         <TricolorRibbon variant="reverse" />
@@ -410,6 +445,8 @@ export default async function HomePage() {
           </Link>
         </div>
       </section>
+
+      <SectionReveal />
       </div>
     </>
   );

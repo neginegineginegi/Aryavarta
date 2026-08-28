@@ -1,0 +1,203 @@
+PASTE THIS INTO CLAUDE CODE, FROM YOUR REPO ROOT.
+
+Prerequisite: this folder (21-landing-complete) must exist inside your repo,
+e.g. at design_handoff/21-landing-complete/. It SUPERSEDES handoffs 19 and 20:
+it contains all fifteen files from both, reconciled (import paths fixed, all
+exports named). Ignore any older 19-/20- folder if one is present.
+
+Open preview.html in a browser first — a static render of every new section,
+in page order, each labelled with its insertion point. screenshots/ has the
+same thing as PNGs, numbered by band. That is the target.
+
+You have already run the Step 0 diagnosis. Its findings, which this prompt is
+built on:
+  - The repo's landing page today: HERO, MAP, FEATURES, STATS, ABOUT, FAQ, CTA
+  - Those sections are siblings under a FRAGMENT (no wrapper element)
+  - No handoff-19 component exists in the repo; nothing here is mounted yet
+  - Production deploys from main and deploys are succeeding
+
+================================================================================
+RULES — READ BEFORE TOUCHING ANYTHING
+================================================================================
+
+This is an ADDITIVE change to a landing page that already works. Build on top
+of the existing code. Do not improve it.
+
+DO NOT:
+  - refactor, rename, reorganise, or "clean up" any existing file
+  - reorder, restyle, or reword any section that already exists on the page
+    (HERO, MAP, FEATURES, STATS, ABOUT, FAQ, CTA all stay exactly as they are)
+  - rewrite existing components to share code with the new ones
+  - change any existing CSS rule, class name, or CSS variable
+  - reformat files (no prettier/eslint --fix runs across the repo)
+  - add, remove, or upgrade a single dependency
+  - convert page.tsx to a client component, or move it to another router
+  - touch tsconfig, next.config, or CI
+
+DO:
+  - add the new component files
+  - add import lines and JSX mount points in page.tsx
+  - replace page.tsx's fragment with ONE wrapper div (step 5 — the only
+    structural edit, and it is layout-neutral)
+  - append CSS at the end of globals.css
+  - replace exactly one asset: public/abhilekh-logo.svg
+
+If a step conflicts with how the repo actually works, STOP and tell me what
+you found instead of guessing or "fixing" the surrounding code.
+
+================================================================================
+THE PAGE, CHARTED — target order, 20 bands
+================================================================================
+
+ #   SECTION                COMPONENT (all in components/)   STATUS
+ --  ---------------------  --------------------------------  ---------------
+ 01  HERO                   —                                 existing
+ 02  MAP                    —                                 existing
+ 03  FEATURES               —                                 existing
+ 04  WHO IT'S FOR           AudienceSection                   NEW
+ 05  STATS                  —                                 existing
+ 06  ASK THE ARCHIVE        SearchDemo                        NEW — owns chips
+ 07  THE NETWORK            NetworkSection (UnionNetwork.tsx) NEW
+ 08  THE TIMELINE           TimelineSection (PmTimeline.tsx)  NEW
+ 09  FEATURED COLLECTIONS   CollectionsSection                NEW
+ 10  ON THIS DAY            OnThisDaySection (OnThisDay.tsx)  NEW
+ 11  ABOUT                  —                                 existing
+ 12  TRANSCRIBE             TranscribeSection                 NEW
+ 13  THE LEDGER             LedgerSection                     NEW
+ 14  PRESS & MENTIONS       PressSection                      NEW
+ 15  DRAWN FROM             SourcesStrip (PressSection.tsx)   NEW
+ 16  FAQ                    —                                 existing
+ 17  OPEN DATA              OpenDataSection                   NEW
+ 18  DEVELOPER API          ApiSection                        NEW
+ 19  NEWSLETTER             NewsletterSection                 NEW
+ 20  CTA                    —                                 existing
+
+Plus <SectionReveal /> mounted once as the LAST child of the wrapper.
+QuestionChips is rendered INSIDE SearchDemo — never mounted at page level.
+Every component is a NAMED export. screenshots/ is numbered by band.
+
+================================================================================
+STEPS
+================================================================================
+
+1. Copy everything in components/ to src/components/landing/:
+     UnionNetwork.tsx  PmTimeline.tsx  OnThisDay.tsx  LedgerSection.tsx
+     OpenDataSection.tsx  QuestionChips.tsx  AudienceSection.tsx
+     SearchDemo.tsx  CollectionsSection.tsx  TranscribeSection.tsx
+     PressSection.tsx  ApiSection.tsx  NewsletterSection.tsx
+     SectionReveal.tsx  section-reveal.ts
+   "use client" already sits exactly where it belongs (UnionNetwork,
+   PmTimeline, NewsletterSection, SectionReveal). Do not add it elsewhere;
+   page.tsx stays a server component.
+
+2. Append globals-additions.css to the END of src/app/globals.css. If the file
+   ends with a prefers-reduced-motion block, insert before it; the appended
+   CSS carries its own reduced-motion block which must stay last. Do not edit
+   any rule already in the file.
+
+3. Fonts: the new CSS uses var(--font-serif) / var(--font-mono) with
+   'Newsreader' / 'IBM Plex Mono' literal fallbacks. If the repo's next/font
+   variables use different names, update the var() names in the NEW css only.
+   If the repo does not load these families at all, tell me — do not swap in
+   a different typeface.
+
+4. Mount in src/app/page.tsx per the chart. One import block:
+
+     import { AudienceSection } from "@/components/landing/AudienceSection";
+     import { SearchDemo } from "@/components/landing/SearchDemo";
+     import { NetworkSection } from "@/components/landing/UnionNetwork";
+     import { TimelineSection } from "@/components/landing/PmTimeline";
+     import { CollectionsSection } from "@/components/landing/CollectionsSection";
+     import { OnThisDaySection } from "@/components/landing/OnThisDay";
+     import { TranscribeSection } from "@/components/landing/TranscribeSection";
+     import { LedgerSection } from "@/components/landing/LedgerSection";
+     import { PressSection, SourcesStrip } from "@/components/landing/PressSection";
+     import { OpenDataSection } from "@/components/landing/OpenDataSection";
+     import { ApiSection } from "@/components/landing/ApiSection";
+     import { NewsletterSection } from "@/components/landing/NewsletterSection";
+     import { SectionReveal } from "@/components/landing/SectionReveal";
+
+   Find each anchor band by its CONTENT, not line number, and insert:
+     <AudienceSection />      between FEATURES and STATS
+     <SearchDemo />           after STATS
+     <NetworkSection />       directly after SearchDemo
+     <TimelineSection />      directly after NetworkSection
+     <CollectionsSection />   directly after TimelineSection
+     <OnThisDaySection />     directly after CollectionsSection, before ABOUT
+     <TranscribeSection />    after ABOUT
+     <LedgerSection />        directly after TranscribeSection
+     <PressSection />         directly after LedgerSection
+     <SourcesStrip />         directly after PressSection, before FAQ
+     <OpenDataSection />      after FAQ
+     <ApiSection />           directly after OpenDataSection
+     <NewsletterSection />    directly after ApiSection, before CTA
+     <SectionReveal />        LAST child of the wrapper from step 5
+
+5. THE WRAPPER. The page's sections currently sit under a fragment (<>...</>).
+   Replace that fragment — and only it — with:
+
+       <div data-page style={{ display: "contents" }}>
+         ...all bands, unchanged, plus the new mounts...
+       </div>
+
+   display:contents means the div generates no box: layout, spacing and any
+   parent selectors behave exactly as before. The reveal script reads this
+   element's children. Change nothing else about any band.
+
+6. If the CTA band contains a hardcoded row of sample-question chips, remove
+   that row only (SearchDemo owns the chips now — band 06). If the CTA has no
+   chips, there is nothing to do. Leave the CTA's heading and button untouched.
+
+7. THE SEAL. Replace public/abhilekh-logo.svg with abhilekh-logo.svg from this
+   folder. viewBox is now 260x272 (was 260x300); the Latin ABHILEKH wordmark
+   is gone from inside the artwork (see screenshots/21-seal-banyan.png).
+     - grep the repo for abhilekh-logo: any usage setting a fixed HEIGHT, an
+       aspect-ratio, or width+height together needs updating to 260:272.
+       Width-only usages are fine.
+     - if a component prints a Latin "ABHILEKH" wordmark beside the seal,
+       leave it and tell me where — that is a design call, not a code fix.
+
+8. Commit and push to main (production). Watch the deployment, then open the
+   PRODUCTION URL and confirm the new bands are actually there. Do not report
+   done from localhost alone.
+
+================================================================================
+CHECKS — run the dev server and report each result
+================================================================================
+
+  document.querySelectorAll('[data-page] > *').length   -> 20 sections + 1
+      SectionReveal mount (which renders null) = 20 rendered bands
+  getComputedStyle(document.querySelector('[data-page]')).display -> "contents"
+  document.querySelectorAll('.aud-card').length         -> 4
+  document.querySelectorAll('.otd-card').length         -> 4
+  document.querySelectorAll('.pm-seg').length           -> 12
+  document.querySelectorAll('.ledger-row').length       -> 5
+  document.querySelectorAll('.coll-card').length        -> 4
+  document.querySelectorAll('.press-card').length       -> 3
+  document.querySelectorAll('.api-row').length          -> 4
+  document.querySelectorAll('.qchips').length           -> 1 (inside SearchDemo)
+
+  document.body.scrollWidth === document.documentElement.clientWidth
+      -> true at 320px, 768px and 1440px. Usual culprits: .api-path and
+         .odata-code — both must scroll inside their own boxes.
+
+  The network: nodes drift, saffron pulses flow inward, hover names a state,
+  click bursts pulses. The timeline: hover/focus a segment updates the era
+  line. Both freeze to a clean static frame under prefers-reduced-motion.
+
+  Reload at the top and scroll down slowly:
+      -> each band below the fold lifts in out of a soft blur, its own blocks
+         a beat behind; the HERO never animates; nothing already on screen at
+         load flashes. After a band arrives:
+         getComputedStyle($0).filter -> "none", .willChange -> "auto",
+         $0.getAttribute('style') -> null or ""
+      -> emulate prefers-reduced-motion: everything visible immediately.
+
+  Compare each band against screenshots/ (numbered by band). Report any
+  band that differs.
+
+  npm run build -> passes. Report every warning, even pre-existing ones.
+
+If a check fails, fix the cause in the NEW files. If the cause is in existing
+code, stop and tell me — do not repair it yourself. Report what you changed,
+file by file.
