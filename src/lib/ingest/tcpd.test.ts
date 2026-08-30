@@ -17,7 +17,8 @@ const row = (over: Partial<Record<string, string>> = {}): Record<string, string>
   Assembly_No: "15",
   Constituency_No: "42",
   Year: "2021",
-  Poll_No: "1",
+  Poll_No: "0", // zero-based in the real export (§2.9): 0 is the general poll
+
   Position: "2",
   Candidate: "A Candidate",
   Party: "INC",
@@ -58,6 +59,7 @@ describe("STATE_MAP (A1)", () => {
     expect(STATE_MAP.Uttaranchal).toBe("ut");
     expect(STATE_MAP.Pondicherry).toBe("py");
     expect(STATE_MAP["Jammu_&_Kashmir"]).toBe("jk");
+    expect(STATE_MAP["Goa_Daman_&_Diu"]).toBe("ga"); // comma-less 2026 spelling
   });
 
   it("deliberately does not map historical states", () => {
@@ -91,7 +93,7 @@ describe("parseRow", () => {
     // read only TCPD-case keys and refused every real row as "empty State_Name".
     const p = parseRow({
       state_name: "Kerala", assembly_no: "15", constituency_no: "7",
-      year: "2021", month: "4", poll_no: "1", position: "1",
+      year: "2021", month: "4", poll_no: "0", position: "1",
       candidate: "Someone", party: "INC", votes: "60000",
       valid_votes: "100000", electors: "150000",
     });
@@ -173,10 +175,21 @@ describe("aggregate", () => {
     expect(e.parties.map((p) => p.recordedLabel).sort()).toEqual(["INC", "INC(I)"]);
   });
 
-  it("drops bye-election rows and counts them (A6)", () => {
-    const out = aggregate([parsed(), parsed({ Poll_No: "2", Constituency_No: "9" })], "state_assembly");
-    expect(out.byeRowCount).toBe(1);
+  it("drops bye-election rows and counts them (A6, zero-based Poll_No per §2.9)", () => {
+    // 0 is the general poll; 1 and 2 are bye/re-polls (measured: Samastipur's
+    // 2019 bye-poll rides in the GE file with Poll_No 1).
+    const out = aggregate(
+      [parsed(), parsed({ Poll_No: "1", Constituency_No: "8" }), parsed({ Poll_No: "2", Constituency_No: "9" })],
+      "state_assembly",
+    );
+    expect(out.byeRowCount).toBe(2);
     expect(out.elections[0].totalSeats).toBe(1);
+  });
+
+  it("reads an absent Poll_No as the general poll, not as a bye", () => {
+    const p = parseRow(row({ Poll_No: "" }));
+    expect(p).not.toHaveProperty("refused");
+    if (!("refused" in p)) expect(p.pollNo).toBe(0);
   });
 
   it("refuses unmapped states and counts rows per name (A1)", () => {
@@ -200,6 +213,39 @@ describe("aggregate", () => {
     expect(out.elections[0].stateId).toBe("in");
     expect(out.elections[0].totalSeats).toBe(2);
     expect(out.elections[0].parties[0].seatsWon).toBe(2);
+  });
+
+  it("keys constituencies WITH the state: the same Constituency_No in two states is two seats (§2.9)", () => {
+    // Keyed on the number alone, Kerala's constituency 1 and Bihar's
+    // constituency 1 collapsed into one seat and their Valid_Votes
+    // "disagreed", poisoning every vote share in a national GE.
+    const rows = [
+      parsed({ State_Name: "Kerala", Constituency_No: "1", Party: "A", Position: "1", Votes: "600", Valid_Votes: "1000" }),
+      parsed({ State_Name: "Bihar", Constituency_No: "1", Party: "B", Position: "1", Votes: "900", Valid_Votes: "2000" }),
+    ];
+    const [e] = aggregate(rows, "lok_sabha").elections;
+    expect(e.totalSeats).toBe(2);
+    expect(e.validVotesTotal).toBe(3000);
+    expect(e.anomalies).toEqual([]);
+    expect(e.parties.find((p) => p.recordedLabel === "A")!.voteSharePercent).toBe(20);
+  });
+
+  it("keeps a delayed-poll Lok Sabha whole: GE identity ignores the year (§2.9)", () => {
+    // LS8's rows span 1984 and 1985 (Assam and Punjab polled late). One
+    // Assembly_No, one election; anchored to the earliest year, and the
+    // month anchor must come from that year (December 1984, not the delayed
+    // poll's January).
+    const rows = [
+      parsed({ State_Name: "Kerala", Constituency_No: "1", Year: "1984", month: "12", Assembly_No: "8", Position: "1" }),
+      parsed({ State_Name: "Assam", Constituency_No: "1", Year: "1985", month: "1", Assembly_No: "8", Position: "1" }),
+    ];
+    const out = aggregate(rows, "lok_sabha");
+    expect(out.elections).toHaveLength(1);
+    const [e] = out.elections;
+    expect(e.year).toBe(1984);
+    expect(e.month).toBe(12);
+    expect(e.upstreamId).toBe("GE-1984-L8");
+    expect(e.anomalies.join(" ")).toMatch(/spans years 1984, 1985/);
   });
 
   it("states a month spread instead of narrowing it, and anchors to the earliest", () => {

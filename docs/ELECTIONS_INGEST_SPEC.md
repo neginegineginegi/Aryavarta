@@ -350,6 +350,67 @@ CC BY-SA. TCPD-derived rows either stay out of the bulk export or ship under
 their own stated terms beside it. Recorded in `docs/API_DESIGN.md` as an open
 decision.
 
+### 2.9 Amended 2026-08-30: measured against the delivered D1/D2
+
+D1 (`ae/TCPD_AE_All_States_2026830.csv`, sha256 `35d2e0c2…`, 483,565 rows,
+1961–2023, 34 State_Name values) and D2 (`ge/TCPD_GE_All_States_2026830.csv`,
+sha256 `a3dbeb28…`, 91,669 rows, 1962–2021, 40 State_Name values) landed as
+user uploads on 2026-08-30. The §2.1 column expectations, labelled guesses
+until now, are VERIFIED: all eleven required columns and the optional `month`
+are present in both files (month populated on 97.1% of D1 rows, 96.6% of D2).
+Three findings change §2:
+
+1. **`Poll_No` is ZERO-based, not one-based.** Measured: 0 on 469,756 D1 rows
+   and 88,851 D2 rows (the general poll); 1 and 2 are bye/re-polls — D2's 445
+   Poll_No=1 rows inside GE years are same-year bye-polls (Samastipur 2019
+   among them). A6's implementation is amended: rows with `Poll_No > 0` drop
+   from the aggregate spine, and an absent value reads as the general poll.
+   The old `> 1` rule would have silently mixed 16,452 bye-poll rows into
+   general-election aggregates.
+
+2. **Nine columns the spec had never heard of** are present and now
+   documented as deliberately ignored: `Sub_Region`, `Age` (D1 only),
+   `District_Name` (D1 only), `MyNeta_education`, `TCPD_Prof_Main`,
+   `TCPD_Prof_Main_Desc`, `TCPD_Prof_Second`, `TCPD_Prof_Second_Desc`,
+   `Election_Type` (constant per file: "State Assembly Election (AE)" /
+   "Lok Sabha Election (GE)").
+
+3. **Spellings.** `Goa_Daman_&_Diu` (comma-less) joins the mapped variants of
+   the pre-1987 UT. `Madras` and `Mysore` appear as State_Name in BOTH files
+   (their pre-rename 1962–70s rows): under A9 the GE rows fold into national
+   elections and need no mapping; the AE rows hit the A1 gate, where the
+   decision now available — since stage 2 created first-class `madras` and
+   `mysore` state rows — is whether those rows attach there. That is a gate
+   decision, not a loader default, because Madras-the-1960s-state continuing
+   as Tamil Nadu is exactly the successor question ruling 4 declined to
+   encode.
+
+4. **Constituency identity must include the state — in the MODERN path
+   too.** The first dry run against D2 poisoned vote shares on 16 of 17
+   Lok Sabha aggregates: keyed on `Constituency_No` alone, every state's
+   constituency 1 "disagreed" with every other's, and `total_seats`
+   collapsed to the distinct-number count. The early path already keyed
+   constituencies as (state, number); `aggregate()` now does the same for
+   every scope.
+
+5. **GE election identity ignores the year.** The key `GE|year|assembly`
+   split delayed-poll Lok Sabhas in two (LS8 spans 1984–85), yielding 17
+   "elections" where India has held 15 in the window. The key is now
+   `GE|assembly` (A9 plus the codebook's own rule, exactly as the early
+   path already grouped), with the year anchored to the earliest and any
+   spread stated as an anomaly; the month anchor comes only from the
+   anchor year, so December 1984 does not lose to a delayed poll's
+   January 1985.
+
+No election-year overlap exists between D3's inserted elections (latest
+1960) and D1's coverage (earliest 1961), so no double-insert risk arises
+from holding all three files in one manifest. NULL turnout remains D3-only;
+D1/D2 carry per-constituency `Electors` and `Valid_Votes` (whether A3's
+turnout rule for the modern files changes is a stage-1 report question,
+answered there against the measured data, not assumed here). The LokDhaba
+terms page capture and the exact export URL/version labels are pending from
+the user and BLOCK stage 2 for D1/D2 (§1.4), not stages 0–1.
+
 ## 3. Identity design
 
 Binding condition 1, applied concretely:

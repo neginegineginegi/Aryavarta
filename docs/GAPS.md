@@ -90,9 +90,12 @@ on the branch, ask before any push to main, even for trivial changes.
 
 ## Blocked on the user
 
-- **D1/D2 TCPD files** (post-1962 AE and GE exports) — delivery channel
-  verified (GitHub release assets work); the spec's §2.1 column expectations
-  stay explicitly unverified until they land.
+- **D1/D2**: DELIVERED 2026-08-30 (user uploads; stage 0–1 run same day,
+  spec §2.9 records the measured amendments). Still pending from the user
+  for their stage 2: the LokDhaba terms-page capture (verbatim, §1.4) and
+  the exact export URL/version labels; plus the stage-1 gate rulings from
+  `data/raw/tcpd/dry-run-report.md`, which for real decisions must be
+  regenerated against production, not the fixture sandbox.
 - **Canonical domain decision** and the Vercel Settings → Domains answer;
   `NEXT_PUBLIC_SITE_URL` follows it.
 - **Google sign-in round trip on the live domain** — the user's check, not

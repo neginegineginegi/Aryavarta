@@ -52,6 +52,11 @@ export const KNOWN_IGNORED_COLUMNS = [
   "Party_Type_TCPD", "Party_ID", "last_poll", "Contested", "Last_Party",
   "Last_Party_ID", "Last_Constituency_Name", "Same_Constituency",
   "Same_Party", "No_Terms", "Turncoat", "Incumbent", "Recontest",
+  // Measured on the delivered D1/D2 (2026-08-30 export, spec §2.9): present,
+  // documented here, deliberately unread by the aggregate spine.
+  "Sub_Region", "Age", "District_Name", "MyNeta_education",
+  "TCPD_Prof_Main", "TCPD_Prof_Main_Desc", "TCPD_Prof_Second",
+  "TCPD_Prof_Second_Desc", "Election_Type",
 ] as const;
 
 export type HeaderCheck =
@@ -103,6 +108,7 @@ export const STATE_MAP: Readonly<Record<string, string>> = {
   NCT_of_Delhi: "dl",
   Goa: "ga",
   "Goa,_Daman_&_Diu": "ga", // pre-1987 union territory ran one assembly
+  "Goa_Daman_&_Diu": "ga", // same entity, comma-less spelling in the 2026-08-30 export
   Gujarat: "gj",
   Haryana: "hr",
   Himachal_Pradesh: "hp",
@@ -177,7 +183,10 @@ export function parseRow(input: TcpdRow): ParsedRow | { refused: string } {
   const stateName = (row.state_name ?? "").trim();
   const year = int(row.year);
   const constituencyNo = (row.constituency_no ?? "").trim();
-  const pollNo = int(row.poll_no) ?? 1;
+  // Poll_No is ZERO-based in the real export (§2.9, measured): 0 is the
+  // general poll, 1+ are bye/re-polls. An absent value therefore reads as
+  // the general poll, not as poll 1.
+  const pollNo = int(row.poll_no) ?? 0;
   if (!stateName) return { refused: "empty State_Name" };
   if (year === null || year < 1950 || year > 2100)
     return { refused: `Year "${row.year}" is not a plausible election year` };
@@ -218,11 +227,13 @@ export const INDEPENDENTS_PARTY_NAME = "Independents (IND)";
 
 export type Scope = "state_assembly" | "lok_sabha";
 
-/** Election identity within a file (spec §2.6). Lok Sabha rows aggregate
- *  nationally (A9), so their key ignores the state. */
+/** Election identity within a file (spec §2.6, amended §2.9). Lok Sabha rows
+ *  aggregate nationally (A9) on Assembly_No ALONE — the codebook's own rule,
+ *  and the year must stay out of the key because delayed state polls put one
+ *  Lok Sabha's rows in two calendar years (measured: LS8 spans 1984–85). */
 export function electionKey(r: ParsedRow, scope: Scope): string {
   return scope === "lok_sabha"
-    ? `GE|${r.year}|${r.assemblyNo ?? "?"}`
+    ? `GE|${r.assemblyNo ?? "?"}`
     : `AE|${r.stateId}|${r.year}|${r.assemblyNo ?? "?"}`;
 }
 
@@ -302,7 +313,9 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
   const groups = new Map<string, ParsedRow[]>();
 
   for (const r of rows) {
-    if (r.pollNo > 1) {
+    // A6 with the measured rule (§2.9): anything past the general poll
+    // (Poll_No 0) is a bye/re-poll and stays out of the aggregate spine.
+    if (r.pollNo > 0) {
       byeRowCount++;
       continue;
     }
@@ -325,9 +338,22 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
 
   const elections: ElectionAggregate[] = [];
 
+  // Constituency identity always includes the state (§2.9): Constituency_No
+  // repeats across states, and a national GE group holds them all — keying
+  // on the number alone made every state's constituency 1 "disagree" with
+  // every other's and collapsed seat totals to the distinct-number count.
+  const constKey = (r: ParsedRow) => `${r.stateName}|${r.constituencyNo}`;
+
   for (const g of groups.values()) {
     const first = g[0];
     const anomalies: string[] = [];
+
+    // Year: an AE group is single-year by key; a national GE legitimately
+    // spans years when a state's poll is delayed (LS8: 1984–85). Earliest
+    // wins for the anchor; the spread is stated, never narrowed.
+    const years = [...new Set(g.map((r) => r.year))].sort((a, b) => a - b);
+    if (years.length > 1) anomalies.push(`election spans years ${years.join(", ")}; anchored to the earliest`);
+    const year = years[0];
 
     // Valid votes: the column repeats per candidate row; count each
     // constituency once. A constituency whose value is missing poisons the
@@ -335,11 +361,12 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
     // would be a silent transformation.
     const validByConstituency = new Map<string, number | null>();
     for (const r of g) {
-      if (!validByConstituency.has(r.constituencyNo)) {
-        validByConstituency.set(r.constituencyNo, r.validVotes);
-      } else if (validByConstituency.get(r.constituencyNo) !== r.validVotes) {
-        anomalies.push(`constituency ${r.constituencyNo}: Valid_Votes disagrees between rows`);
-        validByConstituency.set(r.constituencyNo, null);
+      const ck = constKey(r);
+      if (!validByConstituency.has(ck)) {
+        validByConstituency.set(ck, r.validVotes);
+      } else if (validByConstituency.get(ck) !== r.validVotes) {
+        anomalies.push(`constituency ${ck}: Valid_Votes disagrees between rows`);
+        validByConstituency.set(ck, null);
       }
     }
     let validVotesTotal: number | null = 0;
@@ -352,10 +379,12 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
     }
     if (validVotesTotal === null) anomalies.push("vote shares withheld: incomplete Valid_Votes (A7)");
 
-    // Month: multi-phase elections legitimately span months. First one wins
-    // for the anchor; the spread is stated, not narrowed.
-    const months = [...new Set(g.map((r) => r.month).filter((m): m is number => m !== null))];
-    if (months.length > 1) anomalies.push(`election spans months ${months.sort((a, b) => a - b).join(", ")}; anchored to the earliest`);
+    // Month: multi-phase elections legitimately span months. Earliest wins
+    // for the anchor; the spread is stated, not narrowed. Only months from
+    // the anchor YEAR count — December of 1984 must not lose to January of a
+    // 1985 delayed poll.
+    const months = [...new Set(g.filter((r) => r.year === year).map((r) => r.month).filter((m): m is number => m !== null))];
+    if (months.length > 1) anomalies.push(`election spans months ${months.sort((a, b) => a - b).join(", ")} of ${year}; anchored to the earliest`);
     const month = months.length > 0 ? Math.min(...months) : null;
 
     // Party aggregation.
@@ -375,7 +404,7 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
       }
       const p = byParty.get(label) ?? { label, name, seats: 0, cons: new Set<string>(), votes: 0 };
       if (r.position === 1) p.seats++;
-      p.cons.add(r.constituencyNo);
+      p.cons.add(constKey(r));
       p.votes += r.votes ?? 0;
       byParty.set(label, p);
     }
@@ -398,12 +427,12 @@ export function aggregate(rows: ParsedRow[], scope: Scope): AggregateOutcome {
       scope,
       stateId: scope === "lok_sabha" ? "in" : first.stateId,
       stateName: scope === "lok_sabha" ? "India" : first.stateName,
-      year: first.year,
+      year,
       month,
       datePrecision: month !== null ? "month" : "year",
       assemblyNo: first.assemblyNo,
-      totalSeats: new Set(g.map((r) => r.constituencyNo)).size,
-      upstreamId: electionUpstreamId(scope, scope === "lok_sabha" ? "IN" : first.stateName, first.year, first.assemblyNo),
+      totalSeats: new Set(g.map(constKey)).size,
+      upstreamId: electionUpstreamId(scope, scope === "lok_sabha" ? "IN" : first.stateName, year, first.assemblyNo),
       parties,
       validVotesTotal,
       notaVotes,
