@@ -537,13 +537,21 @@ function reportPartyIdentity(
     }
   }
 
-  // Collision scan over the bulk-accept creates (gate ruling 2, 2026-08-30).
-  lines.push(`\n### Collision scan on the would-create labels (gate ruling 2)`);
+  // Collision scan over the bulk-accept creates (gate ruling 2, 2026-08-30,
+  // and its addendum). Existing-party collisions are HELD until a human
+  // records a disposition; shared-form incoming groups CREATE VERBATIM and
+  // each group is emitted as a merge candidate (entity_match_candidates) at
+  // insert time — a deferred merge costs nothing, a wrong silent merge
+  // applied hundreds of times is unrecoverable.
+  lines.push(`\n### Collision scan on the would-create labels (gate ruling 2 + addendum)`);
   const scan = scanPartyCollisions(creates.map((c) => c.label), known);
+  const groupedLabels = scan.heldIncoming.reduce((n, g) => n + g.labels.length, 0);
   lines.push(`- clear to create verbatim: ${scan.clear.length}`);
-  lines.push(`- HELD, collides with an existing party after stripping case/punctuation: ${scan.heldExisting.length}`);
+  lines.push(`- HELD, collides with an existing party after stripping case/punctuation (a human records a disposition in PARTY_RESOLUTIONS.csv): ${scan.heldExisting.length}`);
   for (const h of scan.heldExisting) lines.push(`    - "${h.label}" ~ ${h.matches.join(", ")}`);
-  lines.push(`- HELD, incoming labels that collapse to the same form: ${scan.heldIncoming.length} group(s)`);
+  lines.push(
+    `- shared-form incoming groups: ${scan.heldIncoming.length} group(s), ${groupedLabels} labels — create verbatim, NO silent unification; each group becomes a merge candidate at insert time (addendum 2026-08-30):`,
+  );
   for (const g of scan.heldIncoming) lines.push(`    - [${g.form}]: ${g.labels.map((l) => `"${l}"`).join(" vs ")}`);
 }
 

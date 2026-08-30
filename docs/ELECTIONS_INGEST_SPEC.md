@@ -408,9 +408,14 @@ Three findings change §2:
    rules on; and `PARTY_RESOLUTIONS.csv` now carries VALIDITY WINDOWS
    (`from_year`/`to_year`, inclusive, blank = open) so one label can mean
    different parties in different eras — a label-year no window covers is
-   HELD, never guessed, never inserted. The SP windows are proposed and
-   pending approval; stage 2 for D1/D2 is additionally gated on a
-   reconciliation regenerated against production.
+   HELD, never guessed, never inserted. The SP windows were APPROVED at
+   the gate (2026-08-30). Addendum, same date: the five existing-collision
+   variants resolve into their existing rows via the dispositions file;
+   shared-form incoming groups create VERBATIM and each group is emitted
+   as a merge candidate (entity_match_candidates) at insert time. Stage 2
+   for D1/D2 stays gated on a reconciliation regenerated against
+   production, run by the credential holder — a production connection
+   string is never pasted into a session.
 
 No election-year overlap exists between D3's inserted elections (latest
 1960) and D1's coverage (earliest 1961), so no double-insert risk arises

@@ -91,13 +91,29 @@ Stage 2 for D1/D2 remains UNBUILT pending the binding condition below.
    creates verbatim, no auto-merge.
 3. **Dispositions carry validity windows** (label + from_year/to_year in
    PARTY_RESOLUTIONS.csv); a label-year no window covers is HELD, never
-   guessed. SP's proposed windows (pending explicit approval): through
-   1952 → the Socialist Party row; from 1993 → samajwadi-party; the
-   1953–1992 gap HELD.
-4. **BINDING CONDITION on stage 2:** the reconciliation must be
-   regenerated against the PRODUCTION database and its disagreement table
-   reviewed before stage 2 is built — that table is the independent check
-   on the hand-curated elections.
+   guessed. SP's windows APPROVED 2026-08-30: through 1952 → the Socialist
+   Party row; from 1993 → samajwadi-party; the 1953–1992 gap HELD (six
+   stray rows, incl. the pre-founding 1991/Feb-1992 GE rows).
+
+   **Ruling 2 addendum (2026-08-30):** the 5 existing-collision variants
+   (two CPI(M) forms, Janata Dal(Secular), Janata Dal(United), JPS)
+   resolve into their existing rows via PARTY_RESOLUTIONS.csv — a human
+   read all five. The 137 shared-form incoming groups (283 labels) get NO
+   case-insensitive unify rule: create verbatim, then emit each group as a
+   merge candidate through entity_match_candidates at insert time. A
+   deferred merge costs nothing; a wrong silent merge applied 283 times is
+   unrecoverable.
+4. **BINDING CONDITION on stage 2 (route set 2026-08-30):** the
+   reconciliation must be regenerated against the PRODUCTION database and
+   its disagreement table reviewed before stage 2 is built. Route: the
+   USER runs the dry run where production credentials already live and
+   pastes back the reconciliation section. Never ask for, never accept, a
+   pasted production DATABASE_URL — a connection string in scrollback is a
+   disclosed credential to the only copy of every contribution, and
+   read-only limits misuse, not disclosure. Confirmed: the loader takes
+   its connection cleanly from the environment (DATABASE_URL +
+   DATABASE_DRIVER=neon in .env of a branch checkout; the dry run
+   performs zero database writes), so no code change is needed.
 5. **LokDhaba terms capture** (verbatim, §1.4) still blocks D1/D2 stage 2.
 
 ## Standing gates (restated, still in force)

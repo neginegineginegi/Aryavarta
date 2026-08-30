@@ -71,7 +71,7 @@ SJS,,,create,,
 SKP,,,create,,
 SKS,,,create,,
 SP,,1952,create,,"era collision (rulings 2026-08-28/30): the pre-merger Socialist Party; its label mass is entirely 1952, and it merged into PSP in September 1952 - TCPD itself uses SOC/PSP/SSP afterwards"
-SP,1993,,resolve,samajwadi-party,"Samajwadi Party founded 1992-10-04 and first contested in 1993; the label mass resumes exactly 1993. Window proposed 2026-08-30, pending gate approval. The 1953-1992 gap is HELD: 6 stray rows (3 AE 1975; 2 GE 1991, 1 GE Feb 1992 - all pre-founding, cannot be Samajwadi)"
+SP,1993,,resolve,samajwadi-party,"Samajwadi Party founded 1992-10-04 and first contested in 1993; the label mass resumes exactly 1993. Window approved at the gate, 2026-08-30. The 1953-1992 gap is HELD: 6 stray rows (3 AE 1975; 2 GE 1991, 1 GE Feb 1992 - all pre-founding, cannot be Samajwadi)"
 T L,,,create,,
 T T P,,,create,,
 TCRPP,,,create,,
@@ -90,3 +90,8 @@ UPRSP,,,create,,
 USCF,,,create,,
 VPKS,,,create,,
 ZP,,,create,,
+Communist Party of India(Marxist),,,resolve,communist-party-of-india-marxist,"human-read variant of an existing party row; resolved by the gate ruling 2 addendum, 2026-08-30"
+CPIM,,,resolve,communist-party-of-india-marxist,"human-read variant of an existing party row; resolved by the gate ruling 2 addendum, 2026-08-30"
+Janata Dal(Secular),,,resolve,janata-dal-secular,"human-read variant of an existing party row; resolved by the gate ruling 2 addendum, 2026-08-30"
+Janata Dal(United),,,resolve,janata-dal-united,"human-read variant of an existing party row; resolved by the gate ruling 2 addendum, 2026-08-30"
+JPS,,,resolve,janata-party-secular,"human-read variant of an existing party row; resolved by the gate ruling 2 addendum, 2026-08-30"
