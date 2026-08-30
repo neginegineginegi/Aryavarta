@@ -62,9 +62,22 @@ describe("STATE_MAP (A1)", () => {
     expect(STATE_MAP["Goa_Daman_&_Diu"]).toBe("ga"); // comma-less 2026 spelling
   });
 
-  it("deliberately does not map historical states", () => {
-    for (const gone of ["Madras", "Bombay", "Mysore", "Hyderabad", "PEPSU", "Travancore-Cochin"]) {
-      expect(STATE_MAP[gone], `${gone} must stay unmapped until the curatorial decision`).toBeUndefined();
+  it("maps Madras and Mysore to their first-class historical rows, never across the rename", () => {
+    // Gate ruling 2026-08-30: the 1962-70s elections belong to the entity
+    // that held them. Routing Madras onto Tamil Nadu (or Mysore onto
+    // Karnataka) in either direction would erase that.
+    expect(STATE_MAP.Madras).toBe("madras");
+    expect(STATE_MAP.Mysore).toBe("mysore");
+    expect(STATE_MAP.Madras).not.toBe(STATE_MAP.Tamil_Nadu);
+    expect(STATE_MAP.Mysore).not.toBe(STATE_MAP.Karnataka);
+    expect(Object.values(STATE_MAP)).not.toContain("madras-to-tn");
+    expect(STATE_MAP.Tamil_Nadu).toBe("tn");
+    expect(STATE_MAP.Karnataka).toBe("ka");
+  });
+
+  it("deliberately does not map the other historical states", () => {
+    for (const gone of ["Bombay", "Hyderabad", "PEPSU", "Travancore-Cochin"]) {
+      expect(STATE_MAP[gone], `${gone} must stay unmapped until its own curatorial decision`).toBeUndefined();
     }
   });
 });
@@ -193,9 +206,9 @@ describe("aggregate", () => {
   });
 
   it("refuses unmapped states and counts rows per name (A1)", () => {
-    const out = aggregate([parsed({ State_Name: "Madras" })], "state_assembly");
+    const out = aggregate([parsed({ State_Name: "Bombay" })], "state_assembly");
     expect(out.elections).toHaveLength(0);
-    expect(out.unmappedStates).toEqual({ Madras: 1 });
+    expect(out.unmappedStates).toEqual({ Bombay: 1 });
   });
 
   it("refuses exact duplicate candidate rows and counts them", () => {
@@ -408,6 +421,7 @@ import {
   aggregateEarly,
   checkEarlyHeader,
   checkPartyResolutions,
+  scanPartyCollisions,
   EARLY_REQUIRED_COLUMNS,
   parseEarlyDate,
   parseEarlyRow,
@@ -518,10 +532,15 @@ describe("parseEarlyRow (§2.8)", () => {
     expect(p.stateId).toBe("or");
   });
 
-  it("leaves historical states unmapped but parseable (the gate decides)", () => {
-    const p = earlyParsed({ State_Name: "Madras" });
+  it("leaves historical states without their own rows unmapped but parseable", () => {
+    const p = earlyParsed({ State_Name: "Bombay" });
     expect(p.stateId).toBeNull();
-    expect(p.stateName).toBe("Madras");
+    expect(p.stateName).toBe("Bombay");
+  });
+
+  it("routes Madras to its first-class historical row (gate ruling 1, 2026-08-30)", () => {
+    const p = earlyParsed({ State_Name: "Madras" });
+    expect(p.stateId).toBe("madras");
   });
 
   it("refuses rows outside the contract", () => {
@@ -646,15 +665,15 @@ describe("aggregateEarly (§2.8)", () => {
     const rows = [
       earlyParsed({ State_Name: "Orrisa", Candidate: "A" }),
       earlyParsed({ State_Name: "Orrisa", Candidate: "B", Constituency_No: "2" }),
-      earlyParsed({ State_Name: "Madras", Candidate: "C" }),
+      earlyParsed({ State_Name: "Bombay", Candidate: "C" }),
     ];
     const out = aggregateEarly(rows);
     expect(out.aliasApplications).toEqual({ Orrisa: { canonical: "Odisha", rows: 2 } });
-    expect(out.statesWithoutId).toEqual({ Madras: 1 });
-    // Madras aggregates (the gate needs it in front of it), with no state id.
-    const madras = out.elections.find((e) => e.stateName === "Madras")!;
-    expect(madras.stateId).toBeNull();
-    expect(madras.totalSeats).toBe(1);
+    expect(out.statesWithoutId).toEqual({ Bombay: 1 });
+    // Bombay aggregates (the gate needs it in front of it), with no state id.
+    const bombay = out.elections.find((e) => e.stateName === "Bombay")!;
+    expect(bombay.stateId).toBeNull();
+    expect(bombay.totalSeats).toBe(1);
   });
 
   it("aggregates the era's independents under the pseudo-party (A5)", () => {
@@ -706,55 +725,115 @@ describe("aggregateEarly (§2.8)", () => {
   });
 });
 
-describe("checkPartyResolutions (ruling 5, corrected)", () => {
+describe("checkPartyResolutions (windowed, gate ruling 3 of 2026-08-30)", () => {
   const known: KnownParty[] = [
     { id: "samajwadi-party", name: "Samajwadi Party", abbreviation: "SP", isPseudo: false },
+    { id: "sp", name: "SP", abbreviation: "SP", isPseudo: false }, // the 1950s Socialist Party row
     { id: "ind", name: "Independent", abbreviation: "IND", isPseudo: true },
   ];
   const disp = (over: Partial<import("@/lib/ingest/tcpd").PartyDisposition> = {}) => ({
     label: "XYZ",
+    fromYear: null,
+    toYear: null,
     disposition: "create" as const,
     partyId: null,
     reason: "",
     ...over,
   });
+  const ly = (label: string, ...years: number[]) => ({ label, years });
 
-  it("accepts a coherent file, splitting resolve from create", () => {
-    const res = checkPartyResolutions(["IND", "SP", "XYZ"], known, [
-      disp({ label: "IND", disposition: "resolve", partyId: "ind" }),
-      disp({ label: "SP", disposition: "create", reason: "era collision: the 1950s SP is the Socialist Party" }),
-      disp({ label: "XYZ" }),
-    ]);
+  it("resolves one label to different parties by era, holding the gap", () => {
+    const res = checkPartyResolutions(
+      [ly("SP", 1952, 1975, 1993, 2022)],
+      known,
+      [
+        disp({ label: "SP", toYear: 1952, disposition: "resolve", partyId: "sp", reason: "the 1951-62 Socialist Party" }),
+        disp({ label: "SP", fromYear: 1993, disposition: "resolve", partyId: "samajwadi-party", reason: "founded 1992-10, first contested 1993" }),
+      ],
+      true,
+    );
     expect(res.ok).toBe(true);
     if (res.ok) {
-      expect(res.resolve.get("IND")).toBe("ind");
-      expect(res.create.sort()).toEqual(["SP", "XYZ"]);
+      expect(res.dispositionFor("SP", 1952)).toEqual({ kind: "resolve", partyId: "sp" });
+      expect(res.dispositionFor("SP", 2022)).toEqual({ kind: "resolve", partyId: "samajwadi-party" });
+      expect(res.dispositionFor("SP", 1975)).toEqual({ kind: "held" });
+      expect(res.held).toEqual([{ label: "SP", years: [1975] }]);
+      expect(res.createLabels).toEqual([]);
     }
   });
 
-  it("refuses a data label with no committed disposition", () => {
-    const res = checkPartyResolutions(["XYZ", "ABC"], known, [disp()]);
+  it("refuses overlapping windows for one label: one year never has two dispositions", () => {
+    const res = checkPartyResolutions(
+      [ly("SP", 1990)],
+      known,
+      [
+        disp({ label: "SP", toYear: 1992, disposition: "resolve", partyId: "sp", reason: "x" }),
+        disp({ label: "SP", fromYear: 1990, disposition: "resolve", partyId: "samajwadi-party", reason: "y" }),
+      ],
+      true,
+    );
     expect(res.ok).toBe(false);
-    if (!res.ok) expect(res.problems.join(" ")).toMatch(/"ABC" is in the data/);
+    if (!res.ok) expect(res.problems.join(" ")).toMatch(/windows overlap/);
+  });
+
+  it("requires full coverage only when asked (the early file's rule)", () => {
+    const committed = [disp()];
+    const strict = checkPartyResolutions([ly("XYZ", 1960), ly("ABC", 1960)], known, committed, true);
+    expect(strict.ok).toBe(false);
+    if (!strict.ok) expect(strict.problems.join(" ")).toMatch(/"ABC" is in the data/);
+    // Without full coverage, ABC falls through to the bulk-accept path.
+    const loose = checkPartyResolutions([ly("XYZ", 1960), ly("ABC", 1960)], known, committed, false);
+    expect(loose.ok).toBe(true);
   });
 
   it("refuses a resolve to a party that does not exist", () => {
-    const res = checkPartyResolutions(["XYZ"], known, [disp({ disposition: "resolve", partyId: "no-such" })]);
+    const res = checkPartyResolutions([ly("XYZ", 1960)], known, [disp({ disposition: "resolve", partyId: "no-such" })], true);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.problems.join(" ")).toMatch(/does not exist/);
   });
 
   it("refuses an override of the matcher without a stated reason", () => {
-    // SP auto-matches samajwadi-party; declaring create with no reason is a
-    // silent identity decision, which is the thing this file exists to stop.
-    const res = checkPartyResolutions(["SP"], known, [disp({ label: "SP" })]);
+    const res = checkPartyResolutions([ly("IND", 1960)], known, [disp({ label: "IND" })], true);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.problems.join(" ")).toMatch(/needs a stated reason/);
   });
 
+  it("does not treat a create's own already-created row as an override (post-insert state)", () => {
+    // After the insert runs, label BJS matches the row it created (name
+    // verbatim "BJS"); the disposition is its own prior execution.
+    const withCreated: KnownParty[] = [...known, { id: "bjs", name: "BJS", abbreviation: "BJS", isPseudo: false }];
+    const res = checkPartyResolutions([ly("BJS", 1952)], withCreated, [disp({ label: "BJS" })], true);
+    expect(res.ok).toBe(true);
+  });
+
   it("refuses committed labels the data no longer carries (drift)", () => {
-    const res = checkPartyResolutions(["XYZ"], known, [disp(), disp({ label: "GONE" })]);
+    const res = checkPartyResolutions([ly("XYZ", 1960)], known, [disp(), disp({ label: "GONE" })], true);
     expect(res.ok).toBe(false);
     if (!res.ok) expect(res.problems.join(" ")).toMatch(/drifted/);
+  });
+});
+
+describe("scanPartyCollisions (gate ruling 2 of 2026-08-30)", () => {
+  const known: KnownParty[] = [
+    { id: "telugu-desam-party", name: "Telugu Desam Party", abbreviation: "TDP", isPseudo: false },
+  ];
+
+  it("holds a label that collides with an existing party once case and punctuation drop", () => {
+    const scan = scanPartyCollisions(["T.D.P.", "XYZ"], known);
+    expect(scan.heldExisting).toEqual([{ label: "T.D.P.", matches: ["telugu-desam-party"] }]);
+    expect(scan.clear).toEqual(["XYZ"]);
+  });
+
+  it("holds incoming labels that collapse to the same form, as a named group", () => {
+    const scan = scanPartyCollisions(["T T P", "TTP", "ABC"], known);
+    expect(scan.heldIncoming).toEqual([{ form: "ttp", labels: ["T T P", "TTP"] }]);
+    expect(scan.clear).toEqual(["ABC"]);
+  });
+
+  it("leaves genuinely distinct labels clear to create verbatim", () => {
+    const scan = scanPartyCollisions(["INC(I)", "INC(U)"], known);
+    expect(scan.heldExisting).toEqual([]);
+    expect(scan.heldIncoming).toEqual([]);
+    expect(scan.clear).toEqual(["INC(I)", "INC(U)"]);
   });
 });

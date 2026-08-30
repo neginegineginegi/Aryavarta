@@ -77,6 +77,29 @@ archive the same day (production requires its own restore drill first):
 Process rule, standing: **main moves only on the user's say-so** — develop
 on the branch, ask before any push to main, even for trivial changes.
 
+## TCPD D1/D2 gate rulings — 2026-08-30 (decided; do not relitigate)
+
+Stage 2 for D1/D2 remains UNBUILT pending the binding condition below.
+
+1. **Madras and Mysore attach to the first-class `madras`/`mysore` rows**,
+   no successor links, never routed to tamil_nadu/karnataka in either
+   direction (verified: STATE_MAP and STATE_ALIASES.csv carry no such
+   routing; tests assert it).
+2. **Party creates: bulk-accept verbatim after a collision scan.** Labels
+   colliding with an existing party (case/punctuation stripped) or with
+   another incoming label are HELD and reported in full; everything else
+   creates verbatim, no auto-merge.
+3. **Dispositions carry validity windows** (label + from_year/to_year in
+   PARTY_RESOLUTIONS.csv); a label-year no window covers is HELD, never
+   guessed. SP's proposed windows (pending explicit approval): through
+   1952 → the Socialist Party row; from 1993 → samajwadi-party; the
+   1953–1992 gap HELD.
+4. **BINDING CONDITION on stage 2:** the reconciliation must be
+   regenerated against the PRODUCTION database and its disagreement table
+   reviewed before stage 2 is built — that table is the independent check
+   on the hand-curated elections.
+5. **LokDhaba terms capture** (verbatim, §1.4) still blocks D1/D2 stage 2.
+
 ## Standing gates (restated, still in force)
 
 - The **verified backup restore precedes TCPD stage 2** (no insert stage

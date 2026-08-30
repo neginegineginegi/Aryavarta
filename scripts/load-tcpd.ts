@@ -29,6 +29,7 @@ import {
   parseEarlyRow,
   parseRow,
   reconcileAll,
+  scanPartyCollisions,
   type AggregateOutcome,
   type EarlyAggregateOutcome,
   type ElectionAggregate,
@@ -239,13 +240,21 @@ function readAliases(parseCsv: (t: string) => Record<string, string>[]): { map: 
   return { map: Object.fromEntries(committed.map((a) => [a.variant, a.canonical])), committed };
 }
 
-/** Committed dispositions for every early-file party label (gate ruling 5,
- *  corrected: exact-abbreviation matching is still an identity decision, and
- *  the SP era collision proved it). Missing file stops the insert. */
+/** Committed dispositions with validity windows (gate rulings 2026-08-28
+ *  and 2026-08-30): a row covers from_year..to_year inclusive, blank = open;
+ *  a label-year no window covers is HELD, never guessed. Missing file stops
+ *  the early insert. */
 function readPartyResolutions(parseCsv: (t: string) => Record<string, string>[]): PartyDisposition[] {
   const path = join(ROOT, "PARTY_RESOLUTIONS.csv");
   if (!existsSync(path))
     fail("data/raw/tcpd/PARTY_RESOLUTIONS.csv is missing: every early-file party label needs a committed disposition before anything resolves or creates.");
+  const yr = (raw: string | undefined, label: string): number | null => {
+    const v = (raw ?? "").trim();
+    if (!v) return null;
+    const n = Number(v);
+    if (!Number.isInteger(n) || n < 1900 || n > 2100) fail(`PARTY_RESOLUTIONS.csv "${label}": year "${v}" is not plausible.`);
+    return n;
+  };
   return parseCsv(readFileSync(path, "utf8")).map((r) => {
     const label = (r.label ?? "").trim();
     const disposition = (r.disposition ?? "").trim();
@@ -253,6 +262,8 @@ function readPartyResolutions(parseCsv: (t: string) => Record<string, string>[])
       fail(`PARTY_RESOLUTIONS.csv: row "${label}" needs disposition create or resolve.`);
     return {
       label,
+      fromYear: yr(r.from_year, label),
+      toYear: yr(r.to_year, label),
       disposition: disposition as "create" | "resolve",
       partyId: (r.party_id ?? "").trim() || null,
       reason: (r.reason ?? "").trim(),
@@ -438,22 +449,36 @@ function reportReconciliation(recs: Reconciliation[], lines: string[], coverage:
 
 /** Spec §3 / A4 against the real `parties` table: every distinct TCPD label
  *  across every aggregated election, resolved or listed for creation. This is
- *  the list gate decision (3) confirms — nothing is created here. */
-function reportPartyIdentity(aggs: ElectionAggregate[], known: KnownParty[], lines: string[]) {
-  type Tally = { name: string; elections: number; sample: string };
+ *  the list gate decision (3) confirms — nothing is created here. Labels the
+ *  committed dispositions file governs are evaluated by their windows; the
+ *  rest go through the matcher and the collision scan (rulings 2 and 3,
+ *  2026-08-30). */
+function reportPartyIdentity(
+  aggs: ElectionAggregate[],
+  known: KnownParty[],
+  committed: PartyDisposition[],
+  lines: string[],
+) {
+  type Tally = { name: string; elections: number; sample: string; years: Set<number> };
   const labels = new Map<string, Tally>();
   for (const e of aggs) {
     for (const p of e.parties) {
       const t = labels.get(p.recordedLabel);
-      if (t) t.elections += 1;
-      else labels.set(p.recordedLabel, { name: p.partyName, elections: 1, sample: e.upstreamId });
+      if (t) {
+        t.elections += 1;
+        t.years.add(e.year);
+      } else {
+        labels.set(p.recordedLabel, { name: p.partyName, elections: 1, sample: e.upstreamId, years: new Set([e.year]) });
+      }
     }
   }
+  const fileLabels = new Set(committed.map((c) => c.label));
 
   const resolved: string[] = [];
   const creates: { label: string; t: Tally }[] = [];
   const many: { label: string; t: Tally; ids: string[] }[] = [];
   for (const [label, t] of labels) {
+    if (fileLabels.has(label)) continue; // windowed dispositions section below
     const m = matchKnownParty(known, label, t.name);
     if (m.kind === "one") resolved.push(`${label} → ${m.party.id}${m.party.isPseudo ? " (pseudo)" : ""}`);
     else if (m.kind === "many") many.push({ label, t, ids: m.parties.map((p) => p.id) });
@@ -461,9 +486,9 @@ function reportPartyIdentity(aggs: ElectionAggregate[], known: KnownParty[], lin
   }
 
   lines.push(`\n## Party identity (spec §3, A4)`);
-  lines.push(`- distinct TCPD labels: ${labels.size}`);
+  lines.push(`- distinct TCPD labels: ${labels.size} (${fileLabels.size} governed by PARTY_RESOLUTIONS.csv, evaluated below)`);
   lines.push(`- resolve to an existing party: ${resolved.length}`);
-  lines.push(`- would be CREATED by the insert stages: ${creates.length} (list below; gate decision 3)`);
+  lines.push(`- would be CREATED by the insert stages: ${creates.length} (bulk-accept verbatim after the collision scan; gate ruling 2)`);
   lines.push(`- AMBIGUOUS (more than one existing party matches): ${many.length}`);
   const indResolved = resolved.find((r) => r.split(" ")[0] === "IND");
   lines.push(
@@ -485,6 +510,41 @@ function reportPartyIdentity(aggs: ElectionAggregate[], known: KnownParty[], lin
   for (const m of many) {
     lines.push(`- AMBIGUOUS party identity: TCPD "${m.label}" matches existing parties ${m.ids.join(", ")} — a human pairs this; the loader will not pick.`);
   }
+
+  // Windowed dispositions (gate ruling 3, 2026-08-30): label + validity
+  // window; any label-year outside every window is HELD, never guessed.
+  lines.push(`\n### Windowed dispositions (PARTY_RESOLUTIONS.csv)`);
+  const labelYears = [...labels.entries()].map(([label, t]) => ({ label, years: [...t.years] }));
+  const chk = checkPartyResolutions(labelYears, known, committed, false);
+  if (!chk.ok) {
+    lines.push(`- PROBLEMS — insert stages refuse until these are fixed:`);
+    for (const p of chk.problems) lines.push(`    - ${p}`);
+  } else {
+    const byLabel = new Map<string, PartyDisposition[]>();
+    for (const d of committed) byLabel.set(d.label, [...(byLabel.get(d.label) ?? []), d]);
+    lines.push(`- ${byLabel.size} labels governed; windows and dispositions:`);
+    for (const [label, ds] of [...byLabel.entries()].sort()) {
+      for (const d of ds) {
+        const w = `${d.fromYear ?? "…"}–${d.toYear ?? "…"}`;
+        lines.push(`    - ${label} [${w}]: ${d.disposition}${d.partyId ? ` → ${d.partyId}` : ""}${d.reason ? ` (${d.reason})` : ""}`);
+      }
+    }
+    if (chk.held.length > 0) {
+      lines.push(`- HELD label-years (no window covers them; never inserted, a human rules):`);
+      for (const h of chk.held) lines.push(`    - ${h.label}: ${h.years.join(", ")}`);
+    } else {
+      lines.push(`- held label-years: none`);
+    }
+  }
+
+  // Collision scan over the bulk-accept creates (gate ruling 2, 2026-08-30).
+  lines.push(`\n### Collision scan on the would-create labels (gate ruling 2)`);
+  const scan = scanPartyCollisions(creates.map((c) => c.label), known);
+  lines.push(`- clear to create verbatim: ${scan.clear.length}`);
+  lines.push(`- HELD, collides with an existing party after stripping case/punctuation: ${scan.heldExisting.length}`);
+  for (const h of scan.heldExisting) lines.push(`    - "${h.label}" ~ ${h.matches.join(", ")}`);
+  lines.push(`- HELD, incoming labels that collapse to the same form: ${scan.heldIncoming.length} group(s)`);
+  for (const g of scan.heldIncoming) lines.push(`    - [${g.form}]: ${g.labels.map((l) => `"${l}"`).join(" vs ")}`);
 }
 
 /** The early-file (D3) sections of the dry-run report: the expected-numbers
@@ -668,19 +728,20 @@ async function dryRun() {
       `- ${early.geSlices.length} slices written: D3_GE_STATE_TOTALS.csv (${art.totalRows} rows) and D3_GE_STATE_SLICES.csv (${art.partyRows} party rows). The national GE rows are their sums; the rollup is reversible from the repository.`,
     );
 
-    // Gate ruling 5 (corrected): every label's disposition is committed data.
-    lines.push(`\n### Party dispositions (PARTY_RESOLUTIONS.csv)`);
+    // Early-file coverage rule: EVERY early label must have a committed
+    // disposition (the windowed evaluation itself lives in the party
+    // identity section, which sees all three datasets).
+    lines.push(`\n### Early-label disposition coverage (PARTY_RESOLUTIONS.csv)`);
     if (existsSync(join(ROOT, "PARTY_RESOLUTIONS.csv"))) {
-      const committed = readPartyResolutions(parseCsv);
-      const labels = [...new Set(early.elections.flatMap((e) => e.parties.map((p) => p.recordedLabel)))];
-      const chk = checkPartyResolutions(labels, allParties, committed);
-      if (chk.ok) {
-        lines.push(`- coherent: ${chk.resolve.size} resolve, ${chk.create.length} create`);
-        for (const d of committed.filter((c) => c.reason)) lines.push(`    - override: ${d.label} -> ${d.disposition}${d.partyId ? ` ${d.partyId}` : ""} (${d.reason})`);
-      } else {
-        lines.push(`- PROBLEMS — the insert stage will refuse until these are fixed:`);
-        for (const p of chk.problems) lines.push(`    - ${p}`);
-      }
+      const committedLabels = new Set(readPartyResolutions(parseCsv).map((c) => c.label));
+      const missing = [...new Set(early.elections.flatMap((e) => e.parties.map((p) => p.recordedLabel)))].filter(
+        (l) => !committedLabels.has(l),
+      );
+      lines.push(
+        missing.length === 0
+          ? `- every early-file label has a committed disposition`
+          : `- MISSING dispositions (insert-early refuses): ${missing.join(", ")}`,
+      );
     } else {
       lines.push(`- file not present; the insert stage refuses without it`);
     }
@@ -690,7 +751,8 @@ async function dryRun() {
       ? { min: Math.min(...allAggs.map((e) => e.year)), max: Math.max(...allAggs.map((e) => e.year)) }
       : null;
   reportReconciliation(recs, lines, coverage);
-  reportPartyIdentity(allAggs, allParties, lines);
+  const committedDispositions = existsSync(join(ROOT, "PARTY_RESOLUTIONS.csv")) ? readPartyResolutions(parseCsv) : [];
+  reportPartyIdentity(allAggs, allParties, committedDispositions, lines);
   await reportStarvedBaseline(lines);
   lines.push(`\n## Gate`);
   lines.push(`Decisions needed before stage 2: (1) disposition of every disagreement above; (2) the A1 ruling — for D3 that is the historical-states block; (3) the would-create party list confirmed and every AMBIGUOUS party identity paired by a human; (4) for D3: turnout storage rule (persons-basis only, recommended) and zero-seat party inclusion (include, recommended); (5) the TCPD-licence/CC BY-SA export composition, before /data ships. See docs/ELECTIONS_INGEST_SPEC.md §5 and §2.8. The verified backup restore precedes any stage-2 insert.`);
@@ -793,26 +855,45 @@ async function insertEarly() {
       fail(`dataset ${D3_DATASET_SLUG} already has provenance rows: this drop is already ingested. Supersession is a designed flow, not a re-run.`);
   }
 
-  // Party dispositions: the committed file, checked against data and matcher.
+  // Party dispositions: the committed windowed file, checked against data
+  // and matcher. The early file requires FULL coverage: every label, every
+  // year, a disposition — a held label-year stops the insert.
   const committed = readPartyResolutions(parseCsv);
   const known: KnownParty[] = await db
     .select({ id: schema.parties.id, name: schema.parties.name, abbreviation: schema.parties.abbreviation, isPseudo: schema.parties.isPseudo })
     .from(schema.parties);
-  const labels = [...new Set(early.elections.flatMap((e) => e.parties.map((p) => p.recordedLabel)))];
-  const check = checkPartyResolutions(labels, known, committed);
+  const labelYearsMap = new Map<string, Set<number>>();
+  for (const e of early.elections) {
+    for (const p of e.parties) {
+      const s = labelYearsMap.get(p.recordedLabel) ?? new Set<number>();
+      s.add(e.year);
+      labelYearsMap.set(p.recordedLabel, s);
+    }
+  }
+  const labelYears = [...labelYearsMap.entries()].map(([label, years]) => ({ label, years: [...years] }));
+  const check = checkPartyResolutions(labelYears, known, committed, true);
   if (!check.ok) fail(`PARTY_RESOLUTIONS.csv problems:\n  - ${check.problems.join("\n  - ")}`);
+  const heldHere = check.held.filter((h) => labelYearsMap.has(h.label));
+  if (heldHere.length > 0)
+    fail(`held label-years in the early data (no window covers them): ${heldHere.map((h) => `${h.label} ${h.years.join(",")}`).join("; ")} — a human rules before anything inserts.`);
 
   // Created-party ids: deterministic slugs, refused on any collision.
   const existingPartyIds = new Set(known.map((p) => p.id));
   const createdIds = new Map<string, string>();
-  for (const label of check.create) {
+  for (const label of check.createLabels) {
     const slug = partySlug(label);
     if (!slug) fail(`party label "${label}" slugs to nothing.`);
     if (existingPartyIds.has(slug)) fail(`party id "${slug}" (for label "${label}") already exists; a human must pick the id.`);
     if ([...createdIds.values()].includes(slug)) fail(`two labels slug to "${slug}"; a human must disambiguate.`);
     createdIds.set(label, slug);
   }
-  const partyIdFor = (label: string): string => check.resolve.get(label) ?? createdIds.get(label)!;
+  const partyIdFor = (label: string, year: number): string => {
+    const d = check.dispositionFor(label, year);
+    if (d.kind === "resolve") return d.partyId;
+    if (d.kind === "create") return createdIds.get(label)!;
+    // Unreachable: the held check above already stopped the run.
+    fail(`"${label}" in ${year} is held; nothing may insert it.`);
+  };
 
   const existingDataset = already;
 
@@ -871,9 +952,9 @@ async function insertEarly() {
       })),
     );
 
-    if (check.create.length > 0) {
+    if (check.createLabels.length > 0) {
       await tx.insert(schema.parties).values(
-        check.create.map((label) => ({
+        check.createLabels.map((label) => ({
           id: createdIds.get(label)!,
           name: label, // verbatim TCPD label; renaming is review's job, with sources
           abbreviation: label,
@@ -923,7 +1004,7 @@ async function insertEarly() {
       await tx.insert(schema.electionResults).values(
         e.parties.map((p) => ({
           electionId,
-          partyId: partyIdFor(p.recordedLabel),
+          partyId: partyIdFor(p.recordedLabel, e.year),
           seatsWon: p.seatsWon,
           // Candidacies, not constituencies: the honest measure in the
           // multi-member era (§2.8).
@@ -962,7 +1043,7 @@ async function insertEarly() {
   lines.push(`\n- elections inserted: ${electionCount} (39 AE + 2 GE)`);
   lines.push(`- election_results inserted: ${resultCount} (zero-seat parties included)`);
   lines.push(`- historical states created: ${histIds.length} (first-class, no successor links, has_geometry=false)`);
-  lines.push(`- parties created: ${check.create.length}; resolved to existing: ${check.resolve.size}`);
+  lines.push(`- parties created: ${check.createLabels.length}; labels resolving to existing parties by window: ${new Set(committed.filter((c) => c.disposition === "resolve").map((c) => c.label)).size}`);
   lines.push(`- provenance rows: ${electionCount}; citations: ${electionCount}; turnout_percent: NULL on all rows (ruling 1)`);
   lines.push(`- ANALYZE run on all touched tables (recordPath amendment)`);
   lines.push(`\n## Starved panels — before/after (§5 success measure)`);

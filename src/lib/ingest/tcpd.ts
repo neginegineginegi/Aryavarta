@@ -120,6 +120,12 @@ export const STATE_MAP: Readonly<Record<string, string>> = {
   Ladakh: "la",
   Lakshadweep: "ld",
   Madhya_Pradesh: "mp",
+  // Gate ruling (2026-08-30): Madras and Mysore attach to the FIRST-CLASS
+  // historical state rows created by the D3 insert — never to tamil_nadu or
+  // karnataka. Their 1962–70s elections were held by entities that no longer
+  // exist, and the rows belong to those entities.
+  Madras: "madras",
+  Mysore: "mysore",
   Maharashtra: "mh",
   Manipur: "mn",
   Meghalaya: "ml",
@@ -657,74 +663,191 @@ export function matchKnownParty(known: KnownParty[], label: string, name: string
 }
 
 // ---------------------------------------------------------------------------
-// Committed party dispositions (gate ruling 5, corrected)
+// Committed party dispositions (gate rulings of 2026-08-28 and 2026-08-30)
 // ---------------------------------------------------------------------------
 //
-// The dry run resolved 6 labels by exact abbreviation, and one of them was an
-// era collision: the 1950s "SP" is the Socialist Party, not the 1992
-// Samajwadi Party the abbreviation matches today. Exact matching is still an
-// identity DECISION, so for the early file every label's disposition lives in
-// a committed file (data/raw/tcpd/PARTY_RESOLUTIONS.csv), reviewed at the
-// gate. This checker verifies the file against the data and the matcher:
-// coverage both ways, resolve targets that exist, and a stated reason
-// wherever a human overrode what the matcher would have done.
+// The SP era collision proved exact matching is still an identity DECISION,
+// so dispositions live in a committed file (data/raw/tcpd/
+// PARTY_RESOLUTIONS.csv), reviewed at the gate. The 2026-08-30 ruling fixed
+// the file's own defect: keyed on label alone it could not say that "SP"
+// means the Socialist Party in 1952 and the Samajwadi Party from 1993, so a
+// disposition now carries a VALIDITY WINDOW (from_year/to_year inclusive,
+// blank = open). A label-year that no window covers is HELD — reported,
+// never guessed, never inserted.
 
 export type PartyDisposition = {
   label: string;
+  /** Inclusive validity window; null = open on that side. */
+  fromYear: number | null;
+  toYear: number | null;
   disposition: "create" | "resolve";
   partyId: string | null; // required for resolve
   reason: string;
 };
 
+export type LabelYears = { label: string; years: number[] };
+
+export type Disposition =
+  | { kind: "resolve"; partyId: string }
+  | { kind: "create" }
+  | { kind: "held" };
+
 export type ResolutionCheck =
-  | { ok: true; resolve: Map<string, string>; create: string[] }
+  | {
+      ok: true;
+      dispositionFor: (label: string, year: number) => Disposition;
+      /** Labels that CREATE for at least one year they appear in. */
+      createLabels: string[];
+      /** Label-years no window covers: the held set, reported in full. */
+      held: LabelYears[];
+    }
   | { ok: false; problems: string[] };
 
+const inWindow = (d: PartyDisposition, year: number) =>
+  (d.fromYear === null || year >= d.fromYear) && (d.toYear === null || year <= d.toYear);
+
+/**
+ * Verify the committed dispositions against the data and the matcher:
+ * windows per label must not overlap, resolve targets must exist, and any
+ * row that departs from what the matcher would do needs a stated reason.
+ * `requireFullCoverage` demands every data label appear in the file (the
+ * early file's rule); without it, absent labels fall through to the
+ * bulk-accept path and only committed rows are validated.
+ */
 export function checkPartyResolutions(
-  labels: string[],
+  labelYears: LabelYears[],
   known: KnownParty[],
   committed: PartyDisposition[],
+  requireFullCoverage: boolean,
 ): ResolutionCheck {
   const problems: string[] = [];
-  const byLabel = new Map<string, PartyDisposition>();
+  const byLabel = new Map<string, PartyDisposition[]>();
   for (const d of committed) {
-    if (byLabel.has(d.label)) problems.push(`"${d.label}" appears twice in PARTY_RESOLUTIONS.csv`);
-    byLabel.set(d.label, d);
+    if (d.fromYear !== null && d.toYear !== null && d.fromYear > d.toYear)
+      problems.push(`"${d.label}": window ${d.fromYear}–${d.toYear} is inverted`);
+    byLabel.set(d.label, [...(byLabel.get(d.label) ?? []), d]);
   }
-  const dataLabels = new Set(labels);
-  for (const l of dataLabels) {
-    if (!byLabel.has(l)) problems.push(`label "${l}" is in the data but has no committed disposition`);
+  for (const [label, ds] of byLabel) {
+    for (let i = 0; i < ds.length; i++) {
+      for (let j = i + 1; j < ds.length; j++) {
+        const a = ds[i], b = ds[j];
+        const aFrom = a.fromYear ?? -Infinity, aTo = a.toYear ?? Infinity;
+        const bFrom = b.fromYear ?? -Infinity, bTo = b.toYear ?? Infinity;
+        if (aFrom <= bTo && bFrom <= aTo)
+          problems.push(`"${label}": windows overlap (${a.fromYear ?? "…"}–${a.toYear ?? "…"} vs ${b.fromYear ?? "…"}–${b.toYear ?? "…"}); one year must never have two dispositions`);
+      }
+    }
+  }
+
+  const dataByLabel = new Map(labelYears.map((l) => [l.label, l.years]));
+  if (requireFullCoverage) {
+    for (const l of dataByLabel.keys()) {
+      if (!byLabel.has(l)) problems.push(`label "${l}" is in the data but has no committed disposition`);
+    }
   }
   for (const d of committed) {
-    if (!dataLabels.has(d.label)) problems.push(`"${d.label}" is committed but not in the data — the file has drifted`);
+    if (!dataByLabel.has(d.label))
+      problems.push(`"${d.label}" is committed but not in the data — the file has drifted`);
     const auto = matchKnownParty(known, d.label, d.label);
     if (d.disposition === "resolve") {
       if (!d.partyId) {
         problems.push(`"${d.label}" says resolve but names no party_id`);
         continue;
       }
-      const target = known.find((p) => p.id === d.partyId);
-      if (!target) {
+      if (!known.some((p) => p.id === d.partyId)) {
         problems.push(`"${d.label}" resolves to "${d.partyId}", which does not exist`);
         continue;
       }
       const agreesWithAuto = auto.kind === "one" && auto.party.id === d.partyId;
       if (!agreesWithAuto && !d.reason)
-        problems.push(`"${d.label}" -> ${d.partyId} is a human pairing the matcher would not make; it needs a stated reason`);
+        problems.push(`"${d.label}" -> ${d.partyId} is a pairing the matcher would not make on its own; it needs a stated reason`);
     } else {
-      if (auto.kind === "one" && !d.reason)
+      // A create whose only match is a party carrying the label VERBATIM as
+      // its name is this disposition's own prior execution (the insert ran),
+      // not an override of the matcher.
+      const isOwnCreation = auto.kind === "one" && auto.party.name === d.label;
+      if (auto.kind === "one" && !isOwnCreation && !d.reason)
         problems.push(`"${d.label}" is set to create although it matches ${auto.party.id}; overriding the matcher needs a stated reason`);
     }
   }
   if (problems.length > 0) return { ok: false, problems };
-  const resolve = new Map<string, string>();
-  const create: string[] = [];
-  for (const l of dataLabels) {
-    const d = byLabel.get(l)!;
-    if (d.disposition === "resolve") resolve.set(l, d.partyId!);
-    else create.push(l);
+
+  const dispositionFor = (label: string, year: number): Disposition => {
+    const row = (byLabel.get(label) ?? []).find((d) => inWindow(d, year));
+    if (!row) return { kind: "held" };
+    return row.disposition === "resolve" ? { kind: "resolve", partyId: row.partyId! } : { kind: "create" };
+  };
+
+  const createLabels: string[] = [];
+  const held: LabelYears[] = [];
+  for (const { label, years } of labelYears) {
+    if (!byLabel.has(label)) continue; // bulk-accept path, not this file's business
+    const heldYears = years.filter((y) => dispositionFor(label, y).kind === "held").sort((a, b) => a - b);
+    if (heldYears.length > 0) held.push({ label, years: heldYears });
+    if (years.some((y) => dispositionFor(label, y).kind === "create")) createLabels.push(label);
   }
-  return { ok: true, resolve, create: create.sort() };
+  return { ok: true, dispositionFor, createLabels: createLabels.sort(), held };
+}
+
+// ---------------------------------------------------------------------------
+// Collision scan for bulk-accepted creates (gate ruling 2, 2026-08-30)
+// ---------------------------------------------------------------------------
+//
+// Per-label review of thousands of would-create labels is not a real
+// control; refusing to merge is. Everything creates verbatim EXCEPT a label
+// that (a) collides with an existing party once case and punctuation are
+// stripped, or (b) normalises to the same form as another incoming label.
+// Both held sets are reported in full and wait for a human.
+
+const collapse = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+export type CollisionScan = {
+  /** Would-create labels colliding with an existing party's name or
+   *  abbreviation under the collapsed form. */
+  heldExisting: Array<{ label: string; matches: string[] }>;
+  /** Groups of incoming labels that collapse to the same form. */
+  heldIncoming: Array<{ form: string; labels: string[] }>;
+  /** Labels clear to create verbatim. */
+  clear: string[];
+};
+
+export function scanPartyCollisions(createLabels: string[], known: KnownParty[]): CollisionScan {
+  const knownByForm = new Map<string, string[]>();
+  for (const p of known) {
+    for (const key of [p.abbreviation, p.name]) {
+      const f = collapse(key ?? "");
+      if (!f) continue;
+      const list = knownByForm.get(f) ?? [];
+      if (!list.includes(p.id)) list.push(p.id);
+      knownByForm.set(f, list);
+    }
+  }
+  const incomingByForm = new Map<string, string[]>();
+  for (const label of createLabels) {
+    const f = collapse(label);
+    incomingByForm.set(f, [...(incomingByForm.get(f) ?? []), label]);
+  }
+
+  const heldExisting: CollisionScan["heldExisting"] = [];
+  const heldIncoming: CollisionScan["heldIncoming"] = [];
+  const heldLabels = new Set<string>();
+  for (const [form, labels] of incomingByForm) {
+    if (labels.length > 1) {
+      heldIncoming.push({ form, labels: [...labels].sort() });
+      for (const l of labels) heldLabels.add(l);
+    }
+    const matches = knownByForm.get(form);
+    if (matches) {
+      for (const l of labels) {
+        heldExisting.push({ label: l, matches });
+        heldLabels.add(l);
+      }
+    }
+  }
+  heldExisting.sort((a, b) => a.label.localeCompare(b.label));
+  heldIncoming.sort((a, b) => a.form.localeCompare(b.form));
+  const clear = createLabels.filter((l) => !heldLabels.has(l)).sort();
+  return { heldExisting, heldIncoming, clear };
 }
 
 // ---------------------------------------------------------------------------

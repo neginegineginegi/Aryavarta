@@ -402,6 +402,16 @@ Three findings change §2:
    anchor year, so December 1984 does not lose to a delayed poll's
    January 1985.
 
+6. **Gate rulings of 2026-08-30** (recorded in docs/GAPS.md): Madras and
+   Mysore map to the first-class `madras`/`mysore` state rows (never across
+   the rename); bulk creates pass a collision scan whose held sets a human
+   rules on; and `PARTY_RESOLUTIONS.csv` now carries VALIDITY WINDOWS
+   (`from_year`/`to_year`, inclusive, blank = open) so one label can mean
+   different parties in different eras — a label-year no window covers is
+   HELD, never guessed, never inserted. The SP windows are proposed and
+   pending approval; stage 2 for D1/D2 is additionally gated on a
+   reconciliation regenerated against production.
+
 No election-year overlap exists between D3's inserted elections (latest
 1960) and D1's coverage (earliest 1961), so no double-insert risk arises
 from holding all three files in one manifest. NULL turnout remains D3-only;
