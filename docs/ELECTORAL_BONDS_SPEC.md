@@ -191,9 +191,11 @@ notes and every rendering surface say "unverified transcription".
 | --- | --- | --- |
 | 0 | Verify drop against MANIFEST (sha256, bytes, header contract) | Any mismatch stops |
 | 1 | Dry run: full report — party-link proposals, collision groups, empty-purchaser breakdown, expired-130, insert preview, graph density before/after | **STOP: user approves the 24 links, the empty-purchaser handling, and the individuals-as-orgs ruling** |
-| 2 | Insert: dataset row, orgs, transactions, provenance, citations, match candidates, two open_questions rows; ANALYZE after | Verified backup restore precedes it; TCPD production reconciliation retains priority; main moves on user say-so |
+| 2 | Insert: dataset row, orgs, transactions, provenance, citations, match candidates, open_questions (each with provenance); ANALYZE after | Verified backup restore (marker file) + --confirm; user-run per docs/PRODUCTION_RUNBOOK.md; TCPD production reconciliation retains priority; main moves on user say-so |
 | 3 | Sample verification vs ECI PDFs (~50 rows, value-weighted) | Closes the "unverified" caveat; until then it stays displayed |
 
-Insert stages exit with the gate message until stage 1's report returns
-approved. The revision queue is never used for this dataset: 20,551 rows
-is not a review queue (bulk-provenance path, like every bulk dataset).
+Stage 2 was authorised and built 2026-09-03 (rulings recorded in
+docs/GAPS.md: the committed legal-form suffix list decides org kind,
+recipient_label stays verbatim, Goa Forward logged as a missing party).
+The revision queue is never used for this dataset: 20,551 rows is not a
+review queue (bulk-provenance path, like every bulk dataset).

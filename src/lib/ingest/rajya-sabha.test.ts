@@ -123,10 +123,20 @@ describe("aggregateRs (spec §5 coherence)", () => {
     expect(out.anomalies.join(" ")).toMatch(/Current \(as of 2022-07-20\) yet End_Date_Actual/);
   });
 
-  it("excludes NOM. from the party-label universe (not a party, §4.2)", () => {
-    const rows = [parsed({ Party: "NOM.", Nominated: "TRUE" }), parsed({ ID: "RS00004", Party: "BJP" })];
+  it("excludes the no-party labels from the party-label universe (§4.2 + 2026-09-03 ruling)", () => {
+    const rows = [
+      parsed({ Party: "NOM.", Nominated: "TRUE" }),
+      parsed({ ID: "RS00004", Party: "BJP" }),
+      // "O" is party-not-recorded: verbatim on the term, party_id null,
+      // never a dispositions-file entry.
+      parsed({ ID: "RS00005", Party: "O" }),
+    ];
     const out = aggregateRs(rows);
     expect(out.partyLabelYears.map((l) => l.label)).toEqual(["BJP"]);
+    expect(out.noPartyRows).toEqual([
+      { label: "NOM.", rows: 1 },
+      { label: "O", rows: 1 },
+    ]);
   });
 
   it("flags duplicate Term_No and name drift within one ID", () => {

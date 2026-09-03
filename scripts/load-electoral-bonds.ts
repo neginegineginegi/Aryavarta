@@ -1,15 +1,18 @@
 /**
- * Electoral bonds loader — stages 0 and 1 of docs/ELECTORAL_BONDS_SPEC.md.
+ * Electoral bonds loader — docs/ELECTORAL_BONDS_SPEC.md.
  *
- *   pnpm tsx scripts/load-electoral-bonds.ts --stage=verify    # stage 0
- *   pnpm tsx scripts/load-electoral-bonds.ts --stage=dry-run   # stage 1 (read-only)
+ *   pnpm tsx scripts/load-electoral-bonds.ts --stage=verify     # stage 0
+ *   pnpm tsx scripts/load-electoral-bonds.ts --stage=dry-run    # stage 1 (read-only)
+ *   pnpm tsx scripts/load-electoral-bonds.ts --stage=insert --confirm
+ *   pnpm tsx scripts/load-electoral-bonds.ts --stage=revert --dataset=eci-electoral-bonds-2019-24 --confirm
  *
- * The insert stage is NOT implemented: the stage-1 gate (party links, the
- * empty-purchaser ruling, individuals-as-orgs) shapes it. Asking for it
- * exits with the gate message.
+ * The insert stage was authorised by the 2026-09-03 gate rulings and is run
+ * BY THE USER from a checkout with production credentials in .env — never in
+ * a sandbox pipeline or at build time. It refuses without a fresh verified
+ * backup (the restore-drill marker) and without --confirm.
  *
  * Everything that interprets a row lives in src/lib/ingest/electoral-bonds.ts,
- * tested. This file reads files, talks to the database read-only, and prints.
+ * tested. This file reads files, talks to the database, and prints.
  */
 import "dotenv/config";
 
@@ -20,12 +23,14 @@ import { join } from "node:path";
 import {
   aggregateBonds,
   checkBondsHeader,
+  classifyOrgKind,
   CRORE,
   parseBondRow,
   purchaserSlug,
   type BondRow,
   type BondsOutcome,
 } from "../src/lib/ingest/electoral-bonds";
+import { dbLabelOf, graphCounts, hasConfirm, panelDiffLines, requireFreshVerifiedBackup, revertDataset, starvedCounts } from "./stage2-common";
 
 const ROOT = process.env.EB_ROOT ?? join(process.cwd(), "data", "raw", "electoral-bonds");
 
@@ -108,13 +113,21 @@ function readPartyLinks(parseCsv: (t: string) => Record<string, string>[]): Part
   }));
 }
 
-const cr = (v: number) => `₹${(v / CRORE).toLocaleString("en-IN", { maximumFractionDigits: 2 })} cr`;
+/** The committed legal-form suffix list (2026-09-03 ruling: the list is
+ *  data, not code). classifyOrgKind consumes it verbatim. */
+function readSuffixes(parseCsv: (t: string) => Record<string, string>[]): string[] {
+  const path = join(ROOT, "LEGAL_FORM_SUFFIXES.csv");
+  if (!existsSync(path))
+    fail("LEGAL_FORM_SUFFIXES.csv is missing: org kinds come only from the committed suffix list (2026-09-03 ruling), never from a pattern in code.");
+  const suffixes = parseCsv(readFileSync(path, "utf8")).map((r) => (r.suffix ?? "").trim()).filter((s) => s !== "");
+  if (suffixes.length === 0) fail("LEGAL_FORM_SUFFIXES.csv carries no suffixes.");
+  return suffixes;
+}
 
-async function dryRun() {
-  const manifest = await verify();
-  console.log(`[load-electoral-bonds] stage 1 — dry run (read-only)`);
-  const { parseCsv } = await import("../src/lib/csv");
-
+function readPayload(
+  manifest: ManifestRow[],
+  parseCsv: (t: string) => Record<string, string>[],
+): { rawCount: number; rows: BondRow[]; refused: Record<string, number>; out: BondsOutcome } {
   const payload = manifest.find((m) => m.kind === "eb_matched")!;
   const raw = parseCsv(readFileSync(join(ROOT, payload.file), "utf8"));
   const refused: Record<string, number> = {};
@@ -127,7 +140,17 @@ async function dryRun() {
     }
     rows.push(p);
   }
-  const out = aggregateBonds(rows);
+  return { rawCount: raw.length, rows, refused, out: aggregateBonds(rows) };
+}
+
+const cr = (v: number) => `₹${(v / CRORE).toLocaleString("en-IN", { maximumFractionDigits: 2 })} cr`;
+
+async function dryRun() {
+  const manifest = await verify();
+  console.log(`[load-electoral-bonds] stage 1 — dry run (read-only)`);
+  const { parseCsv } = await import("../src/lib/csv");
+
+  const { rawCount, rows, refused, out } = readPayload(manifest, parseCsv);
 
   // Cross-check row counts against the held files (spec §5) without parsing
   // them as data: a straight line count is a shape check, not an ingest.
@@ -184,7 +207,7 @@ async function dryRun() {
   lines.push(`Every row would carry evidence_status=documented — never verified: nobody has compared a row to an ECI original (stage 3 is that check). The second transcription corroborates row counts but shares the same lineage (§24: one evidence line, not two).`);
 
   lines.push(`\n## Shape`);
-  lines.push(`- payload rows: ${raw.length}; parsed: ${rows.length}`);
+  lines.push(`- payload rows: ${rawCount}; parsed: ${rows.length}`);
   for (const [reason, cnt] of Object.entries(refused)) lines.push(`- unparseable rows — ${reason}: ${cnt}`);
   lines.push(`- matched purchaser→party rows: ${out.matchedRows}`);
   lines.push(`- expired, never-encashed purchases (no recipient exists; NOT transactions; §2.3): ${out.expiredRows}`);
@@ -236,7 +259,7 @@ async function dryRun() {
     `${out.likelyIndividuals.count} of ${out.purchasers.length} purchaser names carry no corporate marker (heuristic for COUNTING only, e.g. ${out.likelyIndividuals.samples.slice(0, 4).join("; ")}). The proposal is ONE orgs row per verbatim name with kind='other' for all purchasers, because splitting people from companies by name pattern is a guess. The gate may instead rule that a human classifies the ${out.likelyIndividuals.count} into people rows; the loader will not.`,
   );
 
-  lines.push(`\n## Insert preview (stage 2, unbuilt until this gate returns approved)`);
+  lines.push(`\n## Insert preview (stage 2 — built 2026-09-03; runs only via docs/PRODUCTION_RUNBOOK.md with the restore-drill marker and --confirm)`);
   lines.push(`- datasets: 1 (slug eci-electoral-bonds-2019-24; ECI as source, transcription as intermediary)`);
   lines.push(`- orgs created (verbatim purchasers): ${out.purchasers.length}`);
   lines.push(`- funding_transactions: ${insertableTx} (${cr(insertableValue)}), funding_type=donation, evidence_status=documented, occurred_on=encashment date`);
@@ -263,17 +286,273 @@ async function dryRun() {
   console.log(`[load-electoral-bonds] report written to ${outPath}`);
 }
 
+const DATASET_SLUG = "eci-electoral-bonds-2019-24";
+const ECI_URL = "https://www.eci.gov.in/disclosure-of-electoral-bonds";
+const TRANSCRIPTION = "community transcription saisantoshv3/electoral_bonds @ aa8b9e02, cloned 2026-09-03";
+
+/**
+ * Stage 2 — the insert, authorised by the 2026-09-03 gate rulings:
+ * 23 approved party links (Goa Forward stays unlinked, its rows held out);
+ * the 1,680 unattributed rows NOT loaded, with the per-party undercount as
+ * open questions; org kind from the committed suffix list only, else
+ * `unclassified`; the ECI account-holder label kept verbatim on every
+ * transaction beside the resolved party_id; expired-only purchasers create
+ * no org; collision groups become entity_match_candidates, never merges.
+ */
+async function insert() {
+  const manifest = await verify();
+  if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
+  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
+  if (!hasConfirm())
+    fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run with --confirm.");
+
+  const { parseCsv } = await import("../src/lib/csv");
+  const { rows, refused, out } = readPayload(manifest, parseCsv);
+  const suffixes = readSuffixes(parseCsv);
+
+  // The drop must measure exactly as the gate-approved stage-1 run did.
+  if (Object.keys(refused).length > 0) fail("the approved run had zero unparseable rows; this run does not.");
+  if (out.matchedRows !== 20421) fail(`matched rows ${out.matchedRows}, approved run measured 20421.`);
+  if (out.expiredRows !== 130) fail(`expired rows ${out.expiredRows}, approved run measured 130.`);
+  if (out.purchasers.length !== 1294) fail(`purchasers ${out.purchasers.length}, approved run measured 1294.`);
+  if (out.parties.length !== 24) fail(`recipient names ${out.parties.length}, approved run measured 24.`);
+  if (out.emptyPurchaser.rows !== 1680) fail(`unattributed rows ${out.emptyPurchaser.rows}, approved run measured 1680.`);
+  if (out.duplicateBondIds !== 0) fail(`duplicate bond identities ${out.duplicateBondIds}, approved run measured 0.`);
+  if (out.anomalies.length > 0) fail(`the approved run had zero anomalies; this run has ${out.anomalies.length}:\n  - ${out.anomalies.slice(0, 10).join("\n  - ")}`);
+
+  const dbLabel = dbLabelOf(process.env.DATABASE_URL);
+  const { db } = await import("../src/lib/db");
+  const schema = await import("../src/lib/db/schema");
+  const { eq, sql } = await import("drizzle-orm");
+  const { v7: uuidv7 } = await import("uuid");
+  const today = new Date().toISOString().slice(0, 10);
+
+  const existing = await db.select({ id: schema.datasets.id }).from(schema.datasets).where(eq(schema.datasets.slug, DATASET_SLUG));
+  if (existing.length > 0) fail(`dataset ${DATASET_SLUG} already exists: this drop is already ingested (revert first if that is intended).`);
+
+  // Party links: every recipient name committed and human-approved (§3.4).
+  const partyRows = await db.select({ id: schema.parties.id }).from(schema.parties);
+  const partyIds = new Set(partyRows.map((p) => p.id));
+  const links = readPartyLinks(parseCsv);
+  const linkBy = new Map(links.map((l) => [l.recipientName, l]));
+  for (const l of links) {
+    if (l.partyId && !partyIds.has(l.partyId)) fail(`"${l.recipientName}" links to "${l.partyId}", which does not exist in this database.`);
+    if (!out.parties.some((p) => p.name === l.recipientName)) fail(`"${l.recipientName}" is committed but not in the data — drift.`);
+  }
+  for (const p of out.parties) if (!linkBy.has(p.name)) fail(`recipient "${p.name}" has no committed PARTY_LINKS.csv row.`);
+  const linked = out.parties.filter((p) => linkBy.get(p.name)!.partyId);
+  if (linked.length !== 23) fail(`linked recipients ${linked.length}, the gate approved exactly 23.`);
+
+  const insertable = rows.filter((r) => r.partyName !== "" && r.purchaserName !== "" && linkBy.get(r.partyName)?.partyId);
+  if (insertable.length !== 18724) fail(`insertable transactions ${insertable.length}, approved run measured 18724.`);
+  const heldUnlinked = rows.filter((r) => r.partyName !== "" && r.purchaserName !== "" && linkBy.get(r.partyName)?.partyId == null).length;
+
+  const before = { graph: await graphCounts(), panels: await starvedCounts() };
+  console.log(`[load-electoral-bonds] stage 2 — inserting into ${dbLabel}`);
+
+  const datasetId = uuidv7();
+  const kindCount = { company: 0, unclassified: 0 };
+  let candidatePairs = 0;
+  let openQuestions = 0;
+
+  await db.transaction(async (tx) => {
+    await tx.insert(schema.datasets).values({
+      id: datasetId,
+      slug: DATASET_SLUG,
+      name: "ECI electoral bonds disclosure, 2019–2024 (community transcription)",
+      publisher: "Election Commission of India",
+      version: "transcription commit aa8b9e02 (2024-05-14)",
+      licence: "Public record: ECI disclosure ordered by the Supreme Court of India (judgment of 2024-02-15); transcription intermediary carries no additional licence terms on the data",
+      licenceUrl: null,
+      retrievedOn: "2026-09-03",
+      upstreamUrl: ECI_URL,
+      curator: "ai@cdswindia.org",
+      notes:
+        "We hold a COMMUNITY TRANSCRIPTION of the ECI PDFs, not the primary source; every row is evidence_status=documented, never verified, until the stage-3 sample check against ECI originals (docs/ELECTORAL_BONDS_SPEC.md). " +
+        "The 1,680 rows with an empty purchaser field (₹623 crore) are NOT loaded — the schema requires a donor, and fabricating one was refused; per-party undercounts are recorded as open questions (2026-09-03 ruling). " +
+        "The 130 expired never-encashed purchases are not transactions and are not loaded; purchasers appearing only on expired rows create no org. " +
+        "recipient_label keeps the ECI account-holder form verbatim beside the resolved party_id on every transaction. " +
+        "org kind comes only from the committed legal-form suffix list (data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv) — company where the name states it, else unclassified; no pattern inference. " +
+        "Same-collapsed-form purchaser names are created verbatim with entity_match_candidates, never merged.",
+    });
+
+    const srcExisting = await tx.select({ id: schema.sources.id }).from(schema.sources).where(eq(schema.sources.url, ECI_URL));
+    const sourceId = srcExisting[0]?.id ?? uuidv7();
+    if (!srcExisting[0]) {
+      await tx.insert(schema.sources).values({
+        id: sourceId,
+        title: "Disclosure of Electoral Bonds (Supreme Court–ordered), Election Commission of India",
+        url: ECI_URL,
+        publisher: "Election Commission of India",
+        publishedOn: "2024-03-21",
+        accessedOn: null, // we hold the transcription, not a fetch of this page; the citation notes say so
+        kind: "eci_report",
+        isOfficial: true,
+        isPrimary: true,
+      });
+    }
+
+    // Orgs: one per verbatim purchaser name on MATCHED rows (expired-only
+    // names create nothing). Slug collisions get -2/-3 in sorted order.
+    const usedSlugs = new Set((await tx.select({ slug: schema.orgs.slug }).from(schema.orgs)).map((r) => r.slug));
+    const orgIdByName = new Map<string, string>();
+    const orgRows: Array<typeof schema.orgs.$inferInsert> = [];
+    for (const p of [...out.purchasers].sort((a, b) => a.name.localeCompare(b.name))) {
+      const base = purchaserSlug(p.name);
+      if (!base) fail(`purchaser "${p.name}" slugs to nothing.`);
+      let slug = base;
+      let n = 1;
+      while (usedSlugs.has(slug)) {
+        n++;
+        slug = `${base}-${n}`;
+      }
+      usedSlugs.add(slug);
+      const id = uuidv7();
+      orgIdByName.set(p.name, id);
+      const kind = classifyOrgKind(p.name, suffixes);
+      kindCount[kind]++;
+      orgRows.push({ id, slug, name: p.name, kind });
+    }
+    for (let i = 0; i < orgRows.length; i += 500) await tx.insert(schema.orgs).values(orgRows.slice(i, i + 500));
+
+    const orgProv = [...orgIdByName.entries()].map(([name, id]) => ({
+      subjectType: "org" as const,
+      subjectId: id,
+      datasetId,
+      upstreamId: `purchaser:${name}`,
+      ingestedOn: today,
+    }));
+    for (let i = 0; i < orgProv.length; i += 500) await tx.insert(schema.recordProvenance).values(orgProv.slice(i, i + 500));
+    const orgCites = [...orgIdByName.entries()].map(([name, id]) => ({
+      subjectType: "org" as const,
+      subjectId: id,
+      sourceId,
+      note: `Purchaser name verbatim from the matched disclosure file; via ${TRANSCRIPTION}; not yet compared to an ECI original (stage 3).`,
+    }));
+    for (let i = 0; i < orgCites.length; i += 500) await tx.insert(schema.citations).values(orgCites.slice(i, i + 500));
+
+    // Collision groups → match candidates, tagged for reversal (§4).
+    const candidateRows: Array<typeof schema.entityMatchCandidates.$inferInsert> = [];
+    for (const g of out.collisionGroups) {
+      for (let i = 0; i < g.names.length; i++)
+        for (let j = i + 1; j < g.names.length; j++)
+          candidateRows.push({
+            id: uuidv7(),
+            entityType: "org",
+            aId: orgIdByName.get(g.names[i])!,
+            bId: orgIdByName.get(g.names[j])!,
+            status: "possible",
+            rationale: `same collapsed form "${g.form}" among bond purchasers; created verbatim per the no-merge rule, paired only by a human [dataset:${DATASET_SLUG}]`,
+          });
+    }
+    candidatePairs = candidateRows.length;
+    if (candidateRows.length > 0) await tx.insert(schema.entityMatchCandidates).values(candidateRows);
+
+    // Transactions: donation, INR, occurred_on = encashment date, the ECI
+    // account-holder label verbatim beside the resolved party (the ruling).
+    const txRows: Array<typeof schema.fundingTransactions.$inferInsert> = [];
+    const txProv: Array<typeof schema.recordProvenance.$inferInsert> = [];
+    const txCites: Array<typeof schema.citations.$inferInsert> = [];
+    for (const r of insertable) {
+      const id = uuidv7();
+      const bond = `${r.prefix}${r.bondNumber}`;
+      txRows.push({
+        id,
+        donorType: "org",
+        donorId: orgIdByName.get(r.purchaserName)!,
+        recipientType: "party",
+        recipientId: linkBy.get(r.partyName)!.partyId!,
+        recipientLabel: r.partyName,
+        amount: r.amount === null ? null : String(r.amount),
+        currency: "INR",
+        occurredOn: r.encashedOn,
+        fundingType: "donation",
+        evidenceStatus: "documented",
+        notes: `Electoral bond ${bond}, purchased ${r.purchasedOn ?? "(date not recorded)"}, encashed ${r.encashedOn ?? "(date not recorded)"}.`,
+        retrievedOn: "2026-09-03",
+      });
+      txProv.push({ subjectType: "funding_transaction", subjectId: id, datasetId, upstreamId: `bond:${bond}|urn:${r.urn}`, ingestedOn: today });
+      txCites.push({
+        subjectType: "funding_transaction",
+        subjectId: id,
+        sourceId,
+        note: `Bond ${bond}; via ${TRANSCRIPTION}; documented, not verified — no row yet compared to the ECI original (stage 3).`,
+      });
+    }
+    for (let i = 0; i < txRows.length; i += 500) await tx.insert(schema.fundingTransactions).values(txRows.slice(i, i + 500));
+    for (let i = 0; i < txProv.length; i += 500) await tx.insert(schema.recordProvenance).values(txProv.slice(i, i + 500));
+    for (let i = 0; i < txCites.length; i += 500) await tx.insert(schema.citations).values(txCites.slice(i, i + 500));
+
+    // Open questions: the per-party undercount the defect-1 non-load causes
+    // (2026-09-03 ruling), and the not-yet-done stage-3 verification.
+    const oqProvenance = async (id: string, upstreamId: string) =>
+      tx.insert(schema.recordProvenance).values({ subjectType: "open_question", subjectId: id, datasetId, upstreamId, ingestedOn: today });
+    for (const e of out.emptyPurchaser.byParty) {
+      const pid = linkBy.get(e.name)?.partyId;
+      if (!pid) continue; // unlinked recipients hold ALL their rows out; the dataset notes cover them
+      const oqId = uuidv7();
+      await tx.insert(schema.openQuestions).values({
+        id: oqId,
+        subjectType: "party",
+        subjectId: pid,
+        question: `The ECI electoral-bond disclosure records ${e.rows} encashment(s) worth ${cr(e.value)} for "${e.name}" whose purchaser field is empty in the transcription; they are not loaded (every transaction needs a donor, and fabricating one was refused), so this party's bond receipts here UNDERCOUNT the ECI record by exactly that amount.`,
+        whyItMatters: "A reader summing this party's bond receipts gets less than the public record shows; stating the exact gap is what keeps the undercount a documented fact instead of a silent error.",
+        whatWouldAnswerIt: "A corrected transcription, or the primary ECI/SBI record, naming the purchasers on these rows — they would then load with real donors.",
+      });
+      await oqProvenance(oqId, `open-question:undercount:${e.name}`);
+      openQuestions++;
+    }
+    const stage3OqId = uuidv7();
+    await tx.insert(schema.openQuestions).values({
+      id: stage3OqId,
+      subjectType: "dataset",
+      subjectId: datasetId,
+      question: `No row of this dataset has been compared to an ECI original: the payload is a ${TRANSCRIPTION}. The stage-3 value-weighted sample check (~50 rows against the ECI PDFs, docs/ELECTORAL_BONDS_SPEC.md) has not happened.`,
+      whyItMatters: "Until it does, every row's evidence_status stays 'documented', never 'verified', and anything displaying these figures must be able to say so.",
+      whatWouldAnswerIt: "Performing the stage-3 sample verification and recording its result on the dataset.",
+    });
+    await oqProvenance(stage3OqId, "open-question:stage3-verification");
+    openQuestions++;
+  });
+
+  for (const t of ["orgs", "funding_transactions", "datasets", "sources", "citations", "record_provenance", "entity_match_candidates", "open_questions"]) {
+    await db.execute(sql.raw(`ANALYZE ${t}`));
+  }
+  const after = { graph: await graphCounts(), panels: await starvedCounts() };
+
+  const lines: string[] = [];
+  lines.push(`# Electoral bonds — stage 2 insert report`);
+  lines.push(`\nGenerated ${today} against database ${dbLabel}. Dataset slug: ${DATASET_SLUG}.`);
+  lines.push(`Reversible in one command: pnpm tsx scripts/load-electoral-bonds.ts --stage=revert --dataset=${DATASET_SLUG} --confirm`);
+  lines.push(`\n- orgs created (verbatim purchaser names, matched rows only): ${out.purchasers.length}`);
+  lines.push(`- org kind (committed suffix list only): company ${kindCount.company}, unclassified ${kindCount.unclassified}`);
+  lines.push(`- funding_transactions inserted: ${insertable.length} (${cr(insertable.reduce((s, r) => s + (r.amount ?? 0), 0))}); recipient_label verbatim on every row`);
+  lines.push(`- held out, exactly as ruled: ${out.emptyPurchaser.rows} unattributed rows (${cr(out.emptyPurchaser.value)}), ${heldUnlinked} rows of the unlinked Goa Forward Party, ${out.expiredRows} expired purchases`);
+  lines.push(`- entity_match_candidates: ${candidatePairs} pairs from ${out.collisionGroups.length} collision groups`);
+  lines.push(`- open_questions: ${openQuestions} (per-party undercounts + the stage-3 verification)`);
+  lines.push(`\n## Funding graph — before/after`);
+  lines.push(...panelDiffLines(before.graph, after.graph));
+  lines.push(`\n## Starved panels — before/after (unchanged is expected: bonds feed the funding graph, not the election panels)`);
+  lines.push(...panelDiffLines(before.panels, after.panels));
+  const report = lines.join("\n");
+  console.log("\n" + report + "\n");
+  writeFileSync(join(ROOT, "insert-report.md"), report);
+  console.log(`[load-electoral-bonds] report written to ${join(ROOT, "insert-report.md")}`);
+}
+
 async function main() {
   const stage = process.argv.find((a) => a.startsWith("--stage="))?.slice(8);
   if (stage === "verify") return void (await verify());
   if (stage === "dry-run") return void (await dryRun());
-  if (stage === "insert") {
-    console.error(
-      `[load-electoral-bonds] GATED: the insert stage is built only after the stage-1 report returns approved (party links, defect-1 ruling, individuals-as-orgs). See docs/ELECTORAL_BONDS_SPEC.md §7.`,
-    );
-    process.exit(2);
+  if (stage === "insert") return void (await insert());
+  if (stage === "revert") {
+    const slug = process.argv.find((a) => a.startsWith("--dataset="))?.slice(10);
+    if (!slug) fail("revert needs --dataset=<slug>.");
+    if (!hasConfirm()) fail("revert deletes rows; it runs only with an explicit --confirm.");
+    for (const line of await revertDataset(slug, fail)) console.log(`  ${line}`);
+    return;
   }
-  console.error("usage: pnpm tsx scripts/load-electoral-bonds.ts --stage=verify|dry-run");
+  console.error("usage: pnpm tsx scripts/load-electoral-bonds.ts --stage=verify|dry-run|insert|revert --dataset=<slug> [--confirm]");
   process.exit(2);
 }
 

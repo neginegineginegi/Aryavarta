@@ -6,9 +6,11 @@ term-rows, 2,412 members under a stable publisher-assigned ID. Fills
 inventory gap #2 (the upper house was absent entirely).
 
 **Sequencing, binding:** this front queues behind the electoral-bonds gate
-and the TCPD production reconciliation. Stages 0–1 run read-only; the
-insert stage is not built, and no fourth front opens before those two
-close.
+and the TCPD production reconciliation, and no fourth front opens before
+those two close. Stages 0–1 run read-only. The insert stage was authorised
+and built 2026-09-03 (rulings recorded in docs/GAPS.md); it runs only by
+the user, per docs/PRODUCTION_RUNBOOK.md, behind the verified-restore
+marker and --confirm.
 
 ## 1. Acquisition and provenance
 
@@ -150,5 +152,5 @@ work, not invented now.
 | --- | --- | --- |
 | 0 | Verify drop (sha256, bytes, BOM-tolerant header contract, allowlist present) | Mismatch stops |
 | 1 | Dry run: party mappings, state links, person-match candidates, the exact allowlist, era anomalies, internal coherence | **STOP: user approves all four lists** |
-| 2 | Insert (unbuilt; queues behind the electoral-bonds gate AND the TCPD production reconciliation) | Fresh verified restore drill; option (a) artifact for any export |
+| 2 | Insert (built 2026-09-03; user-run per docs/PRODUCTION_RUNBOOK.md, ordered before bonds and TCPD) | Fresh verified restore drill (marker file) + --confirm; option (a) artifact for any export |
 | 3 | Cross-check against Rajya Sabha official lists; extend coverage past 2022-07-20 only with a new dated drop | — |

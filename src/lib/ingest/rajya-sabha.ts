@@ -137,14 +137,24 @@ export function parseRsRow(input: Record<string, string>): RsRow | { refused: st
 
 export type RsMember = { tcpdId: string; name: string; terms: RsRow[] };
 
+/** Party labels that state an ABSENCE, not a party (§4.2 + the 2026-09-03
+ *  ruling): "NOM." marks a nominated member, "O" marks party-not-recorded.
+ *  Both are kept verbatim on rs_terms with party_id null; neither reaches
+ *  the dispositions file, which must never be made to pretend an absence is
+ *  a party. */
+export const RS_NO_PARTY_LABELS = ["NOM.", "O"] as const;
+
 export type RsOutcome = {
   termRows: number;
   members: RsMember[];
   multiTermMembers: number;
   maxTerms: number;
   /** Party label -> start-date years, for the windowed dispositions check.
-   *  NOM. is excluded here by the §4.2 rule (not a party). */
+   *  RS_NO_PARTY_LABELS are excluded here (not parties). */
   partyLabelYears: Array<{ label: string; years: number[] }>;
+  /** How many rows each no-party label covers, so the report states what
+   *  the exclusion held out. */
+  noPartyRows: Array<{ label: string; rows: number }>;
   stateTallies: Array<{ label: string; rows: number }>;
   reasons: Array<{ value: string; rows: number }>;
   anomalies: string[];
@@ -172,11 +182,15 @@ export function aggregateRs(rows: RsRow[]): RsOutcome {
   }
 
   const partyYears = new Map<string, Set<number>>();
+  const noPartyBy = new Map<string, number>();
   const stateBy = new Map<string, number>();
   const reasonBy = new Map<string, number>();
+  const noParty = new Set<string>(RS_NO_PARTY_LABELS);
   for (const r of rows) {
-    if (r.partyLabel === "NOM.") {
-      if (!r.nominated) anomalies.push(`${r.tcpdId}: Party "NOM." on a row with Nominated=FALSE`);
+    if (r.partyLabel === "NOM." && !r.nominated)
+      anomalies.push(`${r.tcpdId}: Party "NOM." on a row with Nominated=FALSE`);
+    if (noParty.has(r.partyLabel)) {
+      noPartyBy.set(r.partyLabel, (noPartyBy.get(r.partyLabel) ?? 0) + 1);
     } else if (r.partyLabel !== "") {
       const s = partyYears.get(r.partyLabel) ?? new Set<number>();
       s.add(Number(r.startDate.slice(0, 4)));
@@ -195,6 +209,7 @@ export function aggregateRs(rows: RsRow[]): RsOutcome {
     multiTermMembers: members.filter((m) => m.terms.length > 1).length,
     maxTerms: members.length === 0 ? 0 : Math.max(...members.map((m) => m.terms.length)),
     partyLabelYears: [...partyYears.entries()].map(([label, ys]) => ({ label, years: [...ys].sort((a, b) => a - b) })),
+    noPartyRows: [...noPartyBy.entries()].map(([label, rows2]) => ({ label, rows: rows2 })).sort((a, b) => b.rows - a.rows),
     stateTallies: [...stateBy.entries()].map(([label, rows2]) => ({ label, rows: rows2 })).sort((a, b) => b.rows - a.rows),
     reasons: [...reasonBy.entries()].map(([value, rows2]) => ({ value, rows: rows2 })).sort((a, b) => b.rows - a.rows),
     anomalies,

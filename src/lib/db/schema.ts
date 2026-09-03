@@ -223,6 +223,17 @@ export const citationSubjectEnum = pgEnum("citation_subject", [
   "legal_case",
   "outcome",
   "entity_alias",
+  // 2026-09-03: bulk ingests create party and state reference rows and the
+  // Rajya Sabha spine; provenance must reach them or reversal-by-dataset
+  // cannot (docs/PRODUCTION_RUNBOOK.md).
+  "party",
+  "state",
+  "rs_member",
+  "rs_term",
+  // An open question a bulk ingest records is that dataset's row like any
+  // other: provenance must reach it or reversal-by-dataset leaves orphaned
+  // questions behind (found by the stage-2 revert smoke test, 2026-09-03).
+  "open_question",
 ]);
 
 // What kind of artefact a source is. Factual classification, not a quality
@@ -999,6 +1010,9 @@ export const entityRefEnum = pgEnum("entity_ref", [
   "legal_case",
   "publication",
   "outcome",
+  // 2026-09-03: an open question can be about a dataset as a whole (e.g.
+  // the electoral-bonds sample verification that has not happened).
+  "dataset",
 ]);
 
 // One table for every institutional body. Kind is an attribute, not a table,
@@ -1020,6 +1034,10 @@ export const orgKindEnum = pgEnum("org_kind", [
   "religious",
   "professional_body",
   "other",
+  // 2026-09-03 gate ruling (electoral bonds): kind records only what the
+  // name states. A committed legal-form suffix makes it a company;
+  // everything else is unclassified — no pattern inference.
+  "unclassified",
 ]);
 
 /**
@@ -1324,6 +1342,10 @@ export const fundingTransactions = pgTable(
     donorId: entityRefId("donor_id").notNull(),
     recipientType: entityRefEnum("recipient_type").notNull(),
     recipientId: entityRefId("recipient_id").notNull(),
+    /** The recipient exactly as the source wrote it (e.g. the ECI
+     *  account-holder form), kept verbatim beside the resolved id
+     *  (2026-09-03 gate ruling). */
+    recipientLabel: text("recipient_label"),
     amount: numeric("amount", { precision: 20, scale: 2 }),
     currency: text("currency"), // ISO 4217, as the source states it
     financialYear: text("financial_year"), // '2022-23'
@@ -1697,6 +1719,66 @@ export const verifications = pgTable(
 );
 
 // "What we don't know", as data rather than as a rendering of missing joins.
+// ---------------------------------------------------------------------------
+// Rajya Sabha (docs/RAJYA_SABHA_SPEC.md §4.1, gate-approved 2026-09-03).
+//
+// Identity is the publisher's stable TCPD ID, never the member name. The
+// ingest reads a binding 13-column allowlist; none of the file's PII columns
+// can reach these tables (they are mechanically unreachable in the parser).
+// ---------------------------------------------------------------------------
+
+export const rsMembers = pgTable(
+  "rs_members",
+  {
+    id: uuid("id").primaryKey(),
+    /** TCPD's stable person id (RS00001 …): the external identifier that IS
+     *  this member's identity across terms. */
+    tcpdRsId: text("tcpd_rs_id").notNull().unique(),
+    /** Verbatim, honorifics and ordering as published ("Singh, Dr. Manmohan"). */
+    memberName: text("member_name").notNull(),
+    /** TCPD's own derived field, attributed as theirs — not a Who's-Who fact. */
+    genderTcpd: text("gender_tcpd", { enum: ["M", "F"] }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+);
+
+export const rsTerms = pgTable(
+  "rs_terms",
+  {
+    id: uuid("id").primaryKey(),
+    memberId: uuid("member_id")
+      .notNull()
+      .references(() => rsMembers.id, { onDelete: "cascade" }),
+    /** Null for nominated members and for seats not resolvable to a state
+     *  row; the verbatim label below always survives. */
+    stateId: text("state_id").references(() => states.id),
+    stateLabel: text("state_label").notNull(),
+    /** The party exactly as the file labels it; party_id resolves through
+     *  the committed dispositions and stays null where nothing resolves
+     *  (NOM., O) — an unresolved label loses nothing. */
+    partyLabel: text("party_label").notNull(),
+    partyId: text("party_id").references(() => parties.id),
+    startDate: date("start_date").notNull(),
+    /** Scheduled end — a fact in its own right, not a lesser one. */
+    endDateTerm: date("end_date_term").notNull(),
+    /** When the seat was actually vacated; null where the file records none. */
+    endDateActual: date("end_date_actual"),
+    reasonOfVacation: text("reason_of_vacation"),
+    nominated: boolean("nominated").notNull(),
+    termNo: integer("term_no").notNull(),
+    /** "Current"/"Former" as of snapshot_on ONLY — never present tense. */
+    typeSnapshot: text("type_snapshot", { enum: ["Current", "Former"] }).notNull(),
+    snapshotOn: date("snapshot_on").notNull(),
+    sourceNote: text("source_note"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("rs_terms_member_idx").on(t.memberId),
+    index("rs_terms_state_idx").on(t.stateId, t.startDate),
+    index("rs_terms_party_idx").on(t.partyId),
+  ],
+);
+
 export const openQuestions = pgTable(
   "open_questions",
   {

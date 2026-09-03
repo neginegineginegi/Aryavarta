@@ -1,0 +1,50 @@
+label,state_id,evidence
+Andhra Pradesh,ap,exact name
+Arunachal Pradesh,ar,exact name
+Assam,as,exact name
+Bihar,br,exact name
+Chhattisgarh,ct,exact name
+Delhi,dl,exact name
+National Capital Territory of Delhi,dl,the NCT's full legal name for the same entity
+Goa,ga,exact name
+Gujarat,gj,exact name
+Haryana,hr,exact name
+Himachal Pradesh,hp,exact name
+Jammu & Kashmir,jk,exact name
+Jharkhand,jh,exact name
+Karnataka,ka,exact name
+Kerala,kl,exact name
+Madhya Pradesh,mp,exact name
+Maharashtra,mh,exact name
+Manipur,mn,exact name
+Meghalaya,ml,exact name
+Mizoram,mz,exact name
+Nagaland,nl,exact name
+Odisha,or,exact name
+Pondicherry,py,pre-2006 name of Puducherry
+Puducherry,py,exact name
+Punjab,pb,exact name
+Rajasthan,rj,exact name
+Sikkim,sk,exact name
+Tamil Nadu,tn,exact name
+Telangana,tg,exact name
+Tripura,tr,exact name
+Uttar Pradesh,up,exact name
+Uttarakhand,ut,exact name
+West Bengal,wb,exact name
+Bhopal,bhopal,first-class historical row (D3 ruling 4)
+Bombay,bombay,first-class historical row (D3 ruling 4)
+Hyderabad,hyderabad,first-class historical row (D3 ruling 4)
+Madhya Bharat,madhya-bharat,first-class historical row (D3 ruling 4); RS spelling uses spaces
+Madras,madras,first-class historical row (D3 ruling 4)
+Mysore,mysore,first-class historical row (D3 ruling 4)
+Patiala and East Punjab States Union,pepsu,first-class historical row (D3 ruling 4); RS spells the name out
+Saurashtra,saurashtra,first-class historical row (D3 ruling 4)
+Travancore Cochin,travancore-cochin,first-class historical row (D3 ruling 4); RS omits the hyphen
+Vindhya Pradesh,vindhya-pradesh,first-class historical row (D3 ruling 4); RS spelling uses spaces
+Nominated,,"NOT A STATE: nominated members; state stays null and the nominated flag carries the fact (spec §4.2)"
+Ajmer and Coorg,ajmer-and-coorg,"first-class composite historical row created by the RS ruling of 2026-09-03; no successor links; distinct from the ajmer and coorg rows"
+Bilaspur and Himachal Pradesh,bilaspur-and-himachal-pradesh,"first-class composite historical row created by the RS ruling of 2026-09-03; no successor links"
+Manipur and Tripura,manipur-and-tripura,"first-class composite historical row created by the RS ruling of 2026-09-03; no successor links"
+Kutch,kutch,"first-class historical row created by the RS ruling of 2026-09-03 (the D3 ruling created none - GE-only there; RS members now require it); no successor links"
+Others,,"HELD by the 2026-09-03 ruling: opaque label; its term rows are NOT inserted and the insert report prints all of them for a human"

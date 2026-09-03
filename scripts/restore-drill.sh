@@ -61,6 +61,20 @@ awk -F'|' '{ printf "  %-32s %s\n", $1, $2 }' "$SRC_COUNTS"
 if diff -u "$SRC_COUNTS" "$DRILL_COUNTS" > /tmp/drill-diff.txt; then
   echo "[drill] VERIFIED: every table's row count matches between source and restored copy."
   echo "[drill] recovery point kept at ${DUMP}"
+  # The marker the stage-2 insert scripts read (docs/PRODUCTION_RUNBOOK.md):
+  # a backup is only trusted when THIS script verified its restore, within
+  # the last 24 hours, against the same database label. Never an env var.
+  DB_LABEL=$(echo "$DATABASE_URL" | sed 's|//[^@]*@|//…@|')
+  TABLES=$(wc -l < "$SRC_COUNTS")
+  cat > "${BACKUP_DIR}/LAST_VERIFIED_RESTORE.json" <<MARKER
+{
+  "verified_at": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+  "database_label": "${DB_LABEL}",
+  "dump_path": "${DUMP}",
+  "tables": ${TABLES}
+}
+MARKER
+  echo "[drill] marker written: ${BACKUP_DIR}/LAST_VERIFIED_RESTORE.json"
   psql "$ADMIN_URL" -q -c "DROP DATABASE ${DRILL_DB}"
   exit 0
 else

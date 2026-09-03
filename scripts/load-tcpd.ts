@@ -19,9 +19,11 @@ import { createHash } from "node:crypto";
 import { closeSync, createReadStream, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { dbLabelOf, hasConfirm, panelDiffLines, requireFreshVerifiedBackup, starvedCounts } from "./stage2-common";
 import {
   aggregate,
   aggregateEarly,
+  anchoredDate,
   checkEarlyHeader,
   checkHeader,
   checkPartyResolutions,
@@ -668,28 +670,6 @@ function reportEarly(
   );
 }
 
-/** The denominator-bearing insight panels plus picker/browse counts — the §5
- *  stage-2 success measure, computed the same way before and after. */
-async function starvedCounts(): Promise<Record<string, string>> {
-  const { fetchInsightRows } = await import("../src/lib/db/queries/insights");
-  const { computeInsights } = await import("../src/lib/insights");
-  const { termRows, electionRows } = await fetchInsightRows();
-  const groups = computeInsights(termRows, electionRows, new Date().toISOString().slice(0, 10));
-  const of = (key: string) => {
-    const g = groups.find((x) => x.key === key);
-    return g ? String(g.of ?? "stated without a denominator") : "panel absent (too starved to render)";
-  };
-  return {
-    "Turnout extremes (n with recorded turnout)": of("turnout"),
-    "Largest majorities (of)": of("largest-majority"),
-    "Closest elections (of)": of("closest-election"),
-    "Party dominance (of)": of("party-dominance"),
-    "Compare picker options (elections)": String(electionRows.length),
-    "Browse: elections": String(electionRows.length),
-    "Browse: terms": String(termRows.length),
-  };
-}
-
 /** The §5 stage-2 success measure has a BEFORE side, and this report is the
  *  last moment before anything changes, so it is recorded here. Stage 2's
  *  post-insert report repeats these for the AFTER. */
@@ -815,13 +795,12 @@ const partySlug = (label: string) =>
 async function insertEarly() {
   const manifest = await verify();
 
-  const drillPath = join(ROOT, "RESTORE_DRILL.md");
-  if (!existsSync(drillPath))
-    fail("data/raw/tcpd/RESTORE_DRILL.md is missing: the verified backup restore precedes any stage-2 insert (standing gate). Run scripts/restore-drill.sh and commit its record.");
-  const drill = readFileSync(drillPath, "utf8");
-  if (!/verified/i.test(drill))
-    fail("RESTORE_DRILL.md exists but does not say 'verified': the drill record must state its outcome.");
-  console.log(`[load-tcpd] restore drill record found:\n${drill.split("\n").slice(0, 6).join("\n")}\n`);
+  if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
+  // 2026-09-03 ruling: the backup gate reads the marker restore-drill.sh
+  // writes — fresh (24h), verified, same database — never an env var.
+  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
+  if (!hasConfirm())
+    fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run this stage with --confirm.");
 
   const { parseCsv } = await import("../src/lib/csv");
   const { early, earlyRefused, committedAliases } = aggregateFiles(manifest, parseCsv);
@@ -841,8 +820,7 @@ async function insertEarly() {
       fail(`alias "${a.variant}" measures ${early.aliasApplications[a.variant]?.rows ?? 0} rows, committed says ${a.rows}.`);
   }
 
-  if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
-  const dbLabel = process.env.DATABASE_URL.replace(/\/\/[^@]*@/, "//…@");
+  const dbLabel = dbLabelOf(process.env.DATABASE_URL);
   const { db } = await import("../src/lib/db");
   const schema = await import("../src/lib/db/schema");
   const { eq, sql, inArray } = await import("drizzle-orm");
@@ -905,10 +883,19 @@ async function insertEarly() {
 
   const existingDataset = already;
 
-  // States that must not already exist (fresh first-class rows).
+  // Historical states are SHARED reference rows (the RS ingest cites them
+  // too): create the missing ones, verify the rest match, never overwrite.
   const histIds = Object.values(HISTORICAL_STATES).map((s) => s.id);
-  const clash = await db.select({ id: schema.states.id }).from(schema.states).where(inArray(schema.states.id, histIds));
-  if (clash.length > 0) fail(`state id(s) already exist: ${clash.map((c) => c.id).join(", ")} — refusing to touch existing rows.`);
+  const existingStates = await db
+    .select({ id: schema.states.id, name: schema.states.name })
+    .from(schema.states)
+    .where(inArray(schema.states.id, histIds));
+  for (const ex of existingStates) {
+    const want = Object.values(HISTORICAL_STATES).find((h) => h.id === ex.id)!;
+    if (ex.name !== want.name)
+      fail(`state "${ex.id}" exists with name "${ex.name}" (expected "${want.name}") — a person must look.`);
+  }
+  const missingStates = Object.values(HISTORICAL_STATES).filter((h) => !existingStates.some((ex) => ex.id === h.id));
 
   const before = await starvedCounts();
   const today = new Date().toISOString().slice(0, 10);
@@ -919,8 +906,8 @@ async function insertEarly() {
   let electionCount = 0;
   let resultCount = 0;
 
+  const datasetId = existingDataset[0]?.id ?? uuidv7();
   await db.transaction(async (tx) => {
-    const datasetId = existingDataset[0]?.id ?? uuidv7();
     if (!existingDataset[0]) {
       await tx.insert(schema.datasets).values({
         id: datasetId,
@@ -949,16 +936,29 @@ async function insertEarly() {
       });
     }
 
-    await tx.insert(schema.states).values(
-      Object.values(HISTORICAL_STATES).map((s) => ({
-        id: s.id,
-        name: s.name,
-        kind: "state" as const,
-        formedOn: null,
-        dissolvedOn: null,
-        hasGeometry: false,
-      })),
-    );
+    if (missingStates.length > 0) {
+      await tx.insert(schema.states).values(
+        missingStates.map((s) => ({
+          id: s.id,
+          name: s.name,
+          kind: "state" as const,
+          formedOn: null,
+          dissolvedOn: null,
+          hasGeometry: false,
+        })),
+      );
+      // Provenance on the rows THIS dataset created, so reversal-by-dataset
+      // can find them (and leave alone the ones another ingest made first).
+      await tx.insert(schema.recordProvenance).values(
+        missingStates.map((s) => ({
+          subjectType: "state" as const,
+          subjectId: s.id,
+          datasetId,
+          upstreamId: `state:${s.name}`,
+          ingestedOn: today,
+        })),
+      );
+    }
 
     if (check.createLabels.length > 0) {
       await tx.insert(schema.parties).values(
@@ -967,6 +967,15 @@ async function insertEarly() {
           name: label, // verbatim TCPD label; renaming is review's job, with sources
           abbreviation: label,
           isPseudo: false,
+        })),
+      );
+      await tx.insert(schema.recordProvenance).values(
+        check.createLabels.map((label) => ({
+          subjectType: "party" as const,
+          subjectId: createdIds.get(label)!,
+          datasetId,
+          upstreamId: `party:${label}`,
+          ingestedOn: today,
         })),
       );
     }
@@ -1055,13 +1064,279 @@ async function insertEarly() {
   lines.push(`- provenance rows: ${electionCount}; citations: ${electionCount}; turnout_percent: NULL on all rows (ruling 1)`);
   lines.push(`- ANALYZE run on all touched tables (recordPath amendment)`);
   lines.push(`\n## Starved panels — before/after (§5 success measure)`);
-  lines.push(`| panel | before | after |`);
-  lines.push(`|---|---|---|`);
-  for (const k of Object.keys(before)) lines.push(`| ${k} | ${before[k]} | ${after[k]} |`);
+  lines.push(...panelDiffLines(before, after));
   const report = lines.join("\n");
   console.log("\n" + report + "\n");
   writeFileSync(join(ROOT, "insert-report.md"), report);
   console.log(`[load-tcpd] report written to ${join(ROOT, "insert-report.md")}`);
+}
+
+const AE_DATASET_SLUG = "tcpd-lokdhaba-ae-2026-08-30";
+const GE_DATASET_SLUG = "tcpd-lokdhaba-ge-2026-08-30";
+const LOKDHABA_URL = "https://lokdhaba.ashoka.edu.in/browse-data";
+
+/**
+ * Stage 2 for D1/D2 (gate rulings of 2026-08-30, build ordered 2026-09-03,
+ * RUN-gated behind the production reconciliation per the runbook). Inserts
+ * the 364 assembly + 15 national Lok Sabha elections with their results,
+ * bulk-accepting party creates after the collision scan, resolving
+ * file-governed labels by their validity windows, and SKIPPING (never
+ * guessing) the held label-years. Turnout stays NULL throughout (A3: the
+ * modern export carries no honestly aggregable turnout). Refuses without a
+ * fresh verified backup, without --confirm, and without the LokDhaba terms
+ * capture (§1.4).
+ */
+async function insertModern() {
+  const manifest = await verify();
+  if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
+  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
+  const termsPath = join(ROOT, "TERMS_LOKDHABA.md");
+  if (!existsSync(termsPath) || readFileSync(termsPath, "utf8").trim().length < 200)
+    fail(
+      "data/raw/tcpd/TERMS_LOKDHABA.md is missing or trivially short. Capture LokDhaba's terms page VERBATIM there first (§1.4, gate ruling 5 of 2026-08-30) — the terms travel with the data.",
+    );
+  if (!hasConfirm())
+    fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run with --confirm.");
+
+  const { parseCsv } = await import("../src/lib/csv");
+  const { ae, ge, parseRefused } = aggregateFiles(manifest, parseCsv);
+
+  // The drop must measure exactly as the gate-approved stage-1 run did.
+  if (ae.elections.length !== 364) fail(`AE aggregates to ${ae.elections.length} elections, not the approved 364.`);
+  if (ge.elections.length !== 15) fail(`GE aggregates to ${ge.elections.length} elections, not the approved 15.`);
+  if (ae.byeRowCount !== 13809 || ge.byeRowCount !== 2818) fail("bye-row counts differ from the approved run.");
+  if (ae.duplicateRowCount !== 199 || ge.duplicateRowCount !== 0) fail("duplicate-row counts differ from the approved run.");
+  if (Object.keys(ae.unmappedStates).length > 0 || Object.keys(ge.unmappedStates).length > 0)
+    fail(`unmapped states present: ${Object.keys({ ...ae.unmappedStates, ...ge.unmappedStates }).join(", ")}.`);
+  if (Object.keys(parseRefused).length > 0) fail("the approved run had zero unparseable rows; this run does not.");
+
+  const dbLabel = dbLabelOf(process.env.DATABASE_URL);
+  const { db } = await import("../src/lib/db");
+  const schema = await import("../src/lib/db/schema");
+  const { eq, sql } = await import("drizzle-orm");
+  const { v7: uuidv7 } = await import("uuid");
+  const today = new Date().toISOString().slice(0, 10);
+
+  // Idempotency per dataset.
+  for (const slug of [AE_DATASET_SLUG, GE_DATASET_SLUG]) {
+    const existing = await db.select({ id: schema.datasets.id }).from(schema.datasets).where(eq(schema.datasets.slug, slug));
+    if (existing.length > 0) fail(`dataset ${slug} already exists: this drop is already ingested (revert first if that is intended).`);
+  }
+
+  // ---- Party plan (rulings 2 + 3 of 2026-08-30, addendum included) -------
+  const committed = readPartyResolutions(parseCsv);
+  const known: KnownParty[] = await db
+    .select({ id: schema.parties.id, name: schema.parties.name, abbreviation: schema.parties.abbreviation, isPseudo: schema.parties.isPseudo })
+    .from(schema.parties);
+  const allAggs = [...ae.elections, ...ge.elections];
+  const labelYearsMap = new Map<string, Set<number>>();
+  for (const e of allAggs)
+    for (const p of e.parties) {
+      const s = labelYearsMap.get(p.recordedLabel) ?? new Set<number>();
+      s.add(e.year);
+      labelYearsMap.set(p.recordedLabel, s);
+    }
+  const chk = checkPartyResolutions(
+    [...labelYearsMap.entries()].map(([label, years]) => ({ label, years: [...years] })),
+    known,
+    committed,
+    false,
+  );
+  if (!chk.ok) fail(`PARTY_RESOLUTIONS.csv problems:\n  - ${chk.problems.join("\n  - ")}`);
+  const fileLabels = new Set(committed.map((c) => c.label));
+
+  const resolves = new Map<string, string>(); // non-file labels resolving to one existing party
+  const createLabels: string[] = [];
+  for (const [label] of labelYearsMap) {
+    if (fileLabels.has(label)) continue;
+    const m = matchKnownParty(known, label, label);
+    if (m.kind === "one") resolves.set(label, m.party.id);
+    else if (m.kind === "many") fail(`label "${label}" matches several existing parties (${m.parties.map((p) => p.id).join(", ")}): it needs a committed disposition row before anything inserts.`);
+    else createLabels.push(label);
+  }
+  const scan = scanPartyCollisions(createLabels, known);
+  if (scan.heldExisting.length > 0)
+    fail(
+      `create labels collide with existing parties and need committed dispositions first: ${scan.heldExisting.map((h) => `"${h.label}"~${h.matches.join("/")}`).join("; ")}`,
+    );
+
+  // Deterministic ids for creates; shared-form labels get -2/-3 suffixes in
+  // sorted order (they are DISTINCT rows by the no-merge ruling, so their
+  // ids must differ; the merge candidates carry the pairing).
+  const existingIds = new Set(known.map((p) => p.id));
+  const createdIds = new Map<string, string>();
+  for (const label of [...createLabels].sort()) {
+    let slug = partySlug(label);
+    if (!slug) fail(`label "${label}" slugs to nothing.`);
+    let n = 1;
+    while (existingIds.has(slug) || [...createdIds.values()].includes(slug)) {
+      n++;
+      slug = `${partySlug(label)}-${n}`;
+    }
+    createdIds.set(label, slug);
+  }
+
+  const heldSkipped: string[] = [];
+  const partyIdFor = (label: string, year: number): string | null => {
+    if (fileLabels.has(label)) {
+      const d = chk.dispositionFor(label, year);
+      if (d.kind === "resolve") return d.partyId;
+      if (d.kind === "held") {
+        heldSkipped.push(`${label} @ ${year}`);
+        return null; // the row is SKIPPED, counted, reported — never guessed
+      }
+      fail(`disposition "create" for file-governed label "${label}" is not expected in the modern path; a person must look.`);
+    }
+    return resolves.get(label) ?? createdIds.get(label) ?? null;
+  };
+
+  const before = await starvedCounts();
+  console.log(`[load-tcpd] stage 2 (modern) — inserting into ${dbLabel}`);
+
+  let electionCount = 0;
+  let resultCount = 0;
+  const aeDatasetId = uuidv7();
+  const geDatasetId = uuidv7();
+
+  await db.transaction(async (tx) => {
+    const aeRow = manifest.find((m) => m.kind === "state_assembly")!;
+    const geRow = manifest.find((m) => m.kind === "lok_sabha")!;
+    const mkDataset = (id: string, slug: string, m: ManifestRow, what: string) =>
+      tx.insert(schema.datasets).values({
+        id,
+        slug,
+        name: `TCPD-IED LokDhaba ${what} export (2026-08-30)`,
+        publisher: "Trivedi Centre for Political Data, Ashoka University",
+        version: m.source_version,
+        licence: "TCPD terms: non-commercial use only, citation required, no endorsement (captured in data/raw/tcpd/TERMS_LOKDHABA.md)",
+        licenceUrl: m.source_url,
+        retrievedOn: m.downloaded_on || today,
+        upstreamUrl: LOKDHABA_URL,
+        curator: "ai@cdswindia.org",
+        notes:
+          "turnout_percent is NULL on every row (A3: the export's per-constituency percentages cannot honestly aggregate, and no ruling changed that). " +
+          "Poll_No is zero-based; bye/re-poll rows (Poll_No > 0) are excluded from these aggregates (spec §2.9). " +
+          "Held label-years from the windowed dispositions (the SP gap) are SKIPPED, never guessed; the skip list is in the insert report. " +
+          "Madras and Mysore attach to their first-class historical state rows, never across the rename (ruling 1, 2026-08-30). " +
+          "Shared-form party labels are created verbatim with merge candidates, never unified (ruling 2 addendum).",
+      });
+    await mkDataset(aeDatasetId, AE_DATASET_SLUG, aeRow, "state assembly");
+    await mkDataset(geDatasetId, GE_DATASET_SLUG, geRow, "Lok Sabha");
+
+    // Madras/Mysore rows exist after the D3 insert; create-if-missing keeps
+    // the runbook order-independent, with provenance on whoever created them.
+    for (const h of [HISTORICAL_STATES.Madras, HISTORICAL_STATES.Mysore]) {
+      const ex = await tx.select({ id: schema.states.id, name: schema.states.name }).from(schema.states).where(eq(schema.states.id, h.id));
+      if (ex.length > 0) {
+        if (ex[0].name !== h.name) fail(`state "${h.id}" exists with unexpected name "${ex[0].name}".`);
+        continue;
+      }
+      await tx.insert(schema.states).values({ id: h.id, name: h.name, kind: "state", formedOn: null, dissolvedOn: null, hasGeometry: false });
+      await tx.insert(schema.recordProvenance).values({ subjectType: "state", subjectId: h.id, datasetId: aeDatasetId, upstreamId: `state:${h.name}`, ingestedOn: today });
+    }
+
+    if (createLabels.length > 0) {
+      const rows = [...createdIds.entries()].map(([label, id]) => ({ id, name: label, abbreviation: label, isPseudo: false }));
+      for (let i = 0; i < rows.length; i += 500) await tx.insert(schema.parties).values(rows.slice(i, i + 500));
+      const prov = [...createdIds.entries()].map(([label, id]) => ({
+        subjectType: "party" as const,
+        subjectId: id,
+        datasetId: aeDatasetId,
+        upstreamId: `party:${label}`,
+        ingestedOn: today,
+      }));
+      for (let i = 0; i < prov.length; i += 500) await tx.insert(schema.recordProvenance).values(prov.slice(i, i + 500));
+    }
+
+    // Shared-form merge candidates (ruling 2 addendum), tagged for reversal.
+    const candidateRows: Array<typeof schema.entityMatchCandidates.$inferInsert> = [];
+    for (const g of scan.heldIncoming) {
+      for (let i = 0; i < g.labels.length; i++)
+        for (let j = i + 1; j < g.labels.length; j++)
+          candidateRows.push({
+            id: uuidv7(),
+            entityType: "party",
+            aId: createdIds.get(g.labels[i])!,
+            bId: createdIds.get(g.labels[j])!,
+            status: "possible",
+            rationale: `same collapsed form "${g.form}" in the LokDhaba export; created verbatim per the no-merge ruling, paired only by a human [dataset:${AE_DATASET_SLUG}]`,
+          });
+    }
+    for (let i = 0; i < candidateRows.length; i += 500) await tx.insert(schema.entityMatchCandidates).values(candidateRows.slice(i, i + 500));
+
+    const srcExisting = await tx.select({ id: schema.sources.id }).from(schema.sources).where(eq(schema.sources.url, LOKDHABA_URL));
+    const sourceId = srcExisting[0]?.id ?? uuidv7();
+    if (!srcExisting[0]) {
+      await tx.insert(schema.sources).values({
+        id: sourceId,
+        title: "TCPD Individual Incumbency Dataset (LokDhaba)",
+        url: LOKDHABA_URL,
+        publisher: "Trivedi Centre for Political Data, Ashoka University",
+        publishedOn: null,
+        accessedOn: "2026-08-30",
+        kind: "research",
+        isOfficial: false,
+        isPrimary: true,
+      });
+    }
+
+    for (const e of allAggs) {
+      const datasetId = e.scope === "lok_sabha" ? geDatasetId : aeDatasetId;
+      const electionId = uuidv7();
+      await tx.insert(schema.elections).values({
+        id: electionId,
+        stateId: e.scope === "lok_sabha" ? "in" : e.stateId!,
+        scope: e.scope,
+        assemblyNumber: e.assemblyNo,
+        electionDate: anchoredDate(e),
+        electionDatePrecision: e.datePrecision === "day" ? "day" : e.datePrecision,
+        totalSeats: e.totalSeats,
+        turnoutPercent: null, // A3, unchanged by any ruling
+        resultSummary: null,
+      });
+      electionCount++;
+      const resultRows = e.parties
+        .map((p) => ({ p, partyId: partyIdFor(p.recordedLabel, e.year) }))
+        .filter((x): x is { p: (typeof e.parties)[number]; partyId: string } => x.partyId !== null)
+        .map(({ p, partyId }) => ({
+          electionId,
+          partyId,
+          seatsWon: p.seatsWon,
+          seatsContested: p.seatsContested,
+          voteSharePercent: p.voteSharePercent === null ? null : String(p.voteSharePercent),
+        }));
+      for (let i = 0; i < resultRows.length; i += 500) await tx.insert(schema.electionResults).values(resultRows.slice(i, i + 500));
+      resultCount += resultRows.length;
+      await tx.insert(schema.recordProvenance).values({ subjectType: "election", subjectId: electionId, datasetId, upstreamId: e.upstreamId, ingestedOn: today });
+      await tx.insert(schema.citations).values({
+        subjectType: "election",
+        subjectId: electionId,
+        sourceId,
+        note: `${e.upstreamId} rows of the LokDhaba 2026-08-30 export; cite per data/raw/tcpd/TERMS_LOKDHABA.md.`,
+      });
+    }
+  });
+
+  for (const t of ["elections", "election_results", "record_provenance", "citations", "parties", "states", "datasets", "sources", "entity_match_candidates"]) {
+    await db.execute(sql.raw(`ANALYZE ${t}`));
+  }
+  const after = await starvedCounts();
+
+  const lines: string[] = [];
+  lines.push(`# TCPD ingest — stage 2 insert report (modern files, D1+D2)`);
+  lines.push(`\nGenerated ${today} against database ${dbLabel}.`);
+  lines.push(`\n- elections inserted: ${electionCount} (364 AE + 15 GE)`);
+  lines.push(`- election_results inserted: ${resultCount}`);
+  lines.push(`- parties created verbatim: ${createLabels.length}; resolving to existing: ${resolves.size}; file-governed labels: ${fileLabels.size}`);
+  lines.push(`- shared-form merge candidates written: ${scan.heldIncoming.reduce((n, g) => n + (g.labels.length * (g.labels.length - 1)) / 2, 0)} pairs from ${scan.heldIncoming.length} groups`);
+  lines.push(`- HELD label-years skipped (never guessed): ${heldSkipped.length === 0 ? "none" : [...new Set(heldSkipped)].join("; ")}`);
+  lines.push(`- turnout_percent: NULL on all rows (A3)`);
+  lines.push(`\n## Starved panels — before/after (§5 success measure)`);
+  lines.push(...panelDiffLines(before, after));
+  const report = lines.join("\n");
+  console.log("\n" + report + "\n");
+  writeFileSync(join(ROOT, "insert-modern-report.md"), report);
+  console.log(`[load-tcpd] report written to ${join(ROOT, "insert-modern-report.md")}`);
 }
 
 async function main() {
@@ -1069,13 +1344,16 @@ async function main() {
   if (stage === "verify") return void (await verify());
   if (stage === "dry-run") return void (await dryRun());
   if (stage === "insert-early") return void (await insertEarly());
-  if (stage === "insert-ae" || stage === "insert-ge") {
-    console.error(
-      `[load-tcpd] GATED: the D1/D2 insert stages are built only after their own stage-1 dry-run reports return with a go. The early file (D3) inserts via --stage=insert-early, authorised by the gate rulings of 2026-08-28. See docs/ELECTIONS_INGEST_SPEC.md §5.`,
-    );
-    process.exit(2);
+  if (stage === "insert-modern") return void (await insertModern());
+  if (stage === "revert") {
+    const slug = process.argv.find((a) => a.startsWith("--dataset="))?.slice(10);
+    if (!slug) fail("revert needs --dataset=<slug>.");
+    if (!hasConfirm()) fail("revert deletes rows; it runs only with an explicit --confirm.");
+    const { revertDataset } = await import("./stage2-common");
+    for (const line of await revertDataset(slug, fail)) console.log(`  ${line}`);
+    return;
   }
-  console.error("usage: pnpm tsx scripts/load-tcpd.ts --stage=verify|dry-run|insert-early");
+  console.error("usage: pnpm tsx scripts/load-tcpd.ts --stage=verify|dry-run|insert-early|insert-modern|revert --dataset=<slug> [--confirm]");
   process.exit(2);
 }
 

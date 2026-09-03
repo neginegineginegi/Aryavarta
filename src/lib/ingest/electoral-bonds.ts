@@ -253,4 +253,26 @@ export function aggregateBonds(rows: BondRow[]): BondsOutcome {
 export const purchaserSlug = (name: string) =>
   name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 120);
 
+/**
+ * The org-kind ruling (2026-09-03): kind records only what the NAME states.
+ * A purchaser name ending in a legal-form suffix from the committed list
+ * (data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv) is `company` — the
+ * suffix is the record's own statement of legal form. Every other name is
+ * `unclassified`: a stated absence of classification, not a guess. The list
+ * is data, not code, so widening it is a reviewed commit. Matching is
+ * mechanical — uppercase, dots and commas to spaces, whitespace collapsed,
+ * whole-word ends-with — and nothing else: no CORPORATE_MARKER-style
+ * pattern inference reaches a stored kind.
+ */
+export function classifyOrgKind(name: string, suffixes: string[]): "company" | "unclassified" {
+  const norm = (s: string) => s.toUpperCase().replace(/[.,]/g, " ").replace(/\s+/g, " ").trim();
+  const n = norm(name);
+  for (const raw of suffixes) {
+    const suf = norm(raw);
+    if (suf === "") continue;
+    if (n === suf || n.endsWith(" " + suf)) return "company";
+  }
+  return "unclassified";
+}
+
 export const CRORE = 1e7;

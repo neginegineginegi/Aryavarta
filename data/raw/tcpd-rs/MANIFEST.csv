@@ -1,0 +1,3 @@
+file,kind,sha256,bytes,downloaded_on,source_url,source_version,notes
+data/TCPD_RSD_1.30_1952_20-07-2022_release.csv,rs_members,9f1d409a54003d258d2ad41108fe85b0f8209fc1907f4f3ade9c9cea75785464,5454278,2026-09-03,https://github.com/tcpd/rs-data-release,v1.30 (repo commit 5a11ff1e 2022-09-14),"3538 term-rows / 2412 distinct members by stable TCPD ID / 1952-2022. Holds 10 PII columns that must NOT be ingested; see FINDINGS.md."
+data/TCPD_RSD_v1.30_14-09-2022.pdf,doc,55db5219c440daad458b50fc2eaad67bc9a56088ed3701ac209754659dc559e8,160936,2026-09-03,https://github.com/tcpd/rs-data-release,Codebook 1.30,"Variable definitions and terms. Cite separately."

@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import "dotenv/config";
 /**
  * Idempotent schema upgrades, applied automatically before every build.
  *
@@ -963,6 +964,51 @@ const STATEMENTS = [
   `ALTER TABLE "elections" ADD COLUMN IF NOT EXISTS
      "election_date_precision" text NOT NULL DEFAULT 'day'
      CHECK (election_date_precision IN ('day','month','year'))`,
+  // --- upgrade: stage-2 rulings of 2026-09-03 (three ingest fronts) --------
+  // org kind for names stating no legal form (electoral bonds ruling).
+  `ALTER TYPE "public"."org_kind" ADD VALUE IF NOT EXISTS 'unclassified'`,
+  // Provenance must reach created reference rows and the RS spine, or
+  // reversal-by-dataset cannot.
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'party'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'state'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'rs_member'`,
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'rs_term'`,
+  // A bulk ingest's open questions are its rows too: provenance must reach
+  // them or reversal-by-dataset leaves orphaned questions behind.
+  `ALTER TYPE "public"."citation_subject" ADD VALUE IF NOT EXISTS 'open_question'`,
+  // Open questions can be about a dataset as a whole.
+  `ALTER TYPE "public"."entity_ref" ADD VALUE IF NOT EXISTS 'dataset'`,
+  // The recipient exactly as the source wrote it, beside the resolved id.
+  `ALTER TABLE "funding_transactions" ADD COLUMN IF NOT EXISTS "recipient_label" text`,
+  // Rajya Sabha spine (docs/RAJYA_SABHA_SPEC.md section 4.1).
+  `CREATE TABLE IF NOT EXISTS "rs_members" (
+     "id" uuid PRIMARY KEY,
+     "tcpd_rs_id" text NOT NULL UNIQUE,
+     "member_name" text NOT NULL,
+     "gender_tcpd" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   )`,
+  `CREATE TABLE IF NOT EXISTS "rs_terms" (
+     "id" uuid PRIMARY KEY,
+     "member_id" uuid NOT NULL REFERENCES "rs_members"("id") ON DELETE CASCADE,
+     "state_id" text REFERENCES "states"("id"),
+     "state_label" text NOT NULL,
+     "party_label" text NOT NULL,
+     "party_id" text REFERENCES "parties"("id"),
+     "start_date" date NOT NULL,
+     "end_date_term" date NOT NULL,
+     "end_date_actual" date,
+     "reason_of_vacation" text,
+     "nominated" boolean NOT NULL,
+     "term_no" integer NOT NULL,
+     "type_snapshot" text NOT NULL,
+     "snapshot_on" date NOT NULL,
+     "source_note" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   )`,
+  `CREATE INDEX IF NOT EXISTS "rs_terms_member_idx" ON "rs_terms" ("member_id")`,
+  `CREATE INDEX IF NOT EXISTS "rs_terms_state_idx" ON "rs_terms" ("state_id", "start_date")`,
+  `CREATE INDEX IF NOT EXISTS "rs_terms_party_idx" ON "rs_terms" ("party_id")`,
 ];
 
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;

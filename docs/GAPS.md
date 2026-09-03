@@ -120,15 +120,76 @@ Stage 2 for D1/D2 remains UNBUILT pending the binding condition below.
 
 The TCPD production reconciliation RETAINS PRIORITY; this front does not
 jump ahead of it. `docs/ELECTORAL_BONDS_SPEC.md` governs. Stage 0 and the
-stage-1 dry run ran 2026-09-03; the insert stage is unbuilt.
+stage-1 dry run ran 2026-09-03.
 (1) **APPROVED 2026-09-03: all 24 party links as proposed** (23 links;
-Goa Forward Party stays unlinked, 17 rows held out). Still pending at
-the gate: (2) the defect-1 ruling as executed
-(1,680 unattributed rows NOT loaded, per-party undercount stated);
-(3) individuals-as-orgs (465 of 1,294 names carry no corporate marker);
-(4) the transcription repositories' licence files, before any export.
+Goa Forward Party stays unlinked, 17 rows held out).
+(2) **APPROVED 2026-09-03: defect 1 as executed** — the 1,680 unattributed
+rows are NOT loaded; the per-party undercount is stated exactly, as open
+questions on each affected party.
+(3) **RULED 2026-09-03: individuals-as-orgs resolved by the kind ruling.**
+`orgs.kind` gains `unclassified`; kind records ONLY what the name states:
+a legal-form suffix from the committed list
+(`data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv` — LIMITED, LTD, PVT,
+PRIVATE LIMITED, LLP, LLC; the list is data, not code) → `company`,
+everything else → `unclassified`. No pattern inference ever reaches a
+stored kind. Also ruled: the ECI account-holder label stays VERBATIM on
+every transaction (`recipient_label`) beside the resolved party_id;
+purchasers appearing only on expired rows create no org; collision groups
+become entity_match_candidates, never merges.
+(4) Still pending: the transcription repositories' licence files, before
+anything ships in an export.
 evidence_status is documented, never verified, until the stage-3 ECI
 sample check happens.
+
+**Missing party, logged by the 2026-09-03 ruling:** the archive has no row
+for the **Goa Forward Party** (a real, registered state party; 17 bond
+rows worth ₹0.35 crore name it as recipient and are held out until the
+party exists with its own sourced record — a curated creation, not a
+loader's).
+
+## Rajya Sabha — 2026-09-03 gate rulings (decided; do not relitigate)
+
+`docs/RAJYA_SABHA_SPEC.md` governs; stages 0–1 ran 2026-09-03; the insert
+stage is built and queues behind the electoral-bonds insert and the TCPD
+production reconciliation (no fourth front).
+
+1. **Three composite 1950s RS seats become first-class state rows now**
+   (`ajmer-and-coorg`, `bilaspur-and-himachal-pradesh`,
+   `manipur-and-tripura`), plus **`kutch`** — no successor links, no
+   geometry, same doctrine as the D3 historical states.
+2. **"Others" is HELD**: its seven term rows are not inserted; the insert
+   report prints all seven in full and an open question records the hold.
+3. **Nominated members: state_id null, nominated flag TRUE** (the flag
+   carries the fact; no fake state).
+4. **Congress family exactly as committed, no windows** (INC resolves;
+   CONG(I), CONG(O), CONG(S) create verbatim — the measured eras OVERLAP,
+   so windows would fabricate boundaries).
+5. **Anachronistic labels (BJP from 1962, CONG(I) from 1956) become open
+   questions, never repairs.**
+6. **"O" is party-not-recorded**: verbatim label kept on the term,
+   party_id null, no dispositions-file entry (RS_NO_PARTY_LABELS in the
+   lib, beside NOM.).
+7. **JAN creates verbatim with an unconditional JAN↔bjs merge candidate**
+   whose rationale states the timing dependency on the D3 insert.
+8. **The 13-column allowlist is binding**; the PII-unreachability test
+   stays in the suite permanently.
+
+## Stage-2 build — 2026-09-03 (all three fronts)
+
+Authorised and built the same day, as scripts THE USER runs from a
+checkout with production credentials in .env — never in a sandbox
+pipeline, never at build time. Common machinery
+(`scripts/stage2-common.ts`): every insert refuses unless
+`scripts/restore-drill.sh` has VERIFIED a restore within 24 hours against
+the same database, recorded in the marker file the drill writes
+(`data/backups/LAST_VERIFIED_RESTORE.json` — a marker file, deliberately
+not an env var); dry-run report first, insert only on explicit
+`--confirm`; every row carries dataset provenance; every insert is
+reversible by dataset id through ONE shared code path (`revertDataset`);
+ANALYZE runs after; starved-panel counts print before and after.
+`docs/PRODUCTION_RUNBOOK.md` is the exact command sequence:
+reconciliation first, backup second, then inserts smallest first
+(Rajya Sabha, electoral bonds, TCPD).
 
 ## Sandbox continuity note — 2026-09-03
 
@@ -165,10 +226,12 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - **Google sign-in round trip on the live domain** — the user's check, not
   this repo's.
 - **Sentry DSN** (decision 5).
-- **Stage-1 gate rulings** for D3, listed at the end of
-  `data/raw/tcpd/dry-run-report.md`: historical-states creation, turnout
-  storage rule, zero-seat inclusion, the would-create party list, licence
-  composition.
+- **The production runs themselves** (docs/PRODUCTION_RUNBOOK.md): the
+  reconciliation paste-back, then the drill and the three inserts — all
+  run by the user where production credentials already live.
+- **Raw TCPD files re-uploaded** (D1/D2 were chat uploads destroyed by the
+  container reset; needed wherever the TCPD stages run) and the LokDhaba
+  terms capture (`data/raw/tcpd/TERMS_LOKDHABA.md`, §1.4).
 
 ## Known gaps in the archive itself
 

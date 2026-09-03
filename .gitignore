@@ -69,5 +69,16 @@ data/raw/electoral-bonds/*
 !data/raw/electoral-bonds/SOURCE.md
 !data/raw/electoral-bonds/FINDINGS.md
 !data/raw/electoral-bonds/PARTY_LINKS.csv
+!data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv
+# Rajya Sabha (docs/RAJYA_SABHA_SPEC.md): the payload (with its PII columns)
+# and the codebook PDF stay local; the manifest, captured terms, delivered
+# record, and the two committed mapping files are the committed part.
+!data/raw/tcpd-rs
+data/raw/tcpd-rs/*
+!data/raw/tcpd-rs/MANIFEST.csv
+!data/raw/tcpd-rs/TERMS.md
+!data/raw/tcpd-rs/FINDINGS.md
+!data/raw/tcpd-rs/STATE_LINKS.csv
+!data/raw/tcpd-rs/PARTY_RESOLUTIONS.csv
 # Local database recovery points from scripts/restore-drill.sh.
 data/backups/

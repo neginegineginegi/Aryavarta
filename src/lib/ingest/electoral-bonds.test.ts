@@ -4,6 +4,7 @@ import {
   aggregateBonds,
   BOND_REQUIRED_COLUMNS,
   checkBondsHeader,
+  classifyOrgKind,
   parseBondAmount,
   parseBondDate,
   parseBondRow,
@@ -162,5 +163,36 @@ describe("purchaserSlug", () => {
       "megha-engineering-and-infrastructures-li-mited",
     );
     expect(purchaserSlug("J.K.CEMENT LTD.")).toBe("j-k-cement-ltd");
+  });
+});
+
+describe("classifyOrgKind (2026-09-03 ruling: only what the name states)", () => {
+  const SUFFIXES = ["LIMITED", "LTD", "PVT", "PRIVATE LIMITED", "LLP", "LLC"];
+
+  it("classifies a name ending in a committed legal-form suffix as company", () => {
+    expect(classifyOrgKind("EXAMPLE INDUSTRIES LIMITED", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("J.K.CEMENT LTD.", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("Something Private Limited", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("ACME ADVISORS LLP", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("WESTERN CARRIERS PVT", SUFFIXES)).toBe("company");
+  });
+
+  it("leaves everything else unclassified — no pattern inference", () => {
+    expect(classifyOrgKind("AGARWAL M BISHAN", SUFFIXES)).toBe("unclassified");
+    // Corporate-sounding words that are NOT a committed suffix stay
+    // unclassified: the CORPORATE_MARKER heuristic never reaches a kind.
+    expect(classifyOrgKind("EXAMPLE TRADING CO", SUFFIXES)).toBe("unclassified");
+    expect(classifyOrgKind("SUNRISE ENTERPRISES", SUFFIXES)).toBe("unclassified");
+    // A space-stripped name does not STATE the suffix as its own word; it is
+    // a transcription defect the collision candidates handle, not this rule.
+    expect(classifyOrgKind("QWIKSUPPLYCHAINPRIVATELIMITED", SUFFIXES)).toBe("unclassified");
+    // Mid-word split: the suffix the source wrote is "LI MITED", not LIMITED.
+    expect(classifyOrgKind("MEGHA ENGINEERING AND INFRASTRUCTURES LI MITED", SUFFIXES)).toBe("unclassified");
+  });
+
+  it("matches mechanically: case-insensitive, dots and commas ignored, whitespace collapsed", () => {
+    expect(classifyOrgKind("example pvt. ltd.", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("EXAMPLE   PRIVATE   LIMITED", SUFFIXES)).toBe("company");
+    expect(classifyOrgKind("EXAMPLE, LLC", SUFFIXES)).toBe("company");
   });
 });
