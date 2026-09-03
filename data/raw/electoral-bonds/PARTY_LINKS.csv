@@ -1,0 +1,25 @@
+recipient_name,party_id,evidence
+BHARATIYA JANATA PARTY,bharatiya-janata-party,exact name
+ALL INDIA TRINAMOOL CONGRESS,all-india-trinamool-congress,exact name
+"PRESIDENT, ALL INDIA CONGRESS COMMITTEE",indian-national-congress,"account-holder form: the AICC is the INC's central organ and its president is the INC's national president; the ECI table records the bank account name, not the party's registered name"
+BHARAT RASHTRA SAMITHI,bharat-rashtra-samithi,"exact name. Note: TRS renamed itself BRS in Oct 2022; encashments 2019-2022 occurred under the TRS name but the disclosure lists the party's current legal name, and the mapping follows the recorded string. The archive's telangana-rashtra-samithi row is NOT touched"
+BIJU JANATA DAL,biju-janata-dal,exact name
+DRAVIDA MUNNETRA KAZHAGAM (DMK),dravida-munnetra-kazhagam,name plus its own abbreviation in parentheses
+YSR CONGRESS PARTY (YUVAJANA SRAMIKA RYTHU CONGRESS PARTY),ysr-congress-party,name plus its expansion
+TELUGU DESAM PARTY,telugu-desam-party,exact name
+SHIVSENA,shiv-sena,"concatenated spelling of the account name. Note: the window spans the 2022 split and the Feb 2023 ECI order awarding the name to the Shinde faction; the account is the party's continuous legal entity and the mapping does not resolve the split by era"
+RASHTRIYA JANTA DAL,rashtriya-janata-dal,JANTA/JANATA transliteration variant of the same party (RJD)
+AAM AADMI PARTY,aam-aadmi-party,exact name
+JANATA DAL ( SECULAR ),janata-dal-secular,spacing variant of the exact name
+SIKKIM KRANTIKARI MORCHA,sikkim-krantikari-morcha,exact name
+NATIONALIST CONGRESS PARTY MAHARASHTRA PRADESH,nationalist-congress-party,"the NCP's Maharashtra Pradesh unit account, mapped to the national party row. Note: the window spans the 2023 split (name awarded to the Ajit Pawar faction Feb 2024); not resolved by era"
+JANASENA PARTY,jana-sena-party,concatenated spelling of the exact name
+ADYAKSHA SAMAJVADI PARTY,samajwadi-party,"'Adyaksha' (president) account-holder form, cf. the INC row; SAMAJVADI is a transliteration variant. The 2019-2024 window is entirely inside the Samajwadi era of the SP label"
+BIHAR PRADESH JANTA DAL(UNITED),janata-dal-united,"the JD(U)'s Bihar Pradesh unit account; JANTA transliteration variant"
+JHARKHAND MUKTI MORCHA,jharkhand-mukti-morcha,exact name
+SHIROMANI AKALI DAL,shiromani-akali-dal,exact name
+ALL INDIA ANNA DRAVIDA MUNNETRA KAZHAGAM,all-india-anna-dravida-munnetra-kazhagam,exact name
+SIKKIM DEMOCRATIC FRONT,sikkim-democratic-front,exact name
+MAHARASHTRAWADI GOMNTAK PARTY,maharashtrawadi-gomantak-party,GOMNTAK is the transcription's typo for GOMANTAK; no other party approaches this name
+JAMMU AND KASHMIR NATIONAL CONFERENCE,jammu-kashmir-national-conference,AND spelled out where the archive row uses an ampersand
+GOA FORWARD PARTY,,"UNLINKED: no archive party row exists for the Goa Forward Party, and creating one is a curatorial decision a loader does not take. Its rows are held out and reported"

@@ -116,6 +116,31 @@ Stage 2 for D1/D2 remains UNBUILT pending the binding condition below.
    performs zero database writes), so no code change is needed.
 5. **LokDhaba terms capture** (verbatim, §1.4) still blocks D1/D2 stage 2.
 
+## Electoral bonds — 2026-09-03 (front opened by explicit authorisation)
+
+The TCPD production reconciliation RETAINS PRIORITY; this front does not
+jump ahead of it. `docs/ELECTORAL_BONDS_SPEC.md` governs. Stage 0 and the
+stage-1 dry run ran 2026-09-03; the insert stage is unbuilt. Pending at
+the gate: (1) approval of all 24 party links in
+`data/raw/electoral-bonds/PARTY_LINKS.csv` (23 proposed, Goa Forward
+Party unlinked — no archive row); (2) the defect-1 ruling as executed
+(1,680 unattributed rows NOT loaded, per-party undercount stated);
+(3) individuals-as-orgs (465 of 1,294 names carry no corporate marker);
+(4) the transcription repositories' licence files, before any export.
+evidence_status is documented, never verified, until the stage-3 ECI
+sample check happens.
+
+## Sandbox continuity note — 2026-09-03
+
+A container reset destroyed everything uncommitted: the local Postgres
+cluster (including the D3 insert), the restore-drill recovery point, and
+the raw TCPD files (D1/D2 existed only as chat uploads — re-upload needed
+before any local TCPD stage runs; the D3 CSV is re-clonable from its
+public repo, checksum-gated by the manifest). The sandbox database was
+rebuilt from the committed bootstrap alone (migrations + ensure-upgrades
++ seed + inbox loaders), which worked as designed. D3's re-insert waits
+on the raw files being back so stage 0 can verify the whole manifest.
+
 ## Standing gates (restated, still in force)
 
 - The **verified backup restore precedes TCPD stage 2** (no insert stage

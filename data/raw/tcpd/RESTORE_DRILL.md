@@ -20,3 +20,13 @@ standing gate: the verified backup restore precedes TCPD stage 2).
 
 `scripts/load-tcpd.ts --stage=insert-early` checks for this file and its
 "verified" statement before touching anything.
+
+---
+
+**Addendum, 2026-09-03.** The container reset of this date destroyed the
+recovery point named above (`data/backups/` is deliberately uncommitted).
+This record therefore attests the 2026-08-28 drill only and does NOT
+green-light any new insert: run `scripts/restore-drill.sh` afresh, against
+the database the insert will touch, immediately before that insert. The
+sandbox database itself was rebuilt on 2026-09-03 from the committed
+bootstrap (migrations, ensure-upgrades, seed, inbox loaders).
