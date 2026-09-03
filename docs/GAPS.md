@@ -120,10 +120,10 @@ Stage 2 for D1/D2 remains UNBUILT pending the binding condition below.
 
 The TCPD production reconciliation RETAINS PRIORITY; this front does not
 jump ahead of it. `docs/ELECTORAL_BONDS_SPEC.md` governs. Stage 0 and the
-stage-1 dry run ran 2026-09-03; the insert stage is unbuilt. Pending at
-the gate: (1) approval of all 24 party links in
-`data/raw/electoral-bonds/PARTY_LINKS.csv` (23 proposed, Goa Forward
-Party unlinked — no archive row); (2) the defect-1 ruling as executed
+stage-1 dry run ran 2026-09-03; the insert stage is unbuilt.
+(1) **APPROVED 2026-09-03: all 24 party links as proposed** (23 links;
+Goa Forward Party stays unlinked, 17 rows held out). Still pending at
+the gate: (2) the defect-1 ruling as executed
 (1,680 unattributed rows NOT loaded, per-party undercount stated);
 (3) individuals-as-orgs (465 of 1,294 names carry no corporate marker);
 (4) the transcription repositories' licence files, before any export.

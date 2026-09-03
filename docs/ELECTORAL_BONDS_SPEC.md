@@ -138,7 +138,8 @@ The 24 recipient names are ECI account/legal forms. They resolve to
 EXISTING party rows only — never created, never string-matched — through
 the committed file `data/raw/electoral-bonds/PARTY_LINKS.csv`
 (`recipient_name,party_id,evidence`), every row human-approved at the
-gate. A name with no confident resolution keeps an empty `party_id` and
+gate. **All 24 rows were approved as proposed at the gate, 2026-09-03**
+(23 links; Goa Forward Party confirmed UNLINKED, its 17 rows held out). A name with no confident resolution keeps an empty `party_id` and
 its rows are NOT loaded, reported with counts and value. Split-era caveats
 (Shiv Sena 2022, NCP 2023, TRS→BRS 2022) are recorded in the evidence
 column, not resolved by the loader.
