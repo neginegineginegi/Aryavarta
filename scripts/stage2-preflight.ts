@@ -34,6 +34,46 @@ async function check(gate: string, fn: () => void | Promise<void>): Promise<Resu
   }
 }
 
+/**
+ * What is already in the database this run is pointed at.
+ *
+ * More than one Vercel project builds this repository, each with its own
+ * DATABASE_URL, so "the gates pass" does not answer the question that
+ * actually matters: is this the database the site serves? Nothing in an
+ * insert can tell — it would succeed completely into the wrong one. So the
+ * preflight prints counts the reader can check against the live site
+ * (parties and states on /browse, elections on the landing map, members on
+ * /rajya-sabha) and the dataset slugs already ingested, which are the
+ * sharpest signal of all: two databases rarely hold the same ingest history.
+ */
+async function fingerprint(): Promise<string[]> {
+  const { db } = await import("../src/lib/db");
+  const { sql } = await import("drizzle-orm");
+  const lines: string[] = [];
+
+  const count = async (table: string): Promise<string> => {
+    try {
+      const r = await db.execute(sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${table}"`)}`);
+      return String((r.rows[0] as { n: number }).n);
+    } catch {
+      return "table absent";
+    }
+  };
+
+  for (const table of ["states", "parties", "elections", "terms", "orgs", "funding_transactions", "rs_members", "rs_terms"]) {
+    lines.push(`  ${table.padEnd(22)} ${await count(table)}`);
+  }
+  try {
+    const ds = await db.execute(sql`SELECT slug, retrieved_on::text AS on FROM datasets ORDER BY slug`);
+    const rows = ds.rows as Array<{ slug: string; on: string }>;
+    lines.push(`  datasets ingested      ${rows.length === 0 ? "none" : rows.length}`);
+    for (const r of rows) lines.push(`      ${r.slug} (retrieved ${r.on})`);
+  } catch {
+    lines.push("  datasets ingested      table absent");
+  }
+  return lines;
+}
+
 async function main() {
   const url = process.env.DATABASE_URL;
   const results: Result[] = [];
@@ -55,6 +95,16 @@ async function main() {
   for (const r of results) {
     console.log(`\n  ${r.state.padEnd(11)} ${r.gate}`);
     if (r.detail) for (const line of r.detail.split("\n")) console.log(`              ${line}`);
+  }
+
+  if (url) {
+    console.log(`\n[preflight] fingerprint of this database — compare against the live site before inserting:`);
+    for (const line of await fingerprint()) console.log(line);
+    console.log(
+      `\n  Parties and states appear on /browse, elections on the landing map, members on /rajya-sabha.\n` +
+        `  If those numbers disagree with what readers see, this is not the database the site serves:\n` +
+        `  stop, and take the DATABASE_URL from the Vercel project that owns the production domain.`,
+    );
   }
 
   const blocked = results.filter((r) => r.state === "BLOCKED");

@@ -12,7 +12,37 @@ build time, and no credential is ever pasted into a chat — the standing
 rule: never share a production `DATABASE_URL`, even read-only; a
 connection string in scrollback is a disclosed credential.
 
-## 0. Prerequisites (once), and the merge gate
+## 0a. Which database (do this first, every time)
+
+**More than one Vercel project builds this repository, and each carries its
+own `DATABASE_URL`.** That is the failure this step exists to prevent: an
+insert that succeeds completely, into a database no reader ever reaches.
+Nothing downstream detects it — the gates pass, the reports are green, the
+rows are real, and the site does not change.
+
+1. In Vercel, open **both** projects. Find the one whose domain is the
+   production alias people actually visit. Copy **that** project's
+   `DATABASE_URL` from Settings → Environment Variables into the `.env` of
+   your checkout. It is the only database this runbook may point at.
+   The value goes into the file and nowhere else — never into a chat, a
+   commit, a terminal echo, or a screenshot.
+2. Confirm it from your checkout:
+
+```sh
+pnpm tsx scripts/stage2-preflight.ts
+```
+
+It reports the three gates and then prints a **fingerprint** of the
+database it is pointed at: row counts and the dataset slugs already
+ingested. Compare that against the live site — parties and states on
+`/browse`, elections on the landing map, members on `/rajya-sabha`. If the
+numbers disagree with what readers see, you are pointed at the other
+project's database and must stop here.
+
+Green gates plus a matching fingerprint is what "the data will land where
+readers look" actually means. Neither half proves it alone.
+
+## 0b. Prerequisites (once), and the merge gate
 
 **Binding (2026-09-03): steps 1 and 2 may run before the branch is merged.
 Steps 3, 4 and 5 may not.** The inserts refuse until `origin/main` carries
