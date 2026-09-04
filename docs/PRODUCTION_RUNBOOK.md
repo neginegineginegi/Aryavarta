@@ -276,6 +276,12 @@ into a fresh database, verified the same way the drill verifies.
 
 ## After the inserts
 
+**`docs/POST_INSERT_CHECKS.md` is the companion to this file**: which routes
+to open after each insert, what the fingerprint counts should read against
+the approved gate numbers, which pages are current immediately versus
+cached, and which insight panels are supposed to move (and which are
+supposed to stay flat). Read it beside each insert's report.
+
 - Re-run step 1's dry run if a fresh reconciliation table is wanted; it
   should now report the inserted elections as agreeing rows.
 - The starved-panel before/after tables in the three insert reports are

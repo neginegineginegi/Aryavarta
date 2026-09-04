@@ -6,7 +6,14 @@ import { getRsIndex, getRsMembersForSeat, RS_SNAPSHOT_DATE } from "@/lib/db/quer
 import { formatDate } from "@/lib/format";
 import { rsSeatSlug } from "@/lib/rajya-sabha-labels";
 
-export const revalidate = 3600;
+/**
+ * Rendered per request, deliberately. A seat page is one indexed query, and
+ * caching it for an hour would mean a URL visited before the ingest runs
+ * could serve its "not found" from cache long after the rows exist. The
+ * index carries the hourly cache; the pages a reader lands on from it are
+ * always current.
+ */
+export const dynamic = "force-dynamic";
 
 /** Resolve a slug back to the seat label the database actually holds, so the
  *  label — not a derived string — stays the identity. */
