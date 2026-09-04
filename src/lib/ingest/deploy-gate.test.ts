@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -51,6 +54,27 @@ describe("checkMainCodeMarkers (an insert may not outrun its renderer)", () => {
     expect(r.ok).toBe(false);
     expect(r.missing.every((m) => m.includes("not on the deploy branch at all"))).toBe(true);
     expect(r.missing).toHaveLength(MAIN_CODE_MARKERS.length);
+  });
+});
+
+describe("the markers still describe this repository", () => {
+  /**
+   * The gate reads these needles out of the DEPLOY branch, so a needle that
+   * drifts — someone reformats the expression, renames the table — would
+   * make every insert refuse for a reason that has nothing to do with what
+   * is deployed. Checking them against the working tree is what keeps the
+   * gate a real check rather than a string that used to match.
+   */
+  it("every marker matches the file it names, here and now", () => {
+    const read = (path: string) => {
+      const full = join(process.cwd(), path);
+      return existsSync(full) ? readFileSync(full, "utf8") : null;
+    };
+    const result = checkMainCodeMarkers(read);
+    expect(
+      result.missing,
+      "a marker in MAIN_CODE_MARKERS no longer matches this repo's own source. Update the needle deliberately — do not delete the marker, or the gate stops guarding what it names.",
+    ).toEqual([]);
   });
 });
 

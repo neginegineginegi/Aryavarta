@@ -1135,14 +1135,39 @@ async function insertModern() {
     if (existing.length > 0) fail(`dataset ${slug} already exists: this drop is already ingested (revert first if that is intended).`);
   }
 
+  // ---- Reconciliation, applied (not merely reported) --------------------
+  // The stage-1 report has always said stage 2 inserts the TCPD-ONLY
+  // elections; inserting all 379 would put a second row beside every
+  // hand-curated election the export also covers. A hand row wins its own
+  // slot: it is cited, reviewed, and may disagree with TCPD — and a
+  // disagreement is for a human at the reconciliation gate, never resolved
+  // by a loader writing a duplicate next to it (found in review, 2026-09-03).
+  //
+  // This runs BEFORE the party plan on purpose: the parties to create are
+  // the ones the INSERTED elections name. Planning from all 379 would
+  // create party rows whose only elections were skipped — rows referenced
+  // by nothing.
+  const allAggs = [...ae.elections, ...ge.elections];
+  const { hand } = await loadHandElections();
+  const recs = reconcileAll(hand, allAggs);
+  const ambiguous = recs.filter((r) => r.outcome === "ambiguous");
+  if (ambiguous.length > 0)
+    fail(
+      `${ambiguous.length} ambiguous hand↔TCPD pairing(s) (${ambiguous.map((a) => (a as { key: string }).key).join(", ")}): a human pairs these before anything inserts.`,
+    );
+  const matchedUpstream = new Set(
+    recs.filter((r): r is Extract<typeof r, { outcome: "match" }> => r.outcome === "match").map((r) => r.tcpd.upstreamId),
+  );
+  const insertableAggs = allAggs.filter((e) => !matchedUpstream.has(e.upstreamId));
+  const skippedMatched: string[] = [];
+
   // ---- Party plan (rulings 2 + 3 of 2026-08-30, addendum included) -------
   const committed = readPartyResolutions(parseCsv);
   const known: KnownParty[] = await db
     .select({ id: schema.parties.id, name: schema.parties.name, abbreviation: schema.parties.abbreviation, isPseudo: schema.parties.isPseudo })
     .from(schema.parties);
-  const allAggs = [...ae.elections, ...ge.elections];
   const labelYearsMap = new Map<string, Set<number>>();
-  for (const e of allAggs)
+  for (const e of insertableAggs)
     for (const p of e.parties) {
       const s = labelYearsMap.get(p.recordedLabel) ?? new Set<number>();
       s.add(e.year);
@@ -1187,25 +1212,6 @@ async function insertModern() {
     }
     createdIds.set(label, slug);
   }
-
-  // ---- Reconciliation, applied (not merely reported) --------------------
-  // The stage-1 report has always said stage 2 inserts the TCPD-ONLY
-  // elections; inserting all 379 would put a second row beside every
-  // hand-curated election the export also covers. A hand row wins its own
-  // slot: it is cited, reviewed, and may disagree with TCPD — and a
-  // disagreement is for a human at the reconciliation gate, never resolved
-  // by a loader writing a duplicate next to it (found in review, 2026-09-03).
-  const { hand } = await loadHandElections();
-  const recs = reconcileAll(hand, allAggs);
-  const ambiguous = recs.filter((r) => r.outcome === "ambiguous");
-  if (ambiguous.length > 0)
-    fail(
-      `${ambiguous.length} ambiguous hand↔TCPD pairing(s) (${ambiguous.map((a) => (a as { key: string }).key).join(", ")}): a human pairs these before anything inserts.`,
-    );
-  const matchedUpstream = new Set(
-    recs.filter((r): r is Extract<typeof r, { outcome: "match" }> => r.outcome === "match").map((r) => r.tcpd.upstreamId),
-  );
-  const skippedMatched: string[] = [];
 
   const heldSkipped: string[] = [];
   const partyIdFor = (label: string, year: number): string | null => {
