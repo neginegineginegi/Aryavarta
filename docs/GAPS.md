@@ -150,8 +150,12 @@ loader's).
 ## Rajya Sabha — 2026-09-03 gate rulings (decided; do not relitigate)
 
 `docs/RAJYA_SABHA_SPEC.md` governs; stages 0–1 ran 2026-09-03; the insert
-stage is built and queues behind the electoral-bonds insert and the TCPD
-production reconciliation (no fourth front).
+stage is built. Two different orderings, both in force and not in
+conflict: this FRONT was opened only after the electoral-bonds gate
+returned and does not displace the TCPD production reconciliation (no
+fourth front); the RUNBOOK then runs the inserts smallest first, so the
+RS insert is executed before bonds and TCPD
+(`docs/PRODUCTION_RUNBOOK.md` steps 3–5).
 
 1. **Three composite 1950s RS seats become first-class state rows now**
    (`ajmer-and-coorg`, `bilaspur-and-himachal-pradesh`,
@@ -174,6 +178,24 @@ production reconciliation (no fourth front).
 8. **The 13-column allowlist is binding**; the PII-unreachability test
    stays in the suite permanently.
 
+Two corrections the adversarial review of the stage-2 diff caught the same
+day, both following from rulings already made rather than reopening them:
+
+- **"Nominated" is a third no-party label.** Two rows spell out what
+  "NOM." abbreviates (both with Nominated=TRUE, State=Nominated), and the
+  committed dispositions file would have CREATED a party row named
+  "Nominated" — inventing an organisation out of a marker, exactly what
+  ruling 6 forbids for "O". It now joins NOM. and O in
+  `RS_NO_PARTY_LABELS`: verbatim label, party_id null.
+- **SP is windowed here too.** The RS dispositions resolved every "SP"
+  row to `samajwadi-party` with the stated reason that all RS SP rows sit
+  inside the Samajwadi era. One does not: RS00109's term starts
+  1992-07-05, three months before the party was founded. The row is now
+  windowed to the boundary APPROVED 2026-08-30 (from 1993), leaving that
+  term HELD — party_id null, label verbatim, named in the insert report.
+  A held RS label-year keeps its term row: the seat was really held, only
+  the attribution is unknown.
+
 ## Stage-2 build — 2026-09-03 (all three fronts)
 
 Authorised and built the same day, as scripts THE USER runs from a
@@ -190,6 +212,22 @@ ANALYZE runs after; starved-panel counts print before and after.
 `docs/PRODUCTION_RUNBOOK.md` is the exact command sequence:
 reconciliation first, backup second, then inserts smallest first
 (Rajya Sabha, electoral bonds, TCPD).
+
+**Step 0, binding (added 2026-09-03): an insert may not outrun its
+renderer or its migration.** Every insert refuses unless (a) `origin/main`
+carries the code these rows need — the precision-aware date formatter, the
+`unclassified` org kind, the RS tables, `recipient_label` — checked as
+capabilities in the deploy branch rather than as a commit sha that goes
+stale, and (b) this database carries the matching schema, probed as facts
+in the catalogue AND recorded by `ensure-upgrades` in the new
+`schema_capabilities` table (objects without a record means someone
+hand-applied SQL; a record without objects means the record is lying;
+both stop the insert). Reason: a year-anchored TCPD row renders as an
+invented "1 January" on code that does not know its precision, and the
+RS rows have no page at all yet. **Runbook steps 1 and 2 may run before
+the merge; steps 3–5 may not.** The scripts prove main CONTAINS the code
+and say only that — confirming the deployment went green stays a human
+step.
 
 ## Sandbox continuity note — 2026-09-03
 
@@ -243,3 +281,9 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - Development indicators cover the GEM industrial series; RBI social
   indicators are parked behind the ingest gate.
 - The API and /data page do not exist yet (decision 1: design first).
+- **The Rajya Sabha spine has no page.** `rs_members`/`rs_terms` will hold
+  2,407 members and 3,531 terms with nothing rendering them: no member
+  page, no chamber view, no link from a state. The rows are still worth
+  inserting (they are the archive's only record of the upper house, and
+  the ingest is reversible by dataset id), but until a surface exists the
+  data is invisible to every reader.

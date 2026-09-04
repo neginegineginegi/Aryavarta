@@ -63,7 +63,6 @@ NCP,,,resolve,nationalist-congress-party,
 NPC,,,create,,
 NPF,,,resolve,naga-people-s-front,
 NPP,,,resolve,national-people-s-party,
-Nominated,,,create,,
 PDF,,,create,,
 PDP,,,resolve,jammu-and-kashmir-peoples-democratic-party,
 PIP,,,create,,
@@ -81,7 +80,7 @@ SAMATA,,,create,,
 SBP,,,create,,
 SCF,,,create,,
 SDF,,,resolve,sikkim-democratic-front,
-SP,,,resolve,samajwadi-party,"RS SP rows span 1992-2022, entirely inside the Samajwadi era per the elections windows"
+SP,1993,,resolve,samajwadi-party,"Windowed to the boundary APPROVED 2026-08-30 for the elections files: from 1993 the label is the Samajwadi Party (founded 4 Oct 1992). The single RS row starting 05-07-1992 (RS00109) predates the party and is HELD - party_id null, label verbatim - never resolved to it"
 SS,,,resolve,shiv-sena,RS abbreviation for Shiv Sena (archive abbrev SHS); human pairing
 SSP,,,create,,
 Samajwadi Party,,,resolve,samajwadi-party,

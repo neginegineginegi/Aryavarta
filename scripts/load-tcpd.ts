@@ -19,7 +19,7 @@ import { createHash } from "node:crypto";
 import { closeSync, createReadStream, existsSync, openSync, readFileSync, readSync, statSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { dbLabelOf, hasConfirm, panelDiffLines, requireFreshVerifiedBackup, starvedCounts } from "./stage2-common";
+import { dbLabelOf, hasConfirm, panelDiffLines, requireInsertPreconditions, starvedCounts } from "./stage2-common";
 import {
   aggregate,
   aggregateEarly,
@@ -344,6 +344,7 @@ function reportAggregate(label: string, out: AggregateOutcome, lines: string[]) 
   } else {
     lines.push(`- unmapped state names (A1): none`);
   }
+  if (Object.keys(out.refused).length === 0) lines.push(`- refused rows: none`);
   for (const [reason, n] of Object.entries(out.refused)) lines.push(`- refused rows — ${reason}: ${n}`);
 
   lines.push(`\n### Elections per state × year`);
@@ -361,7 +362,12 @@ function reportAggregate(label: string, out: AggregateOutcome, lines: string[]) 
   lines.push(`\n- elections with vote shares withheld (A7): ${withheld}`);
   lines.push(`- elections at year precision (A2): ${monthless}; at month precision: ${out.elections.length - monthless}`);
   const anomalous = out.elections.filter((e) => e.anomalies.length > 0);
-  lines.push(`- elections with anomalies: ${anomalous.length}`);
+  // Known-quirk vs unexplained is the honest shape of a count like this: the
+  // bye-election and duplicate-row exclusions above are the publisher's own
+  // recorded quirks, already counted by name; what lands here is not.
+  lines.push(
+    `- elections with anomalies: ${anomalous.length} unexplained (the ${out.byeRowCount} bye-election rows and ${out.duplicateRowCount} exact duplicates above are known quirks, counted separately, not folded into this number)`,
+  );
   for (const e of anomalous.slice(0, 40)) lines.push(`    - ${e.upstreamId}: ${e.anomalies.join("; ")}`);
   if (anomalous.length > 40) lines.push(`    - … and ${anomalous.length - 40} more (full list in the data, not truncated silently: count above is exact)`);
 }
@@ -582,8 +588,10 @@ function reportEarly(
   lines.push(
     `- RECOMMENDATION — insert ${exp.all} (zero-seat parties included): the modern aggregate already keeps every contesting party, a recorded vote total is a fact whether or not it converted to a seat, and vote-share denominators stay honest only when every counted vote has a row. Dropping zero-seat parties would also silently erase parties that mattered (runners-up, regional formations before their first win).`,
   );
+  if (Object.keys(earlyRefused).length === 0) lines.push(`- unparseable rows: none`);
   for (const [reason, n] of Object.entries(earlyRefused)) lines.push(`- unparseable rows — ${reason}: ${n}`);
   lines.push(`- exact duplicate candidate rows refused: ${early.duplicateRowCount}`);
+  if (Object.keys(early.refused).length === 0) lines.push(`- refused rows: none`);
   for (const [reason, n] of Object.entries(early.refused)) lines.push(`- refused rows — ${reason}: ${n}`);
 
   lines.push(`\n### State-spelling aliases applied (committed in STATE_ALIASES.csv, §2.8)`);
@@ -796,11 +804,13 @@ async function insertEarly() {
   const manifest = await verify();
 
   if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
-  // 2026-09-03 ruling: the backup gate reads the marker restore-drill.sh
-  // writes — fresh (24h), verified, same database — never an env var.
-  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
   if (!hasConfirm())
     fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run this stage with --confirm.");
+  // 2026-09-03 rulings: the deploy branch must already carry the renderer,
+  // this database must already carry the migration, and the backup gate
+  // reads the marker restore-drill.sh writes — fresh (24h), verified, same
+  // database — never an env var.
+  await requireInsertPreconditions(process.env.DATABASE_URL, fail);
 
   const { parseCsv } = await import("../src/lib/csv");
   const { early, earlyRefused, committedAliases } = aggregateFiles(manifest, parseCsv);
@@ -1059,7 +1069,9 @@ async function insertEarly() {
   lines.push(`\nGenerated ${today} against database ${dbLabel}.`);
   lines.push(`\n- elections inserted: ${electionCount} (39 AE + 2 GE)`);
   lines.push(`- election_results inserted: ${resultCount} (zero-seat parties included)`);
-  lines.push(`- historical states created: ${histIds.length} (first-class, no successor links, has_geometry=false)`);
+  lines.push(
+    `- historical states: ${missingStates.length} created by this run (${missingStates.map((s) => s.id).join(", ") || "none"}), ${histIds.length - missingStates.length} already present and verified by name — first-class, no successor links, has_geometry=false`,
+  );
   lines.push(`- parties created: ${check.createLabels.length}; labels resolving to existing parties by window: ${new Set(committed.filter((c) => c.disposition === "resolve").map((c) => c.label)).size}`);
   lines.push(`- provenance rows: ${electionCount}; citations: ${electionCount}; turnout_percent: NULL on all rows (ruling 1)`);
   lines.push(`- ANALYZE run on all touched tables (recordPath amendment)`);
@@ -1089,7 +1101,6 @@ const LOKDHABA_URL = "https://lokdhaba.ashoka.edu.in/browse-data";
 async function insertModern() {
   const manifest = await verify();
   if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
-  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
   const termsPath = join(ROOT, "TERMS_LOKDHABA.md");
   if (!existsSync(termsPath) || readFileSync(termsPath, "utf8").trim().length < 200)
     fail(
@@ -1097,6 +1108,7 @@ async function insertModern() {
     );
   if (!hasConfirm())
     fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run with --confirm.");
+  await requireInsertPreconditions(process.env.DATABASE_URL, fail);
 
   const { parseCsv } = await import("../src/lib/csv");
   const { ae, ge, parseRefused } = aggregateFiles(manifest, parseCsv);
@@ -1175,6 +1187,25 @@ async function insertModern() {
     }
     createdIds.set(label, slug);
   }
+
+  // ---- Reconciliation, applied (not merely reported) --------------------
+  // The stage-1 report has always said stage 2 inserts the TCPD-ONLY
+  // elections; inserting all 379 would put a second row beside every
+  // hand-curated election the export also covers. A hand row wins its own
+  // slot: it is cited, reviewed, and may disagree with TCPD — and a
+  // disagreement is for a human at the reconciliation gate, never resolved
+  // by a loader writing a duplicate next to it (found in review, 2026-09-03).
+  const { hand } = await loadHandElections();
+  const recs = reconcileAll(hand, allAggs);
+  const ambiguous = recs.filter((r) => r.outcome === "ambiguous");
+  if (ambiguous.length > 0)
+    fail(
+      `${ambiguous.length} ambiguous hand↔TCPD pairing(s) (${ambiguous.map((a) => (a as { key: string }).key).join(", ")}): a human pairs these before anything inserts.`,
+    );
+  const matchedUpstream = new Set(
+    recs.filter((r): r is Extract<typeof r, { outcome: "match" }> => r.outcome === "match").map((r) => r.tcpd.upstreamId),
+  );
+  const skippedMatched: string[] = [];
 
   const heldSkipped: string[] = [];
   const partyIdFor = (label: string, year: number): string | null => {
@@ -1281,6 +1312,13 @@ async function insertModern() {
     }
 
     for (const e of allAggs) {
+      if (matchedUpstream.has(e.upstreamId)) {
+        // A hand-curated election already holds this slot. The TCPD figures
+        // for it live in the reconciliation table, where a person rules on
+        // any disagreement; nothing is written here.
+        skippedMatched.push(`${e.stateId ?? e.stateName} ${e.scope} ${e.year} (${e.upstreamId})`);
+        continue;
+      }
       const datasetId = e.scope === "lok_sabha" ? geDatasetId : aeDatasetId;
       const electionId = uuidv7();
       await tx.insert(schema.elections).values({
@@ -1325,7 +1363,12 @@ async function insertModern() {
   const lines: string[] = [];
   lines.push(`# TCPD ingest — stage 2 insert report (modern files, D1+D2)`);
   lines.push(`\nGenerated ${today} against database ${dbLabel}.`);
-  lines.push(`\n- elections inserted: ${electionCount} (364 AE + 15 GE)`);
+  lines.push(`\n- elections inserted: ${electionCount} of ${allAggs.length} aggregated (364 AE + 15 GE)`);
+  lines.push(
+    `- elections SKIPPED because a hand-curated row already covers them: ${skippedMatched.length} — their TCPD figures stay in the reconciliation table for a human, and no duplicate row was written`,
+  );
+  for (const s of skippedMatched.slice(0, 40)) lines.push(`    - ${s}`);
+  if (skippedMatched.length > 40) lines.push(`    - … and ${skippedMatched.length - 40} more (count above is exact)`);
   lines.push(`- election_results inserted: ${resultCount}`);
   lines.push(`- parties created verbatim: ${createLabels.length}; resolving to existing: ${resolves.size}; file-governed labels: ${fileLabels.size}`);
   lines.push(`- shared-form merge candidates written: ${scan.heldIncoming.reduce((n, g) => n + (g.labels.length * (g.labels.length - 1)) / 2, 0)} pairs from ${scan.heldIncoming.length} groups`);

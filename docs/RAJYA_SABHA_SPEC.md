@@ -107,10 +107,17 @@ never used.
 - `Type` is a snapshot **as of 2022-07-20** and carries that date;
   nothing renders it in the present tense.
 - Coverage ends 2022-07-20; every surface these rows reach states it.
-- `Party = "NOM."` is not a party: it marks a nominated member with no
-  recorded affiliation (all 134 such rows carry `Nominated = TRUE`,
-  verified) → party_id null. `State = "Nominated"` likewise → state null,
-  the `nominated` flag carries the fact.
+- **Three party labels state an ABSENCE, not a party** (ruled 2026-09-03;
+  `RS_NO_PARTY_LABELS`). Each keeps its verbatim label on the term row
+  with `party_id` null, and none appears in the dispositions file:
+  - `"NOM."` — a nominated member with no recorded affiliation (all 134
+    such rows carry `Nominated = TRUE`, verified).
+  - `"O"` — party not recorded (76 rows, 1952–2000, many states).
+  - `"Nominated"` — the same fact as NOM. spelled out (2 rows, both
+    `Nominated = TRUE`, `State = Nominated`). Creating a party row named
+    "Nominated" would have invented an organisation out of a marker.
+  `State = "Nominated"` likewise → state null, the `nominated` flag
+  carries the fact.
 
 ### 4.3 Parties (96 labels)
 
@@ -122,7 +129,17 @@ file must respect: the Congress-family labels OVERLAP in time (Congress
 1952–96, INC 1952–2022, CONG(I) 1956–2000) — these are not clean eras,
 and windows must not pretend otherwise; and some labels are anachronistic
 (CONG(I) rows from 1956, BJP rows from 1962 — before either existed),
-which is reported as a transcription-labelling fact, never repaired.
+which is reported as a transcription-labelling fact, never repaired: the
+insert records each as an open question against the party row.
+
+**SP carries the elections boundary here too** (correction of 2026-09-03):
+the label resolves to `samajwadi-party` only from 1993, the window
+APPROVED 2026-08-30 for the elections files. One RS term starts
+1992-07-05, three months before the party was founded, and is therefore
+HELD. A held RS label-year does NOT drop its term row — the seat was
+really held, only the attribution is unknown — so the term inserts with
+`party_id` null, its verbatim label intact, and is named in the insert
+report.
 
 ### 4.4 States (49 labels)
 

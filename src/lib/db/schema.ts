@@ -1727,6 +1727,23 @@ export const verifications = pgTable(
 // can reach these tables (they are mechanically unreachable in the parser).
 // ---------------------------------------------------------------------------
 
+/**
+ * What migrated this database, and when.
+ *
+ * scripts/ensure-upgrades.mjs writes a row per capability once its statements
+ * have applied; the stage-2 insert scripts refuse to run against a database
+ * whose row for their capability is missing (docs/PRODUCTION_RUNBOOK.md step
+ * 0). The schema objects are the fact and are probed directly — this row is
+ * the record of which code applied them, so a hand-applied schema with no
+ * provenance is caught rather than trusted.
+ */
+export const schemaCapabilities = pgTable("schema_capabilities", {
+  capability: text("capability").primaryKey(),
+  ensuredAt: timestamp("ensured_at", { withTimezone: true }).notNull().defaultNow(),
+  gitCommit: text("git_commit"),
+  statements: integer("statements"),
+});
+
 export const rsMembers = pgTable(
   "rs_members",
   {

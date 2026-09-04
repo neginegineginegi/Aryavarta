@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   aggregateRs,
   checkRsHeader,
+  classifyRsAnomalies,
   normalizePersonName,
   parseRsDate,
   parseRsRow,
@@ -130,13 +131,35 @@ describe("aggregateRs (spec §5 coherence)", () => {
       // "O" is party-not-recorded: verbatim on the term, party_id null,
       // never a dispositions-file entry.
       parsed({ ID: "RS00005", Party: "O" }),
+      // "Nominated" spelled out is the same absence as "NOM." — creating a
+      // party row named "Nominated" would invent an organisation out of a
+      // marker (caught in review, 2026-09-03).
+      parsed({ ID: "RS00006", Party: "Nominated", Nominated: "TRUE" }),
+      parsed({ ID: "RS00007", Party: "Nominated", Nominated: "TRUE" }),
     ];
     const out = aggregateRs(rows);
     expect(out.partyLabelYears.map((l) => l.label)).toEqual(["BJP"]);
     expect(out.noPartyRows).toEqual([
+      { label: "Nominated", rows: 2 },
       { label: "NOM.", rows: 1 },
       { label: "O", rows: 1 },
     ]);
+  });
+
+  it("flags a spelled-out Nominated label on a row that is not nominated", () => {
+    const out = aggregateRs([parsed({ Party: "Nominated", Nominated: "FALSE" })]);
+    expect(out.anomalies.join(" ")).toMatch(/Party "Nominated" on a row with Nominated=FALSE/);
+  });
+
+  it("classifies anomalies so a summary can never report zero over a non-empty body", () => {
+    const out = aggregateRs([
+      parsed({ ID: "RS00003", Type: "Current", End_Date_Actual: "01-01-2020" }),
+      parsed({ ID: "RS00008", Party: "NOM.", Nominated: "FALSE" }),
+    ]);
+    const { knownQuirk, unexplained } = classifyRsAnomalies(out.anomalies);
+    expect(knownQuirk).toHaveLength(1);
+    expect(unexplained).toHaveLength(1);
+    expect(unexplained[0]).toMatch(/Nominated=FALSE/);
   });
 
   it("flags duplicate Term_No and name drift within one ID", () => {

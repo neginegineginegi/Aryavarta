@@ -1,5 +1,7 @@
 /* eslint-disable no-console */
 import "dotenv/config";
+
+import { execFileSync } from "node:child_process";
 /**
  * Idempotent schema upgrades, applied automatically before every build.
  *
@@ -964,6 +966,16 @@ const STATEMENTS = [
   `ALTER TABLE "elections" ADD COLUMN IF NOT EXISTS
      "election_date_precision" text NOT NULL DEFAULT 'day'
      CHECK (election_date_precision IN ('day','month','year'))`,
+  // --- upgrade: the schema-capability marker (runbook step 0) -------------
+  // What migrated this database, and when. The stage-2 inserts read it so an
+  // insert cannot outrun its migration; an undated hand-applied schema has
+  // no row here and is refused.
+  `CREATE TABLE IF NOT EXISTS "schema_capabilities" (
+     "capability" text PRIMARY KEY,
+     "ensured_at" timestamp with time zone DEFAULT now() NOT NULL,
+     "git_commit" text,
+     "statements" integer
+   )`,
   // --- upgrade: stage-2 rulings of 2026-09-03 (three ingest fronts) --------
   // org kind for names stating no legal form (electoral bonds ruling).
   `ALTER TYPE "public"."org_kind" ADD VALUE IF NOT EXISTS 'unclassified'`,
@@ -1011,6 +1023,27 @@ const STATEMENTS = [
   `CREATE INDEX IF NOT EXISTS "rs_terms_party_idx" ON "rs_terms" ("party_id")`,
 ];
 
+/**
+ * Capability keys this file's statements deliver, recorded in
+ * schema_capabilities once they have all applied. src/lib/ingest/deploy-gate.ts
+ * names the one the stage-2 inserts require; adding statements for a new
+ * front means adding its key here and there together.
+ */
+const CAPABILITIES = ["stage2-2026-09-03"];
+
+const esc = (s) => String(s).replace(/'/g, "''");
+
+/** The commit these statements came from: Vercel supplies it at build time,
+ *  git supplies it locally, and neither is fatal if absent. */
+function gitCommit() {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA.slice(0, 12);
+  try {
+    return execFileSync("git", ["rev-parse", "--short", "HEAD"], { encoding: "utf8" }).trim();
+  } catch {
+    return null;
+  }
+}
+
 const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL;
 if (!url) {
   console.log("[ensure-upgrades] DATABASE_URL not set — skipping (nothing to upgrade).");
@@ -1048,8 +1081,29 @@ async function run() {
       process.exit(1); // fail the build loudly rather than deploy skewed code
     }
   }
+  // Record what this run ensured. The stage-2 insert scripts refuse to run
+  // against a database whose capability rows do not cover them: the schema
+  // objects are the fact, this row is the record of who applied them.
+  const commit = gitCommit();
+  for (const capability of CAPABILITIES) {
+    try {
+      await query(
+        `INSERT INTO schema_capabilities (capability, ensured_at, git_commit, statements)
+         VALUES ('${esc(capability)}', now(), ${commit ? `'${esc(commit)}'` : "NULL"}, ${STATEMENTS.length})
+         ON CONFLICT (capability) DO UPDATE
+           SET ensured_at = now(), git_commit = EXCLUDED.git_commit, statements = EXCLUDED.statements`,
+      );
+    } catch (e) {
+      console.error(`[ensure-upgrades] could not record capability "${capability}":`);
+      console.error(String(e?.message ?? e));
+      await done();
+      process.exit(1);
+    }
+  }
   await done();
-  console.log(`[ensure-upgrades] OK — ${applied}/${STATEMENTS.length} statements ensured.`);
+  console.log(
+    `[ensure-upgrades] OK — ${applied}/${STATEMENTS.length} statements ensured; capabilities recorded: ${CAPABILITIES.join(", ")} (commit ${commit ?? "unrecorded"}).`,
+  );
 }
 
 run();

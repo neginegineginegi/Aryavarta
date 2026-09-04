@@ -107,12 +107,20 @@ ceiling until sample verification (§6) happens.
 ### 3.2 Purchasers → orgs
 
 Each distinct non-empty purchaser name becomes ONE `orgs` row, name
-verbatim, slug deterministic, `kind = 'other'` — because the purchaser
-table mixes companies with individual persons, and classifying by name
-pattern is a guess. Whether the human-recognisable individuals should be
-`people` rows instead is a **gate question** (§7), presented with a
-measured count, not decided by the loader. Sources on each org: the ECI
-disclosure citation.
+verbatim, slug deterministic. Sources on each org: the ECI disclosure
+citation. Purchasers appearing only on expired (never-encashed) rows hold
+no transaction and create no org.
+
+**Kind — RULED 2026-09-03** (this supersedes the `kind = 'other'`
+proposal that stood here, and closes the individuals-as-orgs gate
+question): kind records ONLY what the name itself states. A name ending
+in a legal-form suffix from the committed list
+(`data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv` — LIMITED, LTD, PVT,
+PRIVATE LIMITED, LLP, LLC) is `company`; every other name is
+`unclassified`, a stated absence of classification rather than a guess.
+The list is data, so widening it is a reviewed commit, and no pattern
+heuristic reaches a stored kind: the corporate-marker regex in the ingest
+library exists only to COUNT for a report.
 
 ### 3.3 Transactions → funding_transactions
 

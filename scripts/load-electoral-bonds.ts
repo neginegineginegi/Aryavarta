@@ -30,7 +30,7 @@ import {
   type BondRow,
   type BondsOutcome,
 } from "../src/lib/ingest/electoral-bonds";
-import { dbLabelOf, graphCounts, hasConfirm, panelDiffLines, requireFreshVerifiedBackup, revertDataset, starvedCounts } from "./stage2-common";
+import { dbLabelOf, graphCounts, hasConfirm, panelDiffLines, requireInsertPreconditions, revertDataset, starvedCounts } from "./stage2-common";
 
 const ROOT = process.env.EB_ROOT ?? join(process.cwd(), "data", "raw", "electoral-bonds");
 
@@ -208,6 +208,7 @@ async function dryRun() {
 
   lines.push(`\n## Shape`);
   lines.push(`- payload rows: ${rawCount}; parsed: ${rows.length}`);
+  if (Object.keys(refused).length === 0) lines.push(`- unparseable rows: none`);
   for (const [reason, cnt] of Object.entries(refused)) lines.push(`- unparseable rows — ${reason}: ${cnt}`);
   lines.push(`- matched purchaser→party rows: ${out.matchedRows}`);
   lines.push(`- expired, never-encashed purchases (no recipient exists; NOT transactions; §2.3): ${out.expiredRows}`);
@@ -221,8 +222,12 @@ async function dryRun() {
   lines.push(`- total recorded value: ${cr(out.parties.reduce((s, p) => s + p.value, 0))}`);
   lines.push(`- encashment range: ${out.encashedRange?.min} to ${out.encashedRange?.max}`);
   lines.push(`- duplicate bond identities: ${out.duplicateBondIds}`);
-  lines.push(`- anomalies: ${out.anomalies.length === 0 ? "none" : ""}`);
+  // No known-quirk class exists for this payload: its defects are counted by
+  // name above (empty purchasers, expired rows), so anything landing here is
+  // unexplained by construction and stops the insert.
+  lines.push(`- coherence anomalies: ${out.anomalies.length} unexplained (this payload has no known-quirk class; the counted defects above are not anomalies)`);
   for (const a of out.anomalies.slice(0, 20)) lines.push(`    - ${a}`);
+  if (out.anomalies.length > 20) lines.push(`    - … and ${out.anomalies.length - 20} more (count above is exact)`);
 
   lines.push(`\n## Party links (spec §3.4 — every row human-approved at this gate)`);
   if (linkProblems.length > 0) {
@@ -254,19 +259,28 @@ async function dryRun() {
   lines.push(`- mid-word splits (loaded verbatim; candidates only where the full form exists in the data): ${out.midWordSplits.length}`);
   for (const s2 of out.midWordSplits) lines.push(`    - ${s2}`);
 
-  lines.push(`\n## Gate question — individuals as orgs (spec §3.2)`);
+  lines.push(`\n## Org kind — DECIDED 2026-09-03 (was the individuals-as-orgs gate question)`);
+  const suffixes = readSuffixes(parseCsv);
+  const kinds = { company: 0, unclassified: 0 };
+  for (const p of out.purchasers) kinds[classifyOrgKind(p.name, suffixes)]++;
   lines.push(
-    `${out.likelyIndividuals.count} of ${out.purchasers.length} purchaser names carry no corporate marker (heuristic for COUNTING only, e.g. ${out.likelyIndividuals.samples.slice(0, 4).join("; ")}). The proposal is ONE orgs row per verbatim name with kind='other' for all purchasers, because splitting people from companies by name pattern is a guess. The gate may instead rule that a human classifies the ${out.likelyIndividuals.count} into people rows; the loader will not.`,
+    `Kind records ONLY what the name states: a legal-form suffix from the committed list (${suffixes.join(", ")} — data/raw/electoral-bonds/LEGAL_FORM_SUFFIXES.csv) makes it 'company'; every other name is 'unclassified', a stated absence of classification rather than a guess. On this drop: company ${kinds.company}, unclassified ${kinds.unclassified}.`,
+  );
+  lines.push(
+    `For contrast only, never for a stored value: ${out.likelyIndividuals.count} of ${out.purchasers.length} names carry no corporate-sounding marker at all (e.g. ${out.likelyIndividuals.samples.slice(0, 4).join("; ")}). That heuristic reaches no database column — splitting people from companies by name pattern stays a human's call.`,
   );
 
   lines.push(`\n## Insert preview (stage 2 — built 2026-09-03; runs only via docs/PRODUCTION_RUNBOOK.md with the restore-drill marker and --confirm)`);
   lines.push(`- datasets: 1 (slug eci-electoral-bonds-2019-24; ECI as source, transcription as intermediary)`);
-  lines.push(`- orgs created (verbatim purchasers): ${out.purchasers.length}`);
-  lines.push(`- funding_transactions: ${insertableTx} (${cr(insertableValue)}), funding_type=donation, evidence_status=documented, occurred_on=encashment date`);
+  lines.push(`- orgs created (verbatim purchasers): ${out.purchasers.length} — kind company ${kinds.company}, unclassified ${kinds.unclassified}`);
+  lines.push(`- funding_transactions: ${insertableTx} (${cr(insertableValue)}), funding_type=donation, evidence_status=documented, occurred_on=encashment date, recipient_label verbatim on every row`);
   lines.push(`- held out: ${out.emptyPurchaser.rows} unattributed rows (${cr(out.emptyPurchaser.value)}), ${heldUnlinkedTx} unlinked-party rows, ${out.expiredRows} expired purchases`);
   lines.push(`- record_provenance: ${insertableTx}; citations: per org and per transaction against the ECI disclosure source`);
   lines.push(`- entity_match_candidates: ${out.collisionGroups.reduce((s2, g) => s2 + (g.names.length * (g.names.length - 1)) / 2, 0)} pairs from ${out.collisionGroups.length} groups`);
-  lines.push(`- open_questions: 2 (the unattributed ₹${Math.round(out.emptyPurchaser.value / CRORE)} crore; the not-yet-done ECI sample verification)`);
+  const linkedUndercounts = out.emptyPurchaser.byParty.filter((e) => linkBy.get(e.name)?.partyId).length;
+  lines.push(
+    `- open_questions: ${linkedUndercounts + 1} (${linkedUndercounts} per-party undercounts covering the unattributed ₹${Math.round(out.emptyPurchaser.value / CRORE)} crore, one per LINKED recipient; plus the not-yet-done ECI sample verification)`,
+  );
 
   lines.push(`\n## Graph density (nodes = orgs+people; edges = transactions+board+relationships)`);
   lines.push(`| | before | after insert |`);
@@ -288,7 +302,9 @@ async function dryRun() {
 
 const DATASET_SLUG = "eci-electoral-bonds-2019-24";
 const ECI_URL = "https://www.eci.gov.in/disclosure-of-electoral-bonds";
-const TRANSCRIPTION = "community transcription saisantoshv3/electoral_bonds @ aa8b9e02, cloned 2026-09-03";
+const TRANSCRIPTION_REPO = "https://github.com/saisantoshv3/electoral_bonds";
+const CORROBORATING_REPO = "https://github.com/apoorv74/electoral-bonds-sbi";
+const TRANSCRIPTION = `community transcription ${TRANSCRIPTION_REPO} @ aa8b9e02, cloned 2026-09-03`;
 
 /**
  * Stage 2 — the insert, authorised by the 2026-09-03 gate rulings:
@@ -302,9 +318,9 @@ const TRANSCRIPTION = "community transcription saisantoshv3/electoral_bonds @ aa
 async function insert() {
   const manifest = await verify();
   if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
-  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
   if (!hasConfirm())
     fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run with --confirm.");
+  await requireInsertPreconditions(process.env.DATABASE_URL, fail);
 
   const { parseCsv } = await import("../src/lib/csv");
   const { rows, refused, out } = readPayload(manifest, parseCsv);
@@ -360,15 +376,22 @@ async function insert() {
       id: datasetId,
       slug: DATASET_SLUG,
       name: "ECI electoral bonds disclosure, 2019–2024 (community transcription)",
-      publisher: "Election Commission of India",
+      // The committed strings of spec §3.1, verbatim. The licence line says
+      // "unverified" because nobody has read the transcription repositories'
+      // licence files yet (§1.4, still pending at the gate) — writing a
+      // cleared-sounding sentence here would settle by assertion the exact
+      // question the export gate must actually answer.
+      publisher: "Election Commission of India (via community transcription)",
       version: "transcription commit aa8b9e02 (2024-05-14)",
-      licence: "Public record: ECI disclosure ordered by the Supreme Court of India (judgment of 2024-02-15); transcription intermediary carries no additional licence terms on the data",
+      licence: "public record (ECI disclosure under Supreme Court direction); transcription licence unverified",
       licenceUrl: null,
       retrievedOn: "2026-09-03",
       upstreamUrl: ECI_URL,
       curator: "ai@cdswindia.org",
       notes:
-        "We hold a COMMUNITY TRANSCRIPTION of the ECI PDFs, not the primary source; every row is evidence_status=documented, never verified, until the stage-3 sample check against ECI originals (docs/ELECTORAL_BONDS_SPEC.md). " +
+        `We hold a COMMUNITY TRANSCRIPTION of the ECI PDFs, not the primary source: ${TRANSCRIPTION_REPO} at commit aa8b9e02 (2024-05-14), cloned 2026-09-03; the second transcription (${CORROBORATING_REPO} @ ed8b39be) is held for cross-check only and shares the same lineage. ` +
+        "Every row is evidence_status=documented, never verified, until the stage-3 sample check against ECI originals (docs/ELECTORAL_BONDS_SPEC.md). " +
+        "The transcription repositories' own licence files have NOT been read; nothing derived from this dataset ships in an export until they are. " +
         "The 1,680 rows with an empty purchaser field (₹623 crore) are NOT loaded — the schema requires a donor, and fabricating one was refused; per-party undercounts are recorded as open questions (2026-09-03 ruling). " +
         "The 130 expired never-encashed purchases are not transactions and are not loaded; purchasers appearing only on expired rows create no org. " +
         "recipient_label keeps the ECI account-holder form verbatim beside the resolved party_id on every transaction. " +
@@ -423,7 +446,7 @@ async function insert() {
       ingestedOn: today,
     }));
     for (let i = 0; i < orgProv.length; i += 500) await tx.insert(schema.recordProvenance).values(orgProv.slice(i, i + 500));
-    const orgCites = [...orgIdByName.entries()].map(([name, id]) => ({
+    const orgCites = [...orgIdByName.values()].map((id) => ({
       subjectType: "org" as const,
       subjectId: id,
       sourceId,

@@ -138,11 +138,35 @@ export function parseRsRow(input: Record<string, string>): RsRow | { refused: st
 export type RsMember = { tcpdId: string; name: string; terms: RsRow[] };
 
 /** Party labels that state an ABSENCE, not a party (§4.2 + the 2026-09-03
- *  ruling): "NOM." marks a nominated member, "O" marks party-not-recorded.
- *  Both are kept verbatim on rs_terms with party_id null; neither reaches
- *  the dispositions file, which must never be made to pretend an absence is
- *  a party. */
-export const RS_NO_PARTY_LABELS = ["NOM.", "O"] as const;
+ *  ruling): "NOM." marks a nominated member, "O" marks party-not-recorded,
+ *  and "Nominated" is the same fact as "NOM." spelled out (2 rows, both with
+ *  Nominated=TRUE and State=Nominated — mechanically identical). All three
+ *  are kept verbatim on rs_terms with party_id null; none reaches the
+ *  dispositions file, which must never be made to pretend an absence is a
+ *  party. Creating a party row named "Nominated" would have invented an
+ *  organisation out of a marker. */
+export const RS_NO_PARTY_LABELS = ["NOM.", "O", "Nominated"] as const;
+
+/** The labels that assert nomination specifically; both must agree with the
+ *  Nominated flag on their row, or the file has drifted. */
+const RS_NOMINATION_LABELS = new Set(["NOM.", "Nominated"]);
+
+/**
+ * The one anomaly kind TCPD's own semantics produce, so a report can say
+ * "N known-quirk, M unexplained" instead of a bare count that hides which
+ * is which: `Type` describes the MEMBER at the 2022-07-20 snapshot and is
+ * repeated on every term row, so a sitting member's earlier terms read
+ * "Current" beside their own recorded end date.
+ */
+export const RS_KNOWN_QUIRK_WHY = "TCPD status reflects current member state, not the term";
+const RS_KNOWN_QUIRK = /: Current \(as of .+\) yet End_Date_Actual is recorded$/;
+
+export function classifyRsAnomalies(anomalies: string[]): { knownQuirk: string[]; unexplained: string[] } {
+  return {
+    knownQuirk: anomalies.filter((a) => RS_KNOWN_QUIRK.test(a)),
+    unexplained: anomalies.filter((a) => !RS_KNOWN_QUIRK.test(a)),
+  };
+}
 
 export type RsOutcome = {
   termRows: number;
@@ -187,8 +211,8 @@ export function aggregateRs(rows: RsRow[]): RsOutcome {
   const reasonBy = new Map<string, number>();
   const noParty = new Set<string>(RS_NO_PARTY_LABELS);
   for (const r of rows) {
-    if (r.partyLabel === "NOM." && !r.nominated)
-      anomalies.push(`${r.tcpdId}: Party "NOM." on a row with Nominated=FALSE`);
+    if (RS_NOMINATION_LABELS.has(r.partyLabel) && !r.nominated)
+      anomalies.push(`${r.tcpdId}: Party "${r.partyLabel}" on a row with Nominated=FALSE`);
     if (noParty.has(r.partyLabel)) {
       noPartyBy.set(r.partyLabel, (noPartyBy.get(r.partyLabel) ?? 0) + 1);
     } else if (r.partyLabel !== "") {

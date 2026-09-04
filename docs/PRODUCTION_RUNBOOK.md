@@ -12,7 +12,22 @@ build time, and no credential is ever pasted into a chat — the standing
 rule: never share a production `DATABASE_URL`, even read-only; a
 connection string in scrollback is a disclosed credential.
 
-## 0. Prerequisites (once)
+## 0. Prerequisites (once), and the merge gate
+
+**Binding (2026-09-03): steps 1 and 2 may run before the branch is merged.
+Steps 3, 4 and 5 may not.** The inserts refuse until `origin/main` carries
+the code these rows need to render — the precision-aware date formatter,
+the `unclassified` org kind, the Rajya Sabha tables, the verbatim
+`recipient_label` — and until this database carries the matching
+migration. Rows that outrun their renderer are not a cosmetic problem: a
+TCPD election anchored to a year is stored as `YYYY-01-01`, and deployed
+code that does not know its precision renders "1 January", the archive
+asserting a date nobody recorded. The Rajya Sabha rows have no page at
+all until one ships.
+
+The scripts check what they can prove — that main CONTAINS the code — and
+say so in those words. **Confirming the Vercel deployment of that commit
+is green is yours**, and it belongs between the merge and step 3.
 
 ```sh
 git fetch origin && git checkout claude/india-politics-archive-go5kio && git pull
@@ -20,8 +35,11 @@ pnpm install
 ```
 
 - `.env` in the checkout holds `DATABASE_URL` (production) and
-  `DATABASE_DRIVER=neon`. The scripts read it themselves (dotenv); no
-  exporting needed.
+  `DATABASE_DRIVER=neon`. The **Node** scripts read it themselves (dotenv);
+  no exporting needed for them. `scripts/restore-drill.sh` is bash and does
+  **not** read `.env`, so step 2 loads it into the shell first — the exact
+  command is given there. Either way the credential stays in the file and
+  the shell; it is never typed, echoed, or pasted anywhere.
 - `psql`, `pg_dump`, `pg_restore` on PATH (step 2 uses them).
 - Raw files on disk, exactly as their manifests expect:
   - `data/raw/tcpd-rs/data/TCPD_RSD_1.30_1952_20-07-2022_release.csv` (+ codebook PDF)
@@ -29,14 +47,17 @@ pnpm install
   - `data/raw/tcpd/` D1/D2/D3 CSVs per its MANIFEST.csv, and
     `data/raw/tcpd/TERMS_LOKDHABA.md` (the verbatim LokDhaba terms
     capture — the modern insert refuses without it)
-- Schema upgrades applied to production (append-only, idempotent):
+- Schema upgrades applied to production (append-only, idempotent). This is
+  also what records the capability row the inserts check, so it must run
+  against production even if Vercel's build already ran it:
 
 ```sh
 node scripts/ensure-upgrades.mjs
 ```
 
-Expected: `OK — 243/243 statements ensured.` (the count may be higher if
-the file has grown; what matters is `OK` and no error).
+Expected: `OK — 245/245 statements ensured; capabilities recorded:
+stage2-2026-09-03 (commit <sha>).` (the statement count rises as the file
+grows; what matters is `OK`, the capability line, and no error).
 
 Stage 0 for each front proves the drops are byte-identical to their
 manifests before anything else runs:
@@ -73,7 +94,10 @@ inserts do not depend on this table, but the order below still applies.
 
 ## 2. Verified backup restore (gates every insert)
 
+The drill is bash and reads the environment, not `.env`, so load it first:
+
 ```sh
+set -a && . ./.env && set +a
 ./scripts/restore-drill.sh
 ```
 
@@ -103,8 +127,10 @@ pnpm tsx scripts/load-rajya-sabha.ts --stage=dry-run
 pnpm tsx scripts/load-rajya-sabha.ts --stage=insert --confirm
 ```
 
-Expected from the insert, in order:
+Expected from the insert, in order (the three gates, then the work):
 ```
+[stage2] deploy gate passed: origin/main (<sha>) carries all 4 required capabilities…
+[stage2] schema gate passed: capability stage2-2026-09-03 ensured <timestamp> from commit <sha>…
 [stage2] backup gate passed: restore verified <timestamp> against <label>; recovery point <dump>
 [load-rajya-sabha] stage 2 — inserting into <label>
 # Rajya Sabha — stage 2 insert report
@@ -112,11 +138,24 @@ Expected from the insert, in order:
 ```
 
 The report must show: rs_terms inserted 3,531 of 3,538 (7 "Others" rows
-held and printed in full), the four state rows created (or "none (all
-existed)" on a re-ordered run), no-party labels NOM. 134 and O 76 with
-party_id null, and the starved panels UNCHANGED. Person-match candidates
-against production people rows appear in entity_match_candidates — they
-are proposals for a human, nothing is linked.
+held and printed in full); no-party labels NOM. 134, O 76 and Nominated 2,
+all with party_id null; one HELD label-year (the 1992 SP term, party_id
+null, named in full); internal coherence "109 known-quirk rows …, 0
+unexplained"; and the starved panels UNCHANGED.
+
+**State rows created here depend on what production already holds.** In
+this runbook's order the RS insert runs before any TCPD insert, so on a
+production database that has never received the D3 early file it creates
+**14**: the four the 2026-09-03 ruling adds (`ajmer-and-coorg`,
+`bilaspur-and-himachal-pradesh`, `manipur-and-tripura`, `kutch`) plus the
+ten D3 historical rows the RS terms reference (`bhopal`, `bombay`,
+`hyderabad`, `madhya-bharat`, `madras`, `mysore`, `pepsu`, `saurashtra`,
+`travancore-cochin`, `vindhya-pradesh`). If D3 ran first it creates only
+the four; both are correct, and the report names every row either way.
+
+Person-match candidates against production people rows appear in
+entity_match_candidates — they are proposals for a human, nothing is
+linked.
 
 ## 4. Insert 2 — electoral bonds
 
@@ -127,6 +166,8 @@ pnpm tsx scripts/load-electoral-bonds.ts --stage=insert --confirm
 
 Expected from the insert, in order:
 ```
+[stage2] deploy gate passed: …
+[stage2] schema gate passed: …
 [stage2] backup gate passed: …
 [load-electoral-bonds] stage 2 — inserting into <label>
 # Electoral bonds — stage 2 insert report
@@ -149,7 +190,7 @@ NODE_OPTIONS=--max-old-space-size=4096 pnpm tsx scripts/load-tcpd.ts --stage=ins
 NODE_OPTIONS=--max-old-space-size=4096 pnpm tsx scripts/load-tcpd.ts --stage=insert-modern --confirm
 ```
 
-Expected: each begins `[stage2] backup gate passed:` and ends
+Expected: each begins with the three gate lines (deploy, schema, backup) and ends
 `[load-tcpd] report written to data/raw/tcpd/insert-report.md` /
 `…insert-modern-report.md`. insert-early's report must show 41 elections
 (39 AE + 2 GE), 12 historical states, turnout NULL throughout;

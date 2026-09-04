@@ -22,16 +22,18 @@ import { join } from "node:path";
 import {
   aggregateRs,
   checkRsHeader,
+  classifyRsAnomalies,
   parseRsRow,
   proposePersonMatches,
   RS_EXCLUDED_COLUMNS,
   RS_INGESTED_COLUMNS,
+  RS_KNOWN_QUIRK_WHY,
   RS_NO_PARTY_LABELS,
   RS_SNAPSHOT_DATE,
   type RsRow,
 } from "../src/lib/ingest/rajya-sabha";
 import { checkPartyResolutions, type KnownParty, type PartyDisposition } from "../src/lib/ingest/tcpd";
-import { dbLabelOf, hasConfirm, panelDiffLines, requireFreshVerifiedBackup, revertDataset, starvedCounts } from "./stage2-common";
+import { dbLabelOf, hasConfirm, panelDiffLines, requireInsertPreconditions, revertDataset, starvedCounts } from "./stage2-common";
 
 const ROOT = process.env.RS_ROOT ?? join(process.cwd(), "data", "raw", "tcpd-rs");
 
@@ -189,8 +191,17 @@ async function dryRun() {
   lines.push(`- term-rows parsed: ${out.termRows} of ${raw.length}`);
   for (const [reason, n] of Object.entries(refused)) lines.push(`- unparseable — ${reason}: ${n}`);
   lines.push(`- distinct members (stable TCPD ID): ${out.members.length}; multi-term: ${out.multiTermMembers}; max terms: ${out.maxTerms}`);
-  lines.push(`- internal coherence anomalies: ${out.anomalies.length === 0 ? "none" : ""}`);
-  for (const a of out.anomalies.slice(0, 25)) lines.push(`    - ${a}`);
+  // A summary that says "zero" while the body lists rows is the wrong shape:
+  // say how many are the publisher's known quirk and how many nobody has
+  // explained, and never fold the first into a bare zero.
+  const anomalyKinds = classifyRsAnomalies(out.anomalies);
+  lines.push(
+    `- internal coherence: ${anomalyKinds.knownQuirk.length} known-quirk rows (${RS_KNOWN_QUIRK_WHY}), ${anomalyKinds.unexplained.length} unexplained`,
+  );
+  for (const a of anomalyKinds.unexplained) lines.push(`    - UNEXPLAINED: ${a}`);
+  for (const a of anomalyKinds.knownQuirk.slice(0, 5)) lines.push(`    - known quirk: ${a}`);
+  if (anomalyKinds.knownQuirk.length > 5)
+    lines.push(`    - … and ${anomalyKinds.knownQuirk.length - 5} more of the same known kind (count above is exact)`);
   lines.push(`- Reason_of_Vacation values: ${out.reasons.map((r2) => `${r2.value || "(empty)"} ${r2.rows}`).join("; ")}`);
 
   lines.push(`\n## The ingested-column allowlist (spec §2.1, binding — the exact list)`);
@@ -285,9 +296,9 @@ const partySlug = (label: string) =>
 async function insert() {
   const manifest = await verify();
   if (!process.env.DATABASE_URL) fail("DATABASE_URL not set.");
-  requireFreshVerifiedBackup(dbLabelOf(process.env.DATABASE_URL), fail);
   if (!hasConfirm())
     fail("stage 2 inserts only with an explicit --confirm. Run --stage=dry-run first, read the report, then re-run with --confirm.");
+  await requireInsertPreconditions(process.env.DATABASE_URL, fail);
 
   const { parseCsv } = await import("../src/lib/csv");
   const payload = manifest.find((m) => m.kind === "rs_members")!;
@@ -308,19 +319,19 @@ async function insert() {
   if (Object.keys(refused).length > 0) fail("the approved run had zero unparseable rows; this run does not.");
   if (out.termRows !== 3538) fail(`term rows ${out.termRows}, approved run measured 3538.`);
   if (out.members.length !== 2412) fail(`members ${out.members.length}, approved run measured 2412.`);
-  // The approved stage-1 run measured exactly 109 anomalies, ALL of one
-  // benign kind: Type is the MEMBER's snapshot status repeated on every
-  // term row, so a sitting member's past terms carry "Current" beside a
-  // recorded End_Date_Actual. Anything else — name drift, duplicate
-  // Term_No, NOM. with Nominated=FALSE — is new and stops the insert.
-  const unexpected = out.anomalies.filter((a) => !/Current \(as of 2022-07-20\) yet End_Date_Actual is recorded/.test(a));
-  if (unexpected.length > 0)
-    fail(`the approved run's anomalies were all of the Current-with-actual-end kind; this run has ${unexpected.length} other(s):\n  - ${unexpected.slice(0, 10).join("\n  - ")}`);
-  if (out.anomalies.length !== 109)
-    fail(`Current-with-actual-end anomalies ${out.anomalies.length}, approved run measured 109.`);
+  // The approved stage-1 run measured 109 anomalies, ALL of one known kind
+  // (the publisher's snapshot semantics). Anything else — name drift,
+  // duplicate Term_No, a nomination label on a non-nominated row — is new
+  // and stops the insert.
+  const { knownQuirk, unexplained } = classifyRsAnomalies(out.anomalies);
+  if (unexplained.length > 0)
+    fail(`the approved run had zero unexplained anomalies; this run has ${unexplained.length}:\n  - ${unexplained.slice(0, 10).join("\n  - ")}`);
+  if (knownQuirk.length !== 109)
+    fail(`known-quirk rows ${knownQuirk.length} (${RS_KNOWN_QUIRK_WHY}), approved run measured 109.`);
   const noPartyBy = new Map(out.noPartyRows.map((n) => [n.label, n.rows]));
   if (noPartyBy.get("NOM.") !== 134) fail(`NOM. rows ${noPartyBy.get("NOM.") ?? 0}, approved run measured 134.`);
   if (noPartyBy.get("O") !== 76) fail(`O rows ${noPartyBy.get("O") ?? 0}, approved run measured 76.`);
+  if (noPartyBy.get("Nominated") !== 2) fail(`"Nominated" rows ${noPartyBy.get("Nominated") ?? 0}, the file carries 2.`);
   const othersRows = rows.filter((r) => r.stateLabel === "Others");
   if (othersRows.length !== 7) fail(`"Others" rows ${othersRows.length}, the ruling held exactly 7.`);
 
@@ -341,8 +352,13 @@ async function insert() {
   const committed = readRsPartyResolutions(parseCsv);
   const chk = checkPartyResolutions(out.partyLabelYears, known, committed, true);
   if (!chk.ok) fail(`PARTY_RESOLUTIONS.csv problems:\n  - ${chk.problems.join("\n  - ")}`);
-  if (chk.held.length > 0)
-    fail(`held label-years exist (${chk.held.map((h) => h.label).join(", ")}); the RS dispositions carry no windows, so a hold means the file drifted.`);
+  // The held set is pinned like every other approved measurement: exactly
+  // one label-year has no window (SP in 1992, the term that predates the
+  // Samajwadi Party). A mis-edited window would otherwise silently null
+  // more attributions than the gate approved.
+  const heldSummary = chk.held.map((h) => `${h.label}:${h.years.join("/")}`).sort().join("; ");
+  if (heldSummary !== "SP:1992")
+    fail(`held label-years are "${heldSummary || "none"}", the gate approved exactly "SP:1992". A window changed; a person must look.`);
 
   // Creates: verbatim rows. A label whose verbatim name already exists is
   // that disposition's own prior execution (isOwnCreation) — resolve to it.
@@ -366,12 +382,19 @@ async function insert() {
     createdPartyIds.set(label, slug);
   }
   const noParty = new Set<string>(RS_NO_PARTY_LABELS);
-  const partyIdFor = (label: string, year: number): string | null => {
+  // A held label-year (no window covers it — the pre-founding 1992 SP row)
+  // keeps its term: the seat was really held, only the party attribution is
+  // unknown. So party_id stays null, the verbatim label survives, and the
+  // row is named in the report. Dropping a real term would lose more than
+  // the unresolved label does.
+  const heldTerms: string[] = [];
+  const partyIdFor = (label: string, year: number, termRef: string): string | null => {
     if (label === "" || noParty.has(label)) return null; // verbatim label survives on the term row
     const d = chk.dispositionFor(label, year);
     if (d.kind === "resolve") return d.partyId;
     if (d.kind === "create") return createdPartyIds.get(label) ?? ownCreations.get(label) ?? null;
-    fail(`label "${label}" @ ${year} is held — unreachable after the held check; a person must look.`);
+    heldTerms.push(`${termRef}: "${label}" @ ${year}`);
+    return null;
   };
 
   // ---- State plan: committed links + the ruling's four new rows ----------
@@ -473,7 +496,8 @@ async function insert() {
     if (!srcExisting[0]) {
       await tx.insert(schema.sources).values({
         id: sourceId,
-        title: 'TCPD Rajya Sabha Dataset (TCPD-RSD), 1952 - 2022". Trivedi Centre for Political Data, Ashoka University',
+        // The citation string the licence requires, verbatim from TERMS.md.
+        title: '"TCPD Rajya Sabha Dataset (TCPD-RSD), 1952 - 2022". Trivedi Centre for Political Data, Ashoka University',
         url: RS_URL,
         publisher: "Trivedi Centre for Political Data, Ashoka University",
         publishedOn: null,
@@ -513,7 +537,7 @@ async function insert() {
           stateId: link.stateId, // null for Nominated (the flag carries the fact)
           stateLabel: t.stateLabel,
           partyLabel: t.partyLabel,
-          partyId: partyIdFor(t.partyLabel, Number(t.startDate.slice(0, 4))),
+          partyId: partyIdFor(t.partyLabel, Number(t.startDate.slice(0, 4)), `${m.tcpdId}-T${t.termNo} (${m.name})`),
           startDate: t.startDate,
           endDateTerm: t.endDateTerm,
           endDateActual: t.endDateActual,
@@ -635,7 +659,10 @@ async function insert() {
   lines.push(`- rs_terms inserted: ${termCount} of ${out.termRows} (${othersRows.length} "Others" rows held)`);
   lines.push(`- state rows created by this insert: ${dedupedCreates.length === 0 ? "none (all existed)" : dedupedCreates.map((s) => s.id).join(", ")}`);
   lines.push(`- party rows created verbatim: ${createdPartyIds.size}; resolved to prior own-creations: ${ownCreations.size}`);
-  lines.push(`- no-party labels kept verbatim with party_id null: ${out.noPartyRows.map((n) => `${n.label} ${n.rows}`).join("; ")}`);
+  lines.push(`- no-party labels kept verbatim with party_id null: ${out.noPartyRows.map((n) => `${n.label} ${n.rows}`).join("; ")} (absence markers, never party rows)`);
+  lines.push(`- HELD label-years (no window covers them; party_id null, label verbatim, never guessed): ${heldTerms.length === 0 ? "none" : ""}`);
+  for (const h of heldTerms) lines.push(`    - ${h}`);
+  lines.push(`- internal coherence: ${knownQuirk.length} known-quirk rows (${RS_KNOWN_QUIRK_WHY}), ${unexplained.length} unexplained`);
   lines.push(`- entity_match_candidates written: ${janCandidate + personCandidates} (JAN↔bjs: ${janCandidate}; person matches against people rows: ${personCandidates}; term-name collisions stay report-only below)`);
   lines.push(`- open_questions: ${openQuestions} (anachronistic labels; the held Others rows)`);
   lines.push(`- Type snapshot: every term carries snapshot_on ${RS_SNAPSHOT_DATE}; coverage ends there`);
