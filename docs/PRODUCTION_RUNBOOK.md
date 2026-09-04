@@ -59,6 +59,18 @@ Expected: `OK — 245/245 statements ensured; capabilities recorded:
 stage2-2026-09-03 (commit <sha>).` (the statement count rises as the file
 grows; what matters is `OK`, the capability line, and no error).
 
+To see where you stand at any moment — which gates would let an insert
+run, and what is blocking the rest — without writing anything:
+
+```sh
+pnpm tsx scripts/stage2-preflight.ts
+```
+
+It calls the same gate functions the inserts call (never a copy) and
+prints PASS / BLOCKED / NOT CHECKED per gate, exiting 0 only when every
+applicable gate passes. Run it before and between steps as often as you
+like; it is read-only.
+
 Stage 0 for each front proves the drops are byte-identical to their
 manifests before anything else runs:
 
@@ -156,6 +168,11 @@ the four; both are correct, and the report names every row either way.
 Person-match candidates against production people rows appear in
 entity_match_candidates — they are proposals for a human, nothing is
 linked.
+
+After this insert the rows are readable at `/rajya-sabha`, its per-seat
+pages, and `/person/rs/<TCPD id>`. Both `/rajya-sabha` and `/browse`
+revalidate hourly, so for up to an hour they keep showing the
+no-rows-yet state; redeploy if you want them to update immediately.
 
 ## 4. Insert 2 — electoral bonds
 

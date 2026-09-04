@@ -4,6 +4,7 @@ import Link from "next/link";
 import { getAllParties } from "@/lib/db/queries/party";
 import { getElectionIndex } from "@/lib/db/queries/compare";
 import { getIndicatorIndex, type IndicatorIndexEntry } from "@/lib/db/queries/development";
+import { getRsIndex } from "@/lib/db/queries/rajya-sabha";
 import { db } from "@/lib/db";
 import { formatElectionDate } from "@/lib/format";
 
@@ -16,12 +17,14 @@ export const metadata: Metadata = {
 export const revalidate = 3600;
 
 export default async function BrowsePage() {
-  const [states, parties, electionIndex, indicatorIndex] = await Promise.all([
+  const [states, parties, electionIndex, indicatorIndex, rsIndex] = await Promise.all([
     db.query.states.findMany({ orderBy: (s, { asc }) => [asc(s.name)] }),
     getAllParties(),
     getElectionIndex(),
     getIndicatorIndex(),
+    getRsIndex(),
   ]);
+  const rsMembers = rsIndex.members;
 
   const indicatorsByCategory = new Map<string, IndicatorIndexEntry[]>();
   for (const ind of indicatorIndex) {
@@ -63,6 +66,18 @@ export default async function BrowsePage() {
             Prime Ministers, Presidents, Lok Sabha elections
           </span>
         </p>
+        {/* Linked only once the upper house actually holds rows: a nav item
+            leading to an empty page is a promise the archive cannot keep. */}
+        {rsMembers > 0 ? (
+          <p className="mt-2">
+            <Link href="/rajya-sabha" className="text-accent underline-offset-2 hover:underline">
+              Rajya Sabha
+            </Link>{" "}
+            <span className="text-[0.82rem] text-ink-faint">
+              {rsMembers.toLocaleString("en-IN")} members and their terms, 1952 to 20 July 2022
+            </span>
+          </p>
+        ) : null}
       </section>
 
       <section className="section-card px-6 py-9 sm:px-10">

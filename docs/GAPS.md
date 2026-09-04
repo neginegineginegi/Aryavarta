@@ -281,9 +281,15 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - Development indicators cover the GEM industrial series; RBI social
   indicators are parked behind the ingest gate.
 - The API and /data page do not exist yet (decision 1: design first).
-- **The Rajya Sabha spine has no page.** `rs_members`/`rs_terms` will hold
-  2,407 members and 3,531 terms with nothing rendering them: no member
-  page, no chamber view, no link from a state. The rows are still worth
-  inserting (they are the archive's only record of the upper house, and
-  the ingest is reversible by dataset id), but until a surface exists the
-  data is invisible to every reader.
+- **The Rajya Sabha spine has a first surface** (built 2026-09-04):
+  `/rajya-sabha` (counts, seats, coverage boundary, what is not held),
+  `/rajya-sabha/[seat]` (members of one seat as the source labels it), and
+  `/person/rs/[tcpdRsId]` (one member's terms). The member route is keyed
+  by the publisher's id, NOT folded into `/person/[slug]`, which keys on a
+  slug of the recorded name and would derive identity from Member_Name.
+  Still missing: no link from a state page to its Rajya Sabha seat, the
+  members are not in site search, and a confirmed person-match candidate
+  does not yet join an RS member to an office holder's page.
+  Note on freshness: `/rajya-sabha` and `/browse` revalidate hourly, so
+  after the production insert they show the empty state for up to an hour
+  unless the site is redeployed.
