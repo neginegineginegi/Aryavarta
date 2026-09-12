@@ -250,6 +250,13 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - **TCPD licence composition** (non-commercial + citation, vs CC BY-SA) must
   be decided **before the bulk download ships** — recorded as the open
   decision in `docs/API_DESIGN.md` and flagged in the D3 dry-run report.
+- **The Dependabot Next 16.3 bump is HELD, deliberately** (2026-09-12): the
+  open PR raising Next 16.2.12 → 16.3.4 with twelve other updates stays
+  unmerged until all three stage-2 inserts have landed. The deployed code
+  is what the step-0 gate checks and what the insert reports were measured
+  against; changing the framework underneath a half-finished ingest would
+  mean a failure could be either the data or the upgrade, with no way to
+  tell which. Merge it after, as its own change, with its own deploy.
 
 ## Blocked on the user
 
