@@ -1,6 +1,6 @@
 # Elections ingest specification — LokDhaba / TCPD on the bulk-provenance path
 
-Part 1 of Direction C (docs/FRONTIER_ASSESSMENT.md), produced under the
+Part 1 of Direction C (docs/archive/FRONTIER_ASSESSMENT.md), produced under the
 user's decision and its two binding conditions:
 
 1. **Identity inherits the match-candidate discipline.** No person record is

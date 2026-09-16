@@ -5,11 +5,31 @@ import { redirect } from "next/navigation";
 import { WithdrawButton } from "@/components/contribute/WithdrawButton";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/States";
-import { requireUserPage } from "@/lib/authz";
+import { getSessionUser } from "@/lib/authz";
 import { getOwnRevisions, revisionEntityHref } from "@/lib/db/queries/revisions";
 import { formatDate } from "@/lib/format";
 
-export const metadata: Metadata = { title: "Contribute" };
+/**
+ * Public by design.
+ *
+ * Contributing is the one thing the archive asks of a stranger, and this page
+ * used to answer that ask with a login wall: the homepage, the header button,
+ * About and Methodology all pointed here, and every one of those paths
+ * dead-ended at a sign-in form that explained nothing. A person who did not
+ * already have an account could not find out what they would be signing up
+ * for.
+ *
+ * The sign-in requirement itself is right — contributions are attributed, and
+ * attribution needs an account — so the gate moved rather than disappeared:
+ * it now sits on the submission forms, and this page explains the model to
+ * anyone who asks.
+ */
+
+export const metadata: Metadata = {
+  title: "Contribute",
+  description:
+    "How to propose an addition or correction to Abhilekh: what a submission needs, how review works, and what becomes part of the public record.",
+};
 
 const REVISION_BADGE = {
   pending: "pending",
@@ -31,8 +51,8 @@ export default async function ContributePage({
     if (m) redirect(`/contribute/${m[1]}?edit=${m[2]}`);
   }
 
-  const user = await requireUserPage("/contribute");
-  const mine = await getOwnRevisions(user.id);
+  const user = await getSessionUser();
+  const mine = user ? await getOwnRevisions(user.id) : [];
   const stateQS = state ? `?state=${encodeURIComponent(state)}` : "";
 
   return (
@@ -47,6 +67,55 @@ export default async function ContributePage({
           permanently part of the public record.
         </p>
       </header>
+
+      {!user && (
+        <section className="section-card px-6 py-9 sm:px-10">
+          <h2 className="font-display text-[28px] font-light leading-tight text-ink">
+            What contributing involves
+          </h2>
+          <dl className="mt-5 space-y-4 text-[0.92rem] leading-relaxed">
+            <div>
+              <dt className="font-medium text-ink">Every claim needs a published source</dt>
+              <dd className="mt-1 text-ink-muted">
+                A link or citation that someone else can check — a gazette notification, an
+                Election Commission report, a court judgment, a news report of record. The archive
+                does not accept a fact on the strength of who is asserting it, including its own
+                maintainers.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-ink">A moderator reviews it before it publishes</dt>
+              <dd className="mt-1 text-ink-muted">
+                Nothing you submit appears on the site straight away. A reviewer either approves
+                it, or rejects it with a stated reason you will see on this page.
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-ink">Your name stays with the edit, permanently</dt>
+              <dd className="mt-1 text-ink-muted">
+                Approved or rejected, the submission and its review become part of the public edit
+                history, attributed to your account. That is why an account is needed at all — an
+                unattributable correction is not a correction anyone can weigh. It is also why
+                there is no anonymous route: the archive would rather be small than be unaccountable.
+              </dd>
+            </div>
+          </dl>
+          <p className="mt-6 text-[0.9rem] text-ink-muted">
+            You can read the forms below before deciding.{" "}
+            <Link
+              href="/login?next=%2Fcontribute"
+              className="text-accent underline-offset-2 hover:underline"
+            >
+              Sign in
+            </Link>{" "}
+            when you are ready to submit one, or read the{" "}
+            <Link href="/methodology" className="text-accent underline-offset-2 hover:underline">
+              methodology
+            </Link>{" "}
+            first.
+          </p>
+        </section>
+      )}
 
       <section className="grid gap-4 border-b border-rule py-8 sm:grid-cols-3">
         <Link
@@ -89,6 +158,7 @@ export default async function ContributePage({
         </Link>
       </section>
 
+      {user && (
       <section className="section-card px-6 py-9 sm:px-10">
         <h2 className="font-display text-[28px] font-light leading-tight text-ink">Your submissions</h2>
         {mine.length === 0 ? (
@@ -123,6 +193,7 @@ export default async function ContributePage({
           </ul>
         )}
       </section>
+      )}
     </div>
   );
 }

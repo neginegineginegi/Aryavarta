@@ -29,5 +29,10 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/contribute/:path*", "/review/:path*", "/admin/:path*"],
+  // `/contribute/:path+` is one-or-more segments, deliberately, where the
+  // others are zero-or-more: the submission forms under /contribute stay
+  // gated, while /contribute itself is public and explains what contributing
+  // involves. A stranger asked to correct the record should be able to read
+  // what that means before being asked to sign in.
+  matcher: ["/contribute/:path+", "/review/:path*", "/admin/:path*"],
 };

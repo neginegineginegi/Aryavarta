@@ -29,7 +29,8 @@ export default function robots(): MetadataRoute.Robots {
         "/admin/",
         "/login",
         "/signup",
-        "/contribute",
+        // /contribute itself is a public explainer and belongs in the index;
+        // the submission forms beneath it are auth-gated and do not.
         "/contribute/",
         "/user/",
         // Auth.js callback and session endpoints.

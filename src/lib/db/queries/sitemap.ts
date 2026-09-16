@@ -128,6 +128,10 @@ export async function sitemapEntries(): Promise<SitemapEntry[]> {
     { path: "/search" },
     { path: "/about" },
     { path: "/methodology" },
+    // Public since the login wall came off it: the page explains what a
+    // contribution needs and what review does, which is exactly what someone
+    // searching for how to correct the record should be able to find.
+    { path: "/contribute" },
   ];
 
   for (const r of stateRows.rows as Array<{ id: string }>) {

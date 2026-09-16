@@ -4,32 +4,32 @@ Things that are wrong, found and reproduced, and not yet fixed. Each one says
 what was observed rather than what was assumed, so whoever picks it up starts
 from the same evidence.
 
+Nothing is currently open.
+
 ---
 
-## `/contribute` redirects to login when signed out
+## Fixed
 
-**Observed:** `GET /contribute` returns `302` to the sign-in page for an
-anonymous visitor. Reproduced against a production build on 18 Aug 2026.
+### `/contribute` redirected to login when signed out — fixed 16 Sep 2026
 
-**Why it is a bug and not a preference:** contributing is the one action the
-site asks of a stranger. The homepage links to it as "Contribute a sourced
-correction", the header carries a Contribute button on every page, and the
-About and Methodology pages both invite it. Every one of those paths currently
-dead-ends at a login wall with no explanation of what contributing involves,
-what a good submission looks like, or what happens after review. A person who
-does not already have an account cannot find out what they would be signing up
-for.
+**Was observed:** `GET /contribute` returned `302` to the sign-in page for an
+anonymous visitor (18 Aug 2026). The homepage, the header button, About and
+Methodology all pointed there, so every invitation to contribute dead-ended at
+a login wall that explained nothing about what contributing involved.
 
-The sign-in requirement itself is correct: contributions are attributed, and
-attribution needs an account.
+**What the fix was, and where the bug actually lived.** The page was only half
+of it: `src/middleware.ts` matched `/contribute/:path*`, and `*` is *zero or
+more* segments, so the bare route was gated before the page ever ran. The
+matcher is now `/contribute/:path+` — one or more — which leaves the submission
+forms gated and lets the explainer through. The page itself no longer calls
+`requireUserPage`; it reads the session, shows the contribution model to
+everyone, and shows "Your submissions" only to signed-in users.
 
-**Shape of the fix:** `/contribute` becomes a public page explaining the
-contribution model — what is required (a published source), what review does,
-what happens to your name in the edit history — with the sign-in prompt on the
-form itself rather than in front of the page. The gate moves from the route to
-the submit action.
+Verified against a running server: `/contribute` 200, `/contribute/event` 302,
+`/review` 302, and the signed-out render carries no trace of the member
+section.
 
-**Found during:** the launch metadata task, while auditing which routes belong
-in the sitemap. `/contribute` was dropped from the sitemap and disallowed in
-robots.txt as a consequence, and both should be revisited when this is fixed:
-a public explainer page belongs in the index.
+**Consequences reversed:** `/contribute` was dropped from the sitemap and
+disallowed in `robots.txt` because of this bug. It is back in
+`src/lib/db/queries/sitemap.ts`, and `robots.ts` now disallows only
+`/contribute/` (the gated forms beneath it).
