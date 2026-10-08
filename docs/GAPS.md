@@ -250,13 +250,22 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - **TCPD licence composition** (non-commercial + citation, vs CC BY-SA) must
   be decided **before the bulk download ships** — recorded as the open
   decision in `docs/API_DESIGN.md` and flagged in the D3 dry-run report.
-- **The Dependabot Next 16.3 bump is HELD, deliberately** (2026-09-12): the
-  open PR raising Next 16.2.12 → 16.3.4 with twelve other updates stays
-  unmerged until all three stage-2 inserts have landed. The deployed code
-  is what the step-0 gate checks and what the insert reports were measured
-  against; changing the framework underneath a half-finished ingest would
-  mean a failure could be either the data or the upgrade, with no way to
-  tell which. Merge it after, as its own change, with its own deploy.
+- **The Next 16.3 hold was LIFTED on 2026-10-08, by the user, for a
+  security reason.** The hold (12 Sep) waited for the three inserts; four
+  weeks later they had not run, and the deployed `next@16.2.12` was by then
+  affected by 8 published advisories, 3 critical — one a remote-code-
+  execution in `next/og` ImageResponse, which every share card on this site
+  renders through. The 16.2 line received no patches after July, so the
+  fix meant 16.3.x. Taken as the smallest change that closes everything:
+  `next` + `eslint-config-next` to 16.3.8 alone (16.3.7, in Dependabot's
+  grouped PR, still left five advisories open), plus same-major patches and
+  overrides for the build/test tooling. Dependabot's three major-version
+  jumps (vitest 5, dotenv 18, `@types/node` 26) were NOT taken. Two
+  advisories are accepted on the record: esbuild 0.18 inside drizzle-kit's
+  `@esbuild-kit` (the advisory concerns esbuild's dev *server*, which
+  drizzle-kit never starts; forcing 0.25 there risks the tool that migrates
+  production) and `braces` (no patched version exists upstream; reached
+  only by lint-time globbing of the repo's own config).
 
 ## Blocked on the user
 
