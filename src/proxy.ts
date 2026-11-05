@@ -5,7 +5,12 @@ import { authConfig } from "@/lib/auth.config";
 /**
  * UX-only gate: bounce anonymous visitors off member pages and non-moderators
  * off review/admin pages. The real security boundary is requireRole() inside
- * every server action and privileged page — never this middleware.
+ * every server action and privileged page — never this proxy.
+ *
+ * `proxy.ts` is Next 16's name for what was `middleware.ts`; the file and the
+ * export name changed, nothing else. It runs on the Node.js runtime, which is
+ * why authConfig stays adapter-free: the gate decodes the session JWT and
+ * never opens a database connection per request.
  */
 const { auth } = NextAuth(authConfig);
 

@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * The inbox loader, and its two paths.
  *
@@ -138,6 +137,29 @@ async function main() {
   const report = { created: {} as Record<string, number>, skipped: [] as string[], warnings: [] as string[] };
   const bump = (k: string) => (report.created[k] = (report.created[k] ?? 0) + 1);
   const skip = (s: string) => report.skipped.push(s);
+
+  // --- sources.csv must define each id once, checked before any write ---------
+  // A reused id used to resolve last-writer-wins: the Map silently re-pointed
+  // every row citing the first definition at the second, which left 43
+  // Gujarat drafts citing 2026 election news. A citation that names the wrong
+  // source is worse than a row that is missing, so this is fatal for the whole
+  // run, and it runs before the dataset declarations below so nothing has been
+  // written when it fires.
+  {
+    const seen = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const r of readSheet("sources.csv")) {
+      if (!r.id) continue;
+      const first = seen.get(r.id);
+      if (first !== undefined) dupes.push(`${r.id} ("${first}" and "${r.title}")`);
+      else seen.set(r.id, r.title ?? "");
+    }
+    if (dupes.length > 0) {
+      throw new Error(
+        `sources.csv defines an id more than once; renumber one of each pair and update the rows that cite it. Duplicates: ${dupes.join("; ")}`,
+      );
+    }
+  }
 
   // --- states lookup --------------------------------------------------------
   const stateRows = await db.select().from(states);
