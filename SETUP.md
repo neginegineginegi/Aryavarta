@@ -13,6 +13,7 @@ code changes are required to deploy. Budget ~30 minutes the first time.
 
    ```bash
    DATABASE_URL="<direct-url>" pnpm db:migrate
+   DATABASE_URL="<direct-url>" pnpm db:upgrade     # append-only schema upgrades; the build runs this too
    DATABASE_URL="<direct-url>" pnpm db:seed        # states/UTs + pseudo-parties only
    ```
 
@@ -61,7 +62,7 @@ code changes are required to deploy. Budget ~30 minutes the first time.
 ```bash
 pnpm install
 cp .env.example .env    # fill in at minimum DATABASE_URL + AUTH_SECRET
-pnpm db:migrate && pnpm db:seed
+pnpm db:migrate && pnpm db:upgrade && pnpm db:seed
 pnpm db:seed:demo       # optional: fake content so pages aren't empty
 pnpm dev
 ```

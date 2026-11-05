@@ -286,6 +286,17 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - **Raw TCPD files re-uploaded** (D1/D2 were chat uploads destroyed by the
   container reset; needed wherever the TCPD stages run) and the LokDhaba
   terms capture (`data/raw/tcpd/TERMS_LOKDHABA.md`, §1.4).
+- **Reject the mis-cited Gujarat drafts in /review** (found 2026-11-05).
+  `data/inbox/sources.csv` defined S1–S5 twice — once for the Gujarat
+  sources, once for 2026 election news — and the loader kept the last
+  definition, so every Gujarat term, election and event draft staged before
+  the fix cites 2026 election news instead of its real source. The ids are
+  renumbered (the 2026 block is now S70–S74) and the loader refuses a
+  duplicate id outright, but the loader will not re-stage a row that already
+  has a pending draft: the pending Gujarat drafts must be rejected in
+  /review, after which the next build re-stages them with the right
+  citations. Any Gujarat draft that was already approved live carries the
+  wrong citation in the live record and needs an amendment, not a rejection.
 
 ## Known gaps in the archive itself
 
@@ -297,6 +308,14 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - Development indicators cover the GEM industrial series; RBI social
   indicators are parked behind the ingest gate.
 - The API and /data page do not exist yet (decision 1: design first).
+- **About forty real parties have no `party_colors.csv` row** and render in
+  hash-assigned colours that collide (five parties share `#7c3aed`, four
+  share `#1d4ed8`; the build log lists them under "party color: no row
+  for"). Two parties governing the same state in nearby years can be
+  indistinguishable on the map. Choosing a colour is curatorial, not a code
+  fix: one row per party, `party_name` spelled exactly as the inbox sheets
+  spell it. The three name mismatches that kept YSRCP and INC(O) on auto
+  colours, and the missing TRS row, were fixed 2026-11-05.
 - **The Rajya Sabha spine has a first surface** (built 2026-09-04):
   `/rajya-sabha` (counts, seats, coverage boundary, what is not held),
   `/rajya-sabha/[seat]` (members of one seat as the source labels it), and
@@ -306,6 +325,6 @@ on the raw files being back so stage 0 can verify the whole manifest.
   Still missing: no link from a state page to its Rajya Sabha seat, the
   members are not in site search, and a confirmed person-match candidate
   does not yet join an RS member to an office holder's page.
-  Note on freshness: `/rajya-sabha` and `/browse` revalidate hourly, so
-  after the production insert they show the empty state for up to an hour
-  unless the site is redeployed.
+  Note on freshness: `/rajya-sabha` revalidates hourly, so after the
+  production insert it shows the empty state for up to an hour unless the
+  site is redeployed; `/browse` regenerates within five minutes.

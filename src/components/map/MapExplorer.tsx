@@ -4,7 +4,7 @@ import india from "@svg-maps/india";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { MapData, MapTerm } from "@/lib/db/queries/map";
+import type { MapData, MapFact, MapTerm } from "@/lib/db/queries/map";
 import { ModeSwitch } from "@/components/layout/HeaderNav";
 import {
   NA_SWATCH,
@@ -212,7 +212,7 @@ export function MapExplorer({
   // uses for markers: the most recent computed fact at or before this year.
   const fact = useMemo(
     () =>
-      data.facts.reduce<(typeof data.facts)[number] | null>(
+      data.facts.reduce<MapFact | null>(
         (best, f) => (f.year <= year && (!best || f.year >= best.year) ? f : best),
         null,
       ),

@@ -12,13 +12,18 @@ import { ErrorState } from "@/components/ui/States";
  * render, or go somewhere that works. It does not apologise at length, and it
  * does not show a stack trace to a reader who came here to look up who
  * governed Kerala in 1996.
+ *
+ * `retry`, not `reset`: every page under this boundary is a server-rendered
+ * database read, so the failure is a Server Component error. `reset` only
+ * clears the client error state and re-renders the same failed payload;
+ * `retry` (stable since Next 16.3) refreshes the route and re-fetches.
  */
 export default function Error({
   error,
-  reset,
+  retry,
 }: {
   error: Error & { digest?: string };
-  reset: () => void;
+  retry: () => void;
 }) {
   useEffect(() => {
     // Server-side digest only; the message itself may carry query internals.
@@ -34,7 +39,7 @@ export default function Error({
         <ErrorState
           message="Something went wrong while assembling this record."
           helper="The archive itself is unaffected. Trying again usually resolves it; if it does not, the record may be mid-revision."
-          onRetry={reset}
+          onRetry={retry}
         >
           <p className="mt-5 border-t border-rule pt-3 text-[0.78rem] text-ink-faint">
             <Link href="/" className="text-accent underline-offset-2 hover:underline">

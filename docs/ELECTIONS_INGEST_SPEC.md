@@ -177,7 +177,7 @@ Stage 0 prints the actual header, diffs it against this list, and **stops on
 any missing expected column or any unexpected column**, reporting both. No
 mapping proceeds on a drifted schema.
 
-### 2.2 Target: `elections` (schema.ts:371)
+### 2.2 Target: `elections` (`export const elections` in `src/lib/db/schema.ts`)
 
 One election row per **(State_Name, scope, Year, Assembly_No)** group of
 candidate rows, `Poll_No = 1` only (see §2.6).
@@ -192,7 +192,7 @@ candidate rows, `Poll_No = 1` only (see §2.6).
 | `turnout_percent` | — | **NULL on new rows this pass** (ambiguity A3). Never overwritten on existing rows. |
 | `result_summary` | — | NULL. Prose is editorial; a bulk loader writes none. |
 
-### 2.3 Target: `election_results` (schema.ts:394)
+### 2.3 Target: `election_results` (`export const electionResults` in `src/lib/db/schema.ts`)
 
 One row per **(election, Party)**, aggregated from candidate rows:
 
@@ -442,14 +442,14 @@ by care.
   whatever table carries candidacies. The archive renders the string as
   recorded; spelling normalisation is forbidden at load time.
 - Linkage to `people` happens **only** through `entity_match_candidates`
-  (schema.ts:1277) with a written rationale, reviewed by a person —
+  (`entityMatchCandidates` in schema.ts) with a written rationale, reviewed by a person —
   identical to the funding layer's rule ("two records that turn out to be
   one body stay two records, joined by a reviewed match"). No auto-create,
   no auto-merge, no threshold-based fuzzy joining. Ever.
 
 **The exact-name person-page caveat at 100×.** Today, person pages are
-derived by slugifying `terms.cm_name` (a text column, schema.ts:348;
-`personSlug(t.cmName)`, insights.ts:86) — identity conflated with spelling.
+derived by slugifying `terms.cm_name` (a text column, `cmName` on `terms` in
+schema.ts; `personSlug(t.cmName)` in insights.ts) — identity conflated with spelling.
 At ~340 hand-entered CM names this is a documented, tolerable flaw: the
 corpus is small and curated, so collisions are unlikely and spot-checkable.
 Against a LokDhaba-scale name corpus it fails in both directions at once —

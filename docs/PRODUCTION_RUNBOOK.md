@@ -200,9 +200,10 @@ entity_match_candidates — they are proposals for a human, nothing is
 linked.
 
 After this insert the rows are readable at `/rajya-sabha`, its per-seat
-pages, and `/person/rs/<TCPD id>`. Both `/rajya-sabha` and `/browse`
-revalidate hourly, so for up to an hour they keep showing the
-no-rows-yet state; redeploy if you want them to update immediately.
+pages, and `/person/rs/<TCPD id>`. `/rajya-sabha` revalidates hourly, so
+for up to an hour it keeps showing the no-rows-yet state; `/browse`
+regenerates within five minutes (its cached reads are 5-minute, which pulls
+the route down to that). Redeploy if you want both to update immediately.
 
 ## 4. Insert 2 — electoral bonds
 
@@ -305,7 +306,8 @@ gap away.
 | Page | Updates |
 | --- | --- |
 | `/person/rs/[id]`, `/rajya-sabha/[seat]` | per request — always current |
-| `/election/[id]`, `/party/[id]`, `/network`, `/network/org/[slug]` | per request — always current |
+| `/network`, `/network/org/[slug]` | per request — always current |
+| `/election/[id]`, `/party/[id]` | rendered per request, but the record itself is read through a 5-minute cache (`unstable_cache`), so a page opened shortly before the insert can lag by up to 5 minutes; a never-requested id is correct immediately |
 | `/`, `/browse`, `/insights`, `/state/[id]` | 5-minute cache |
 | `/rajya-sabha` | 1-hour cache |
 | `/state/in` (the Union page) | 1-day cache |
@@ -393,7 +395,10 @@ crore), 17 Goa Forward Party rows, 130 expired purchases.
   18,724. Per request, so it is correct immediately.
 - `/network/org/<slug>` for a large purchaser — its transactions should
   name the recipient party.
-- `/party/bharatiya-janata-party` — a linked recipient. Per request.
+- `/network/org/<slug>` for a recipient party's org row — the transactions
+  there should carry `recipient_label` as the publisher wrote it. (The
+  `/party/[id]` page carries no funding content, so there is nothing
+  bonds-related to check on it.)
 - `/accountability` (1-hour cache) if it surfaces funding totals.
 
 **Insight panels: expect no movement.** Bonds feed the funding graph, not

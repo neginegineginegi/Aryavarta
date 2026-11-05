@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * CSV data supersedes Wikidata imports, by standing instruction of the admin.
  *

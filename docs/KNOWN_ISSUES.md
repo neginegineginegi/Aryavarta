@@ -18,7 +18,8 @@ Methodology all pointed there, so every invitation to contribute dead-ended at
 a login wall that explained nothing about what contributing involved.
 
 **What the fix was, and where the bug actually lived.** The page was only half
-of it: `src/middleware.ts` matched `/contribute/:path*`, and `*` is *zero or
+of it: `src/middleware.ts` (since renamed `src/proxy.ts`, Next 16's name for
+the same file) matched `/contribute/:path*`, and `*` is *zero or
 more* segments, so the bare route was gated before the page ever ran. The
 matcher is now `/contribute/:path+` — one or more — which leaves the submission
 forms gated and lets the explainer through. The page itself no longer calls

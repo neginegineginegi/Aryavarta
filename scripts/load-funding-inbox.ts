@@ -1,4 +1,3 @@
-/* eslint-disable no-console */
 /**
  * Funding and Influence bulk loader. Runs on every build, after load-inbox.
  *
@@ -75,7 +74,7 @@ async function main() {
 
   const { db } = await import("../src/lib/db");
   const schema = await import("../src/lib/db/schema");
-  const { and, eq, sql } = await import("drizzle-orm");
+  const { eq, sql } = await import("drizzle-orm");
   const { normalizeSourceUrl } = await import("../src/lib/revisions/payloads");
   const {
     ambiguousFyDate,
@@ -162,6 +161,22 @@ async function main() {
       isOfficial: bool(r.is_official),
       isPrimary: bool(r.is_primary),
     });
+  }
+
+  /** Every source id some sheet row names, read straight off the sheets rather
+   *  than off this run's inserts. The end-of-run "cited by no row" note reads
+   *  this: on an idempotent re-run every citing row is skipped as already
+   *  recorded (most of them before their refs are even parsed), and a note
+   *  computed from the insert map would call their sources unused. */
+  const citedIds = new Set<string>();
+  for (const sheet of sheets) {
+    if (sheet === "funding_sources.csv") continue;
+    for (const r of readSheet(sheet)) {
+      for (const part of (r.sources ?? "").split(";")) {
+        const id = part.split("|")[0].trim();
+        if (id) citedIds.add(id);
+      }
+    }
   }
 
   /** 'S1|Schedule of grants p.42;S2' → refs with optional per-citation notes. */
@@ -957,10 +972,9 @@ async function main() {
   if (marked > 0) report.created["path markers"] = marked;
 
   // --- report ----------------------------------------------------------------
-  const citedUrls = new Set(sourceIdByUrl.keys());
-  const unused = [...srcById.entries()].filter(([, s]) => !citedUrls.has(s.url)).map(([id]) => id);
+  const unused = [...srcById.keys()].filter((id) => !citedIds.has(id));
   if (unused.length) {
-    console.log(`[load-funding] note: source ids cited by no row (not inserted): ${unused.join(", ")}`);
+    console.log(`[load-funding] note: source ids cited by no sheet row (so never inserted): ${unused.join(", ")}`);
   }
   // Housekeeping that rides the build so no visitor ever pays for it: rate
   // counter windows that ended days ago carry no information. Imported

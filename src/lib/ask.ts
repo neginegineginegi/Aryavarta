@@ -1,7 +1,7 @@
 import { and, asc, eq, isNull } from "drizzle-orm";
 
 import { db } from "@/lib/db";
-import { states, terms } from "@/lib/db/schema";
+import { terms } from "@/lib/db/schema";
 import { getElectionIndex } from "@/lib/db/queries/compare";
 import { fetchInsightRows } from "@/lib/db/queries/insights";
 import { computeInsights } from "@/lib/insights";

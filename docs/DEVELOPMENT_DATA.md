@@ -48,8 +48,12 @@ from GEM and verify the checksum, not that the archive redistributes 241 MB.
 
 ### Stage 1: validation (streaming, no full load)
 
-`scripts/one-off/gem-transform.mjs <path-to-raw.csv>` streams the file row by
-row (plain Node, stdlib only, so it runs anywhere) and first PROVES the
+*(This stage describes the original plan. What was actually built is the
+Python transform in §3d, `scripts/one-off/extract-gem-power-2026.py`, with
+the industry and GIST extractors beside it; no `gem-transform.mjs` exists.)*
+
+The transform streams the file row by
+row (stdlib only, so it runs anywhere) and first PROVES the
 schema: the header must match the sample-derived column list exactly, else it
 stops. Then, per row, it checks and counts rather than fixes:
 
@@ -114,9 +118,10 @@ existing per-page server queries:
 
 - state page Development Lens: that state's Energy series only;
 - `/indicator/[id]`: one indicator across states, as today;
-- `/development/energy`: national series by default (~9 technologies x ~80
-  years, a few kilobytes) plus a latest-year state table; per-state series
-  load only on that state's own pages;
+- `/development/energy` (**not built**; today the series surface through the
+  state page's Development Lens and `/indicator/[id]`): national series by
+  default (~9 technologies x ~80 years, a few kilobytes) plus a latest-year
+  state table; per-state series load only on that state's own pages;
 - period comparison: computed server-side from the same rows; the browser
   receives the computed figures, not the series twice.
 
@@ -130,7 +135,9 @@ existing per-page server queries:
 
 ## 3. What is genuinely new (and reusable beyond energy)
 
-- **`/development/[category]` page**: one page template, not an energy page.
+- **`/development/[category]` page** (**not built** — there is no
+  `src/app/development`; the indicators are reached through the state pages
+  and `/indicator/[id]`): one page template, not an energy page.
   Header, the category's indicators for India and by state, TrendCharts,
   and the political-context band. Energy is its first instance; Health or
   Education would be a URL, not a build.
@@ -370,11 +377,12 @@ Answered for solar and wind by batch 3; still open for any future dataset.
 
 ## 5. Schema note
 
-v1 requires no schema change. One addition is worth considering later: a
-first-class `datasets` table for dataset-level provenance (publisher, update
-cadence, coverage, original file reference) instead of carrying it in each
-indicator's methodology text. That is an explicit schema decision for the
-owner, not something this work smuggles in.
+v1 required no schema change. The addition this section once proposed for
+later — a first-class `datasets` table for dataset-level provenance
+(publisher, update cadence, coverage, original file reference) instead of
+carrying it in each indicator's methodology text — has since been built: the
+`datasets` table exists (created by `scripts/ensure-upgrades.mjs`) and is fed
+from `datasets.csv`; see DATA_FORMAT.md, "Bulk ingest and provenance".
 
 ## 6. Risks
 

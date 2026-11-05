@@ -1,7 +1,11 @@
 # Design: Political Accountability Layer
 
-Status: **design only, nothing implemented.** This document is the architecture,
-data model, workflow and phasing plan for connecting promises to evidence.
+Status: **phases 1–3 shipped** (polymorphic citations, the documents/media
+archive, manifestos and promises — see §6 for what landed); **phases 4–6 remain
+design only** (status claims, timeline/links, comparison and search). This
+document is the architecture, data model, workflow and phasing plan for
+connecting promises to evidence. §1 below is the audit as it stood before
+phase 1; where it says "is", read "was".
 
 ---
 
@@ -9,8 +13,9 @@ data model, workflow and phasing plan for connecting promises to evidence.
 
 What exists today, and what it means for this feature.
 
-**Three revisable entities.** `revisionEntityEnum` is `["term", "election",
-"event"]`. Everything public flows through `revisions`: a proposal carries a
+**Three revisable entities.** `revisionEntityEnum` was `["term", "election",
+"event"]` at the time of this audit; it now also carries `manifesto_promise`
+and the funding-layer entities. Everything public flows through `revisions`: a proposal carries a
 JSON `afterData` payload, a moderator compares it against a snapshot of the
 live row, and approval applies it inside one transaction. The extension points
 are already there and are registries, not conditionals:

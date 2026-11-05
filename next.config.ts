@@ -3,9 +3,9 @@ import type { NextConfig } from "next";
 /**
  * Security headers.
  *
- * Served from here rather than the middleware, because the middleware matcher
- * covers three path groups and widening it would add an invocation to every
- * request; headers() reaches static and ISR routes for free.
+ * Served from here rather than the proxy (src/proxy.ts), because the proxy
+ * matcher covers three path groups and widening it would add an invocation to
+ * every request; headers() reaches static and ISR routes for free.
  *
  * The CSP is ENFORCED. It ran Report-Only first, and the measurement across
  * seven pages found exactly one violation class: script-src-elem <- inline,

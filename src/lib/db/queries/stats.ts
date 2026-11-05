@@ -1,4 +1,4 @@
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, count, inArray, isNull, sql } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";

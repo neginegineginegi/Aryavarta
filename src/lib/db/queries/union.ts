@@ -2,7 +2,7 @@ import { and, asc, desc, eq, inArray, isNull } from "drizzle-orm";
 import { unstable_cache } from "next/cache";
 
 import { db } from "@/lib/db";
-import { elections, events, terms } from "@/lib/db/schema";
+import { elections, events } from "@/lib/db/schema";
 import { tags } from "@/lib/cache";
 import type {
   ElectionWithResults,

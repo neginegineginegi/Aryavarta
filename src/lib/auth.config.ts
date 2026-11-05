@@ -4,8 +4,10 @@ import Google from "next-auth/providers/google";
 export type Role = "contributor" | "moderator" | "admin";
 
 /**
- * Edge-safe Auth.js config: no database adapter, no pg import. The middleware
- * builds its own NextAuth instance from this to decode the session JWT; the
+ * Adapter-free Auth.js config: no database adapter, no pg import. The proxy
+ * (src/proxy.ts, Next 16's name for the request-level gate that used to be
+ * middleware) builds its own NextAuth instance from this to decode the
+ * session JWT without a database round-trip; the
  * full server config in lib/auth.ts spreads this and adds the adapter,
  * providers that need the database, and events.
  */

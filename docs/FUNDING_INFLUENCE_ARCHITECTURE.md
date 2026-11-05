@@ -89,8 +89,11 @@ Two identity tables, deliberately few.
 **`orgs`** — everything institutional, distinguished by `kind`: `ngo`, `trust`,
 `society`, `foundation`, `think_tank`, `advocacy`, `media`, `research`,
 `company`, `government_body`, `political`, `international`, `religious`,
-`professional_body`, `other`. One table because an organisation changes kind
-over its life and a table-per-type makes that a migration.
+`professional_body`, `other`, `unclassified`. One table because an
+organisation changes kind over its life and a table-per-type makes that a
+migration. `unclassified` is a stated absence, not a guess: the name carried
+no legal-form suffix and nobody has classified it (the 2026-09-03 bonds
+ruling in GAPS.md), where `other` means someone looked and it fits no kind.
 
 **`people`** — individuals in institutional or public roles. Carries
 `public_role_basis`: a required sentence stating why this person is in a public
@@ -157,7 +160,7 @@ foreign source, and a donor in another country may not be. The schema records
 the interface states which one it is showing.
 
 **`fcra_registrations`** holds registration number, status (`active`,
-`suspended`, `cancelled`, `expired`, `renewed`), grant and validity dates, and
+`suspended`, `cancelled`, `expired`, `renewed`, `unknown`), grant and validity dates, and
 any recorded government action with its date and citation.
 
 Every funding row and FCRA row requires at least one citation. This is enforced
@@ -193,9 +196,9 @@ Specific relations get their own tables where they have their own fields:
 
 ## 8a. The graph
 
-Edges live in nine specific tables, each with fields of its own. The graph
-needs one shape, so two Postgres views supply it: `graph_nodes` and
-`graph_edges`.
+Edges live in ten specific tables and one column (`orgs.parent_org_id`),
+each with fields of its own. The graph needs one shape, so two Postgres views
+supply it: `graph_nodes` and `graph_edges`.
 
 **The views project stored columns. They never join two facts to invent a
 third**, which is what keeps rule 1 (no derived relationship is ever written)
@@ -208,7 +211,7 @@ Eleven edge sources: `relationships`, `funding_transactions`, `board_positions`,
 `publications`, `projects` (operator), `outcomes`, and `claims`.
 
 **`interpretive` is the column that keeps the two halves apart.** False for the
-nine factual sources, true for claims. The renderer reads it and can never draw
+ten factual sources, true for claims. The renderer reads it and can never draw
 an asserted relationship the way it draws a documented one, and traversal
 excludes claims unless a caller asks for them by name.
 
@@ -397,7 +400,7 @@ its failure modes on the same page as its output.
 
 ## 14a. Ingest, and why it inserts directly
 
-`scripts/load-funding-inbox.ts` loads seven optional sheets from `data/inbox`
+`scripts/load-funding-inbox.ts` loads nine optional sheets from `data/inbox`
 on every build (formats in `docs/DATA_FORMAT.md`, a gathering prompt in
 `docs/RESEARCH_PROMPT_FUNDING.md`).
 

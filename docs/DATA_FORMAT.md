@@ -148,7 +148,7 @@ Only `party_name` and `primary_hex` are used by the pipeline today;
 
 ## Funding and Influence sheets
 
-Seven optional sheets, loaded by `scripts/load-funding-inbox.ts` on every
+Nine optional sheets, loaded by `scripts/load-funding-inbox.ts` on every
 build. Unlike terms and events these insert directly (there is no public
 contribution form for this layer yet, so the sheet's curator and a queue's
 reviewer would be the same person); every row still requires at least one

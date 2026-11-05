@@ -24,7 +24,8 @@ Auth.js (Google OAuth) · deployable to Vercel + Neon.
 ```bash
 pnpm install
 cp .env.example .env        # fill in values
-pnpm db:migrate             # apply SQL migrations
+pnpm db:migrate             # apply SQL migrations (the 16 original tables)
+pnpm db:upgrade             # append-only schema upgrades: the other 30 tables (the build runs this too)
 pnpm db:seed                # states/UTs + pseudo-parties (reference data only)
 pnpm db:seed:demo           # optional: clearly-fake placeholder content for dev
 pnpm dev

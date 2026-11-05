@@ -25,7 +25,7 @@ export default function AboutPage() {
             alt="The Abhilekh seal: a banyan tree within an arched border"
             width={130}
             height={136}
-            priority
+            preload
             className="mb-6"
           />
           <span lang="hi" className="deva-eyebrow">

@@ -76,7 +76,12 @@ stage 0 for a person to look.
 FINDINGS.md counts 130 unparseable encashment dates. Measured: all 130 are
 EMPTY, and they are exactly the 130 rows with an empty party name, all with
 `status = Expired`, all with a purchaser, none with an amount — and
-20,551 − 130 = 20,421 = the encashment table's row count. These are bonds
+20,551 − 130 = 20,421 = the matched-row count the approved stage-1 run
+measured, which the loader asserts. (MANIFEST.csv records `encashed.csv` as
+"20420 rows", one fewer; the manifest note does not say whether it counted
+the header. The loader's stage-1 cross-check counts data rows, header
+excluded, and stops on any drift, so the next run against the file settles
+which record is right. Until then both figures stand as written.) These are bonds
 purchased but never encashed. They are **not funding transactions** (no
 recipient exists) and never load as such; they are counted, reported, and
 covered by the dataset notes.
@@ -176,7 +181,8 @@ otherwise they stay verbatim with no candidate, because inventing the
 
 - Cross-transcription: row counts against `purchased.csv` (18,871) and the
   independent repo (18,871) — corroboration within one lineage (§1.3).
-- Internal: matched rows (20,421) must equal `encashed.csv`'s row count;
+- Internal: matched rows (20,421) must equal `encashed.csv`'s data-row
+  count (header excluded; see the MANIFEST discrepancy noted in §2.3);
   Σ amounts per party recomputed and compared with FINDINGS.md's figures;
   any drift stops the gate.
 - Against the archive: recipient parties must already exist; nothing else
