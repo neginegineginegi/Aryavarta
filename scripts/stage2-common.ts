@@ -411,6 +411,55 @@ export async function revertDataset(slug: string, fail: (msg: string) => never):
   return out;
 }
 
+/**
+ * What is already in the database this run is pointed at.
+ *
+ * More than one Vercel project builds this repository, each with its own
+ * DATABASE_URL, so "the gates pass" does not answer the question that
+ * actually matters: is this the database the site serves? Nothing in an
+ * insert can tell — it would succeed completely into the wrong one. So the
+ * preflight and the guided run print counts the reader can check against
+ * the live site (parties and states on /browse, elections on the landing
+ * map, members on /rajya-sabha) and the dataset slugs already ingested,
+ * which are the sharpest signal of all: two databases rarely hold the same
+ * ingest history. Returns the printed lines and the slugs on their own, so
+ * a caller can refuse on a slug without parsing its own output.
+ */
+export async function fingerprintLines(): Promise<{ lines: string[]; slugs: string[]; counts: Record<string, number | null> }> {
+  const { db } = await import("../src/lib/db");
+  const { sql } = await import("drizzle-orm");
+  const lines: string[] = [];
+  const counts: Record<string, number | null> = {};
+
+  const count = async (table: string): Promise<number | null> => {
+    try {
+      const r = await db.execute(sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${table}"`)}`);
+      return Number((r.rows[0] as { n: number }).n);
+    } catch {
+      return null;
+    }
+  };
+
+  for (const table of ["states", "parties", "elections", "terms", "orgs", "funding_transactions", "rs_members", "rs_terms"]) {
+    const n = await count(table);
+    counts[table] = n;
+    lines.push(`  ${table.padEnd(22)} ${n === null ? "table absent" : n}`);
+  }
+  const slugs: string[] = [];
+  try {
+    const ds = await db.execute(sql`SELECT slug, retrieved_on::text AS on FROM datasets ORDER BY slug`);
+    const rows = ds.rows as Array<{ slug: string; on: string }>;
+    lines.push(`  datasets ingested      ${rows.length === 0 ? "none" : rows.length}`);
+    for (const r of rows) {
+      slugs.push(r.slug);
+      lines.push(`      ${r.slug} (retrieved ${r.on})`);
+    }
+  } catch {
+    lines.push("  datasets ingested      table absent");
+  }
+  return { lines, slugs, counts };
+}
+
 export function panelDiffLines(before: Record<string, string>, after: Record<string, string>): string[] {
   const lines = [`| panel | before | after |`, `|---|---|---|`];
   for (const k of Object.keys(before)) lines.push(`| ${k} | ${before[k]} | ${after[k]} |`);

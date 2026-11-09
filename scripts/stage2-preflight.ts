@@ -15,7 +15,13 @@
  */
 import "dotenv/config";
 
-import { dbLabelOf, requireDeployedCode, requireFreshVerifiedBackup, requireSchemaCapability } from "./stage2-common";
+import {
+  dbLabelOf,
+  fingerprintLines,
+  requireDeployedCode,
+  requireFreshVerifiedBackup,
+  requireSchemaCapability,
+} from "./stage2-common";
 
 type Result = { gate: string; state: "PASS" | "BLOCKED" | "NOT CHECKED"; detail: string };
 
@@ -34,44 +40,10 @@ async function check(gate: string, fn: () => void | Promise<void>): Promise<Resu
   }
 }
 
-/**
- * What is already in the database this run is pointed at.
- *
- * More than one Vercel project builds this repository, each with its own
- * DATABASE_URL, so "the gates pass" does not answer the question that
- * actually matters: is this the database the site serves? Nothing in an
- * insert can tell — it would succeed completely into the wrong one. So the
- * preflight prints counts the reader can check against the live site
- * (parties and states on /browse, elections on the landing map, members on
- * /rajya-sabha) and the dataset slugs already ingested, which are the
- * sharpest signal of all: two databases rarely hold the same ingest history.
- */
+/** The fingerprint lives in stage2-common so scripts/go.ts prints the very
+ *  same lines (and refuses on the same slugs) rather than a copy of them. */
 async function fingerprint(): Promise<string[]> {
-  const { db } = await import("../src/lib/db");
-  const { sql } = await import("drizzle-orm");
-  const lines: string[] = [];
-
-  const count = async (table: string): Promise<string> => {
-    try {
-      const r = await db.execute(sql`SELECT count(*)::int AS n FROM ${sql.raw(`"${table}"`)}`);
-      return String((r.rows[0] as { n: number }).n);
-    } catch {
-      return "table absent";
-    }
-  };
-
-  for (const table of ["states", "parties", "elections", "terms", "orgs", "funding_transactions", "rs_members", "rs_terms"]) {
-    lines.push(`  ${table.padEnd(22)} ${await count(table)}`);
-  }
-  try {
-    const ds = await db.execute(sql`SELECT slug, retrieved_on::text AS on FROM datasets ORDER BY slug`);
-    const rows = ds.rows as Array<{ slug: string; on: string }>;
-    lines.push(`  datasets ingested      ${rows.length === 0 ? "none" : rows.length}`);
-    for (const r of rows) lines.push(`      ${r.slug} (retrieved ${r.on})`);
-  } catch {
-    lines.push("  datasets ingested      table absent");
-  }
-  return lines;
+  return (await fingerprintLines()).lines;
 }
 
 async function main() {
