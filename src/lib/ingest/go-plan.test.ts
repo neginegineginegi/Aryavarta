@@ -8,6 +8,7 @@ import {
   missingDatabaseUrlMessage,
   pagesToOpen,
   siteUrlFrom,
+  snapshotTable,
 } from "@/lib/ingest/go-plan";
 
 describe("alreadyIngested (the stop rule in step 2)", () => {
@@ -57,6 +58,12 @@ describe("countsTable", () => {
     expect(lines[0]).toBe("| measure | now | after |");
     expect(lines.join("\n")).toMatch(/measured after the inserts in a real run/);
     expect(lines.join("\n")).not.toMatch(/\+\d/);
+  });
+  it("the before snapshot has no after column and no dry-run wording", () => {
+    const lines = snapshotTable(before);
+    expect(lines[0]).toBe("| measure | before |");
+    expect(lines).toContain("| orgs | 10 |");
+    expect(lines.join("\n")).not.toMatch(/real run|after/);
   });
   it("COUNT_KEYS names the measures the user asked for", () => {
     expect(COUNT_KEYS).toContain("orgs");

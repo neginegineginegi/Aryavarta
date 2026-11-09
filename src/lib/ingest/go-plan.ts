@@ -92,6 +92,12 @@ export function countsTable(before: Counts, after: Counts | null): string[] {
   return lines;
 }
 
+/** The before snapshot on its own: two columns, no placeholder, the same in
+ *  a real run and a dry run. */
+export function snapshotTable(before: Counts): string[] {
+  return ["| measure | before |", "|---|---|", ...Object.keys(before).map((k) => `| ${k} | ${show(before[k])} |`)];
+}
+
 /** NEXT_PUBLIC_SITE_URL from .env, if it is a usable absolute URL; else null
  *  and the pages are printed as paths. */
 export function siteUrlFrom(env: Record<string, string | undefined>): string | null {
@@ -116,12 +122,12 @@ export function pagesToOpen(siteUrl: string | null, facts: PageFacts): Array<{ u
   const at = (path: string) => (siteUrl ? `${siteUrl}${path}` : path);
   const out: Array<{ url: string; why: string }> = [
     { url: at("/admin/import"), why: 'press "Refresh cached pages" FIRST — the landing map, state pages and Union page are tag-cached and a terminal insert bumps no tag' },
-    { url: at("/rajya-sabha"), why: "member and seat counts, the coverage boundary; 1-hour cache, so load it twice after the hour or after the refresh" },
+    { url: at("/rajya-sabha"), why: "member and seat counts, the coverage boundary. A 1-hour timed cache the admin refresh does not reach: once the hour has passed, load it twice" },
   ];
   if (facts.seatSlug) out.push({ url: at(`/rajya-sabha/${facts.seatSlug}`), why: "one seat's members as the publisher labelled them; rendered per request" });
   if (facts.memberId) out.push({ url: at(`/person/rs/${facts.memberId}`), why: "one member's terms, Type carrying its 2022-07-20 snapshot date; rendered per request" });
-  out.push({ url: at("/network"), why: "the funding graph: nodes and edges should have risen by the counts above; rendered per request" });
-  if (facts.purchaserSlug) out.push({ url: at(`/network/org/${facts.purchaserSlug}`), why: "the largest purchaser: each transaction's counterparty should be the linked party's name (the verbatim recipient_label is stored but rendered on no page)" });
+  out.push({ url: at("/network"), why: "the funding graph, rendered per request. It prints no node or edge totals (the table above is the count check), and past 250 connected entities it stops drawing the whole web: expect the 'grown past what one canvas can show' notice, the by-kind flow table and the entry list gaining bond purchasers" });
+  if (facts.purchaserSlug) out.push({ url: at(`/network/org/${facts.purchaserSlug}`), why: "the largest purchaser: each transaction's counterparty should be the linked party's name, linking to its /party page (the verbatim recipient_label is stored but rendered on no page)" });
   out.push({ url: at("/browse"), why: "the Rajya Sabha link appears once rs_members has rows; 5-minute cache" });
   return out;
 }

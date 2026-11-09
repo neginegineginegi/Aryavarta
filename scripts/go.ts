@@ -32,6 +32,7 @@ import {
   alreadyIngested,
   COUNT_KEYS,
   countsTable,
+  snapshotTable,
   hostOf,
   missingDatabaseUrlMessage,
   pagesToOpen,
@@ -227,7 +228,7 @@ async function main(): Promise<void> {
 
   const before = await measure();
   console.log(`\n${TAG} counts before:`);
-  for (const line of countsTable(before, null).slice(0, 2 + COUNT_KEYS.length)) console.log(`  ${line}`);
+  for (const line of snapshotTable(before)) console.log(`  ${line}`);
 
   // The one decision this command does not make.
   if (DRY) {

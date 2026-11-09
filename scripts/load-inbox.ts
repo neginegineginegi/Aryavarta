@@ -181,17 +181,22 @@ async function main() {
       });
     };
     const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
-    check("terms.csv", (r) =>
-      r.state && r.office && r.start_date ? `${norm(r.state)}|${norm(r.office)}|${norm(r.start_date)}` : null,
-    );
-    check("elections.csv", (r) =>
-      r.state && r.election_date ? `${norm(r.state)}|${norm(r.election_date)}` : null,
-    );
-    check("results.csv", (r) =>
-      r.state && r.election_date && r.party
-        ? `${norm(r.state)}|${norm(r.election_date)}|${norm(r.party)}`
-        : null,
-    );
+    // Dates keyed exactly as the loader keys them below (normalizeDate), so
+    // "1987" and "1987-01-01" collide here as they would there; an
+    // unparseable date is left to the row's own skip message.
+    const day = (s: string | undefined) => normalizeDate((s ?? "").trim()).date;
+    check("terms.csv", (r) => {
+      const d = day(r.start_date);
+      return r.state && r.office && d ? `${norm(r.state)}|${norm(r.office)}|${d}` : null;
+    });
+    check("elections.csv", (r) => {
+      const d = day(r.election_date);
+      return r.state && d ? `${norm(r.state)}|${d}` : null;
+    });
+    check("results.csv", (r) => {
+      const d = day(r.election_date);
+      return r.state && d && r.party ? `${norm(r.state)}|${d}|${norm(r.party)}` : null;
+    });
     if (dupes.length > 0) {
       throw new Error(
         `a contribution sheet claims the same entity twice; keep one row and fold the other's sources and notes into it. ${dupes.join(". ")}`,

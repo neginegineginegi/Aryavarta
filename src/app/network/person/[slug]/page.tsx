@@ -50,7 +50,9 @@ export default async function PersonPage({ params }: { params: Promise<{ slug: s
   const { person, labels } = rec;
   const href = (type: string, id: string) => {
     const hit = labels.get(`${type}:${id}`);
-    return hit?.slug ? `/network/${type === "org" ? "org" : "person"}/${hit.slug}` : null;
+    if (!hit?.slug) return null;
+    if (type === "party") return `/party/${hit.slug}`;
+    return `/network/${type === "org" ? "org" : "person"}/${hit.slug}`;
   };
   const label = (type: string, id: string) => labels.get(`${type}:${id}`)?.label ?? id;
   const other = (type: string, id: string) => ({ label: label(type, id), href: href(type, id) });

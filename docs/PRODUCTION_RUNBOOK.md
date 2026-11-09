@@ -350,7 +350,7 @@ gap away.
 | `/election/[id]`, `/party/[id]` | rendered per request, but the record itself is read through a 5-minute cache (`unstable_cache`), so a page opened shortly before the insert can lag by up to 5 minutes; a never-requested id is correct immediately |
 | `/browse`, `/insights` | 5-minute cache |
 | `/rajya-sabha` | 1-hour cache |
-| `/` (the landing map's data), `/state/[id]`, `/state/[id]/[year]`, `/union` (the Union page) | **tag-cached**: refreshed when an approval or an admin action bumps the `map-data` / `state:<id>` tag, otherwise held for up to 1 hour (the ceiling added 2026-11-05; before it these reads had no time window at all) |
+| `/` (the landing map's data), `/state/[id]`, `/state/[id]/[year]`, `/union` (the Union page) | **tag-cached**: refreshed when an approval or an admin action bumps the `map-data` / `state:<id>` tag, otherwise held for up to 1 hour (the ceiling added 2026-11-09; before it these reads had no time window at all) |
 
 **Two caches, two behaviours.**
 
@@ -375,8 +375,10 @@ not the insert.
 1. **Admin → Import → "Refresh cached pages"** (`/admin/import`, admin role).
    One press bumps `map-data` and every `state:<id>` tag, which covers the
    landing map, every state page and year page, and the Union page. It writes
-   nothing. Regeneration still happens on the next request, so load the page
-   twice. **This is the post-insert step**; do it before comparing counts.
+   nothing. The button uses `updateTag`, so per Next's docs the next request
+   waits for fresh data rather than serving the stale copy: one load is
+   enough here. "Load twice" applies only to the timed caches above.
+   **This is the post-insert step**; do it before comparing counts.
 2. **Redeploying does not clear these reads.** Per Next's own docs for this
    version, `unstable_cache` entries persist across deployments, so a
    redeploy rebuilds the prerendered pages against entries that may still be
@@ -490,7 +492,7 @@ every one it skipped.
 - `/state/madras/1952` and the map at 1952 — states that could not be drawn
   before D3 existed. The map's undrawable list and every existing state page
   are tag-cached: press "Refresh cached pages" first (see above), then load
-  twice. A state the insert created has no cache entry and is fresh at once.
+  the page once. A state the insert created has no cache entry and is fresh at once.
 - `/election/<id>` for a newly inserted election — per request, correct
   immediately.
 - `/compare` — the picker gains every inserted election.

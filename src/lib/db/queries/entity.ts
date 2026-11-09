@@ -10,6 +10,7 @@ import {
   openQuestions,
   orgs,
   outcomes,
+  parties,
   people,
   relationships,
   sources,
@@ -66,12 +67,16 @@ const attach = <T extends { id: string }>(
   cites: Map<string, EdgeEvidence[]>,
 ): Array<CitedRow<T>> => rows.map((r) => ({ ...r, citations: cites.get(r.id) ?? [] }));
 
-/** Resolve org/person labels for a set of polymorphic (type, id) endpoints. */
+/** Resolve org/person/party labels for a set of polymorphic (type, id)
+ *  endpoints. Parties matter since the electoral-bonds insert: its
+ *  transactions name a party as recipient, and without this the counterparty
+ *  rendered as the raw party id. A party's slug is its id (/party/<id>). */
 async function labelEndpoints(
   refs: Array<{ type: string; id: string }>,
 ): Promise<Map<string, { label: string; slug: string | null }>> {
   const orgIds = [...new Set(refs.filter((r) => r.type === "org").map((r) => r.id))];
   const personIds = [...new Set(refs.filter((r) => r.type === "person").map((r) => r.id))];
+  const partyIds = [...new Set(refs.filter((r) => r.type === "party").map((r) => r.id))];
   const out = new Map<string, { label: string; slug: string | null }>();
   if (orgIds.length) {
     for (const o of await db
@@ -87,6 +92,14 @@ async function labelEndpoints(
       .from(people)
       .where(inArray(people.id, personIds))) {
       out.set(`person:${p.id}`, { label: p.name, slug: p.slug });
+    }
+  }
+  if (partyIds.length) {
+    for (const p of await db
+      .select({ id: parties.id, name: parties.name })
+      .from(parties)
+      .where(inArray(parties.id, partyIds))) {
+      out.set(`party:${p.id}`, { label: p.name, slug: p.id });
     }
   }
   return out;

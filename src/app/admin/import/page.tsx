@@ -50,7 +50,7 @@ export default async function AdminImportPage({
           The landing map, every state page and the Union page read through a tag cache that an
           approval refreshes and a terminal-run insert does not; a redeploy does not clear it
           either. After an insert, press this once. It writes nothing: it marks those cached reads
-          stale, and each page regenerates on its next request (load it twice).
+          stale, and the next request to each page waits for fresh data, so one load shows the change.
         </p>
         <form action={refreshCachedPagesAction} className="mt-3">
           <button
