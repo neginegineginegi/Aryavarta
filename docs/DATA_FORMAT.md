@@ -267,8 +267,12 @@ example-foundation,Example Foundation,foundation,Example Foundation Trust,,trust
 
 `kind`: `ngo`, `trust`, `society`, `foundation`, `think_tank`, `advocacy`,
 `media`, `research`, `company`, `government_body`, `political`,
-`international`, `religious`, `professional_body`, `other`. `parent` is
-another org slug, resolvable anywhere in the same sheet.
+`international`, `religious`, `professional_body`, `other`, `unclassified`.
+`unclassified` is a stated absence of classification — the recorded name
+carries no legal-form suffix and nobody has classified it (the 2026-09-03
+bonds ruling) — where `other` means someone looked and it fits no kind. Never
+guess a kind from a name. `parent` is another org slug, resolvable anywhere in
+the same sheet.
 
 An organisation already in the archive is **enriched, not overwritten**: fields
 that are empty take the new value and its citations, and name, kind and summary

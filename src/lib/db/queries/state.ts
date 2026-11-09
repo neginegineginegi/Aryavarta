@@ -188,6 +188,12 @@ function toSourceRef(s: {
 export function getStateArticle(stateId: string) {
   return unstable_cache(fetchStateArticle, ["state-article", stateId], {
     tags: [tags.state(stateId)],
+    // Tag-only, this entry never expired: approvals bump the tag, but a bulk
+    // insert run from a terminal bumps nothing, and a redeploy does not clear
+    // unstable_cache. The hour is a ceiling on how stale a state page can be
+    // after such an insert; the admin "Refresh cached pages" action is the
+    // immediate route.
+    revalidate: 3600,
   })(stateId);
 }
 

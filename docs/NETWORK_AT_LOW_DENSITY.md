@@ -163,7 +163,7 @@ If an implementation finds a case where view state starts carrying researcher
 reasoning, that is the line, and it should be raised rather than crossed.
 
 > **Implemented.** `src/lib/funding/view-state.ts` defines the encoding,
-> `use-view-state.ts` binds it to the address bar, and `/network` carries a
+> `src/components/network/use-view-state.ts` binds it to the address bar, and `/network` carries a
 > "copy link to this view" control. Five fields: year window, claims on,
 > structure panel open, people unfolded, and which organisations are open. Root
 > was already a search param. Depth is not adjustable in the client, so there is

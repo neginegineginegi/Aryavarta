@@ -1,7 +1,9 @@
 # Abhilekh architecture
 
 A map for extending the platform without rewriting it. Read alongside
-PROGRESS.md (session state) and docs/DATA_FORMAT.md (bulk data spec).
+docs/GAPS.md (decisions taken, what is blocked on whom, and the gaps) and
+docs/DATA_FORMAT.md (bulk data spec). The old PROGRESS.md session handoff is
+in docs/archive/.
 
 ## Stack
 
@@ -18,10 +20,16 @@ are pinned to `sin1` beside the database (`vercel.json`).
 2. **Every change to live content flows through the revision system**
    (`revisions` table: before/after snapshots, pending → approved/rejected,
    tombstoned deletes). Even the admin one-click removal records and approves
-   a delete revision rather than bypassing it. Two deliberate exceptions,
-   both curated reference data, not published claims: `parties` and the
-   Development Lens tables (`indicators`, `indicator_values`), which are
-   admin-managed and carry their sources inline per row.
+   a delete revision rather than bypassing it. The deliberate exceptions are
+   the **bulk path**: reference data and provenance-carrying datasets, not
+   published claims about who governed. They are declared in `SHEETS.bulk` at
+   the top of `scripts/load-inbox.ts` (sources, party colours, documents,
+   indicators and their values), plus the funding sheets
+   (`docs/FUNDING_INFLUENCE_ARCHITECTURE.md` §14a) and the stage-2 dataset
+   loaders. What replaces review there is provenance: every such row carries
+   its sources inline and names the dataset, version and curator it came from
+   (`docs/DATA_FORMAT.md`, "Bulk ingest and provenance"). Moving a sheet
+   between the two paths is a decision about the archive, not a refactor.
 3. **Imports are never the source of truth.** Wikidata/bulk-CSV data becomes
    *pending* revisions from the Import Bot (`origin='import'`); a moderator
    verifies against an authoritative source before anything publishes.
@@ -64,7 +72,7 @@ infrastructure, agriculture, environment, law & order) maps onto what exists:
   additive nullable dimension columns on `indicator_values` (`district_id`,
   `segment`), extending the unique index; do NOT model them as fake states.
 - **Visualization primitive**: `src/components/ui/TrendChart.tsx`, a
-  server-rendered SVG line chart over (year, value) points. Every future
+  client-rendered SVG line chart over (year, value) points. Every future
   chart of a yearly series should reuse or extend it (choropleth-by-year is
   the next primitive, reusing the map's fill machinery).
 - **Indicator pages** (`/indicator/[id]`) are the discovery hubs: one metric

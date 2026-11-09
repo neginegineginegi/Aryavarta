@@ -10,11 +10,36 @@ import { AuthzError, requireRole } from "@/lib/authz";
 import { tags } from "@/lib/cache";
 import { pickPartyColor, PLACEHOLDER_GRAY } from "@/lib/party-colors";
 
-/** Party colors appear on nearly every cached page — bust the long-lived ones. */
-async function revalidatePartyVisuals() {
+/**
+ * Bump every long-lived tag: the landing map's data and each state's page
+ * (the Union page lives on state 'in'). Party colours appear on nearly every
+ * cached page, which is why the colour actions call this; it is also the only
+ * thing that refreshes those pages after a bulk insert run from a terminal,
+ * because such an insert bumps no tag and a redeploy does not clear
+ * unstable_cache. Returns how many state tags were bumped.
+ */
+async function revalidatePartyVisuals(): Promise<number> {
   updateTag(tags.mapData);
   const stateRows = await db.select({ id: states.id }).from(states);
   for (const s of stateRows) updateTag(tags.state(s.id));
+  return stateRows.length;
+}
+
+/**
+ * The post-insert step from docs/PRODUCTION_RUNBOOK.md: after a bulk insert,
+ * an admin presses this once and the tag-cached pages regenerate on their next
+ * request. It writes nothing and reads only the state list, so there is no
+ * revision to record; it is an operational act, not a change to the record.
+ */
+export async function refreshCachedPagesAction(): Promise<void> {
+  try {
+    await requireRole("admin");
+  } catch (e) {
+    if (e instanceof AuthzError) redirect("/login?next=/admin/import");
+    throw e;
+  }
+  const bumped = await revalidatePartyVisuals();
+  redirect(`/admin/import?refreshed=${bumped}`);
 }
 
 export async function updatePartyAction(formData: FormData): Promise<void> {

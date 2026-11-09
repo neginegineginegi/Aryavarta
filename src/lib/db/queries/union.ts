@@ -114,5 +114,7 @@ async function fetchUnionOverview(): Promise<UnionOverview> {
 
 export const getUnionOverview = unstable_cache(fetchUnionOverview, ["union-overview"], {
   // Union content lives on stateId 'in', so approvals revalidate this tag.
+  // The hour is a ceiling for inserts that bump no tag (see getStateArticle).
   tags: [tags.state(UNION_ID)],
+  revalidate: 3600,
 });

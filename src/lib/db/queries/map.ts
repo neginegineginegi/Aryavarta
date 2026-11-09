@@ -152,7 +152,8 @@ const getCachedMapData = unstable_cache(
     };
   },
   ["map-data"],
-  { tags: [tags.mapData] },
+  // The hour is a ceiling for inserts that bump no tag (see getStateArticle).
+  { tags: [tags.mapData], revalidate: 3600 },
 );
 
 /**
@@ -409,7 +410,7 @@ const getCachedUnionMapData = unstable_cache(
     };
   },
   ["union-map-data"],
-  { tags: [tags.mapData, tags.state("in")] },
+  { tags: [tags.mapData, tags.state("in")], revalidate: 3600 },
 );
 
 export async function getUnionMapData(): Promise<UnionMapData> {

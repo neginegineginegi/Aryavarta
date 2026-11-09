@@ -1,14 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 
+import { refreshCachedPagesAction } from "@/actions/admin";
 import { ImportPanel } from "@/components/admin/ImportPanel";
 import { requireRole } from "@/lib/authz";
 import { db } from "@/lib/db";
 
 export const metadata: Metadata = { title: "Import reference data" };
 
-export default async function AdminImportPage() {
+export default async function AdminImportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ refreshed?: string }>;
+}) {
   await requireRole("admin");
+  const { refreshed } = await searchParams;
   const stateRows = await db.query.states.findMany({
     columns: { id: true, name: true },
     orderBy: (s, { asc }) => [asc(s.name)],
@@ -36,6 +42,31 @@ export default async function AdminImportPage() {
       <div className="py-7">
         <ImportPanel states={stateRows} />
       </div>
+      <section className="border-t border-rule py-7">
+        <h2 className="font-display text-xl font-semibold tracking-tight text-ink">
+          After a bulk insert
+        </h2>
+        <p className="mt-2 max-w-2xl text-[0.85rem] text-ink-muted">
+          The landing map, every state page and the Union page read through a tag cache that an
+          approval refreshes and a terminal-run insert does not; a redeploy does not clear it
+          either. After an insert, press this once. It writes nothing: it marks those cached reads
+          stale, and each page regenerates on its next request (load it twice).
+        </p>
+        <form action={refreshCachedPagesAction} className="mt-3">
+          <button
+            type="submit"
+            className="rounded-sm bg-ink px-4 py-2 text-[0.85rem] font-medium text-paper hover:opacity-85"
+          >
+            Refresh cached pages
+          </button>
+        </form>
+        {refreshed ? (
+          <p className="mt-3 text-[0.8rem] text-ink-faint" role="status">
+            Marked stale: the map data and {refreshed} state page{refreshed === "1" ? "" : "s"}.
+            Each regenerates on its next request.
+          </p>
+        ) : null}
+      </section>
     </div>
   );
 }

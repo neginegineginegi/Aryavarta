@@ -161,6 +161,44 @@ async function main() {
     }
   }
 
+  // --- the contribution sheets must claim each entity once, same posture -----
+  // Two rows for one term, election or (election, party) are a data error,
+  // and the loader has no honest way to merge them: the first used to win and
+  // the second — nine times the better-sourced one, with the notes — was
+  // skipped as "already pending", so the staged draft carried only a portal
+  // homepage as its citation. Refused before any write, naming both lines.
+  {
+    const dupes: string[] = [];
+    const check = (sheet: string, keyOf: (r: Record<string, string>) => string | null) => {
+      const seen = new Map<string, number>();
+      readSheet(sheet).forEach((r, i) => {
+        const k = keyOf(r);
+        if (k === null) return;
+        const line = i + 2; // 1-based, after the header
+        const first = seen.get(k);
+        if (first !== undefined) dupes.push(`${sheet} lines ${first} and ${line} both claim ${k}`);
+        else seen.set(k, line);
+      });
+    };
+    const norm = (s: string | undefined) => (s ?? "").trim().toLowerCase();
+    check("terms.csv", (r) =>
+      r.state && r.office && r.start_date ? `${norm(r.state)}|${norm(r.office)}|${norm(r.start_date)}` : null,
+    );
+    check("elections.csv", (r) =>
+      r.state && r.election_date ? `${norm(r.state)}|${norm(r.election_date)}` : null,
+    );
+    check("results.csv", (r) =>
+      r.state && r.election_date && r.party
+        ? `${norm(r.state)}|${norm(r.election_date)}|${norm(r.party)}`
+        : null,
+    );
+    if (dupes.length > 0) {
+      throw new Error(
+        `a contribution sheet claims the same entity twice; keep one row and fold the other's sources and notes into it. ${dupes.join(". ")}`,
+      );
+    }
+  }
+
   // --- states lookup --------------------------------------------------------
   const stateRows = await db.select().from(states);
   const stateByKey = new Map<string, { id: string; name: string }>();
@@ -566,16 +604,28 @@ async function main() {
       ),
     });
     if (liveNearby) { skip(`${label}: a live election already exists near this date`); continue; }
+    // The same ±90-day window as the live check. An exact-date match let a
+    // second polling-phase date for the same election stage a second draft
+    // beside the first (West Bengal 2026: 23 April and 29 April), and a
+    // reviewer could approve both.
     const pend = await db.query.revisions.findFirst({
       where: and(
         eq(revisions.stateId, st.id),
         eq(revisions.entityType, "election"),
         eq(revisions.status, "pending"),
         eq(revisions.origin, "import"),
-        sql`${revisions.afterData} ->> 'electionDate' = ${when.date}`,
+        sql`abs((${revisions.afterData} ->> 'electionDate')::date - ${when.date}::date) < 90`,
       ),
     });
-    if (pend) { skip(`${label}: an imported draft already pending for this date`); continue; }
+    if (pend) {
+      const pendDate = (pend.afterData as { electionDate?: string } | null)?.electionDate;
+      skip(
+        pendDate === when.date
+          ? `${label}: an imported draft already pending for this date`
+          : `${label}: an imported draft already pending for ${pendDate} — within 90 days, so this row is treated as the same election; if it is a second polling phase, fold it into the existing row`,
+      );
+      continue;
+    }
 
     const results = [];
     for (const rr of resultRows) {

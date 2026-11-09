@@ -282,7 +282,11 @@ on the raw files being back so stage 0 can verify the whole manifest.
 - **Sentry DSN** (decision 5).
 - **The production runs themselves** (docs/PRODUCTION_RUNBOOK.md): the
   reconciliation paste-back, then the drill and the three inserts — all
-  run by the user where production credentials already live.
+  run by the user where production credentials already live. Since
+  2026-11-09 the Rajya Sabha and electoral-bonds sequence is one command,
+  `pnpm tsx scripts/go.ts` (with `--dry-run` first); TCPD is still by hand.
+  Two months after the runbook was written, neither front had been
+  inserted: the live network still showed only the hand-curated batches.
 - **Raw TCPD files re-uploaded** (D1/D2 were chat uploads destroyed by the
   container reset; needed wherever the TCPD stages run) and the LokDhaba
   terms capture (`data/raw/tcpd/TERMS_LOKDHABA.md`, §1.4).
@@ -297,6 +301,25 @@ on the raw files being back so stage 0 can verify the whole manifest.
   /review, after which the next build re-stages them with the right
   citations. Any Gujarat draft that was already approved live carries the
   wrong citation in the live record and needs an amendment, not a rejection.
+- **Reject nine thinly-cited CM/governor drafts and one duplicate election
+  draft in /review** (same sweep). `terms.csv` carried nine rows twice — a
+  first row citing only the Raj Bhavan portal homepage, a later row with the
+  specific source and notes — and the loader kept the first: Andhra Pradesh
+  cm 2024-06-12, Himachal Pradesh cm 2022-12-11, Jammu and Kashmir cm
+  2024-10-16, Maharashtra cm 2024-12-05, Mizoram cm 2023-12-08, Odisha cm
+  2024-06-12, Telangana cm 2023-12-07, West Bengal cm 2026-05-09, Gujarat
+  governor 2019-07-22. The sheet now holds one row each (the specific one,
+  with the portal citation folded in) and the loader refuses an in-sheet
+  duplicate before writing; the nine pending drafts must be rejected so the
+  next build re-stages them. West Bengal 2026 was staged twice (23 April and
+  29 April, the two polling phases), and the two blocks disagree — BJP 208
+  with CPI(M) 1 under 29 April, BJP 207 and no CPI(M) under 23 April, turnout
+  93.71 on one and none on the other. Which figures are right is a curator's
+  call against the ECI result (published tallies seen on 2026-11-05 ranged
+  from 206 to 208 for the BJP, with one seat re-polled); the loader now
+  treats a second election row within 90 days of a pending draft as the same
+  election, so only the first stages. Reject the surplus draft and reconcile
+  the two sheet rows.
 
 ## Known gaps in the archive itself
 

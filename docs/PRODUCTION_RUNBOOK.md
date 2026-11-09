@@ -12,6 +12,45 @@ build time, and no credential is ever pasted into a chat — the standing
 rule: never share a production `DATABASE_URL`, even read-only; a
 connection string in scrollback is a disclosed credential.
 
+## The one command (Rajya Sabha + electoral bonds)
+
+Steps 0a, 2, 3 and 4 below, run in order by a single guided command:
+
+```sh
+pnpm tsx scripts/go.ts --dry-run   # first: walks every step, writes nothing to the database
+pnpm tsx scripts/go.ts             # then: the run
+```
+
+What it does, in order: reads `DATABASE_URL` from `.env` (and only from
+`.env`; if it is absent it prints the exact Vercel path to copy it from
+and exits); runs the deploy and schema gates and verifies both payload
+files against their manifests; prints the fingerprint and **stops if any
+`tcpd-*` or `eci-electoral-bonds-*` dataset is already present**; prints
+the counts before; asks you to type the database host back after you have
+compared the fingerprint with the live site and confirmed the main
+deployment is green (the one decision it does not make — nothing in a
+database can say whether readers reach it); runs the restore drill and
+checks the marker it wrote; runs each front's dry run and then its insert;
+prints before-and-after counts for orgs, funding transactions, graph nodes
+and edges, rs_members and rs_terms, and the pages to open to see each
+change.
+
+Every existing gate is untouched: the inserts are the same two scripts,
+spawned with the same arguments, and each re-runs the deploy, schema and
+backup gates inside itself. The command adds checks (database identity,
+already-ingested slugs, client tools on PATH) and removes none. It has no
+`--yes`. **TCPD stays out of it**: step 1's reconciliation review and the
+LokDhaba terms capture are still required before step 5, and step 5 is
+still run by hand.
+
+The dry run writes nothing to the database. The two loaders' own dry runs
+write their reports to `data/raw/*/dry-run-report.md`, a file on disk; the
+drill is not run in a dry run, because it creates a sibling database on the
+server and a dump on disk.
+
+The sections below remain the reference for what each step checks and
+what its output should say.
+
 ## 0a. Which database (do this first, every time)
 
 **More than one Vercel project builds this repository, and each carries its
@@ -301,35 +340,50 @@ count that lands anywhere else means something is different from what the
 gate approved — stop and read the insert report rather than explaining the
 gap away.
 
-### How fresh each page is (measured from the build, not assumed)
+### How fresh each page is (measured from the build and the code, not assumed)
 
 | Page | Updates |
 | --- | --- |
 | `/person/rs/[id]`, `/rajya-sabha/[seat]` | per request — always current |
 | `/network`, `/network/org/[slug]` | per request — always current |
 | `/election/[id]`, `/party/[id]` | rendered per request, but the record itself is read through a 5-minute cache (`unstable_cache`), so a page opened shortly before the insert can lag by up to 5 minutes; a never-requested id is correct immediately |
-| `/`, `/browse`, `/insights`, `/state/[id]` | 5-minute cache |
+| `/browse`, `/insights` | 5-minute cache |
 | `/rajya-sabha` | 1-hour cache |
-| `/state/in` (the Union page) | 1-day cache |
+| `/` (the landing map's data), `/state/[id]`, `/state/[id]/[year]`, `/union` (the Union page) | **tag-cached**: refreshed when an approval or an admin action bumps the `map-data` / `state:<id>` tag, otherwise held for up to 1 hour (the ceiling added 2026-11-05; before it these reads had no time window at all) |
 
-**The cache does not refresh on a timer.** Per Next's own ISR docs for this
-version: once the window has passed, the *next* request still returns the
+**Two caches, two behaviours.**
+
+*Timed pages* (`/browse`, `/insights`, `/rajya-sabha`, the 5-minute record
+reads): once the window has passed, the *next* request still returns the
 stale page and only starts regeneration in the background; the request
-*after that* returns the fresh one. So the practical instruction is: wait
-out the window, then **load the page twice**. One reload showing old numbers
-is not a fault.
+*after that* returns the fresh one. Wait out the window, then **load the page
+twice**. One reload showing old numbers is not a fault.
+
+*Tag-cached reads* (the landing map's data, every state page and year page,
+the Union page): these refresh when something calls `updateTag` on
+`map-data` or `state:<id>`. Approving a revision does that, and so do the
+admin party-colour actions. **A bulk insert run from a terminal bumps no
+tag.** So after an insert, the landing map's undrawable list, a state page's
+election list and the Union overview keep rendering the pre-insert data
+until either the hour ceiling passes or someone bumps the tags. This is why
+the checks below say "after the refresh": a stale number here is the cache,
+not the insert.
 
 #### Forcing it without waiting
 
-1. **Redeploy** from the Vercel dashboard. Reliable, and rebuilds every
-   prerendered page against the current database.
-2. **On-demand revalidation is not wired up in this repo.** Next's
-   `revalidatePath` exists, but it has to be called from a Route Handler or
-   Server Action, and the archive has neither — adding one means adding an
-   authenticated endpoint that can invalidate cache, which is a deliberate
-   decision nobody has taken yet. Until then, redeploy is the lever.
-3. Note that `revalidatePath` would not be instant either: it invalidates
-   the entry, and regeneration still happens on the next request.
+1. **Admin → Import → "Refresh cached pages"** (`/admin/import`, admin role).
+   One press bumps `map-data` and every `state:<id>` tag, which covers the
+   landing map, every state page and year page, and the Union page. It writes
+   nothing. Regeneration still happens on the next request, so load the page
+   twice. **This is the post-insert step**; do it before comparing counts.
+2. **Redeploying does not clear these reads.** Per Next's own docs for this
+   version, `unstable_cache` entries persist across deployments, so a
+   redeploy rebuilds the prerendered pages against entries that may still be
+   valid. Use the button, or wait out the hour.
+3. The 5-minute and 1-hour timed caches need nothing: they expire on their
+   own. The archive's server actions already revalidate by tag (`updateTag` in
+   `src/actions/review.ts` and `admin.ts`); the button is that same mechanism
+   made reachable after an out-of-band insert.
 
 ---
 
@@ -430,7 +484,9 @@ every one it skipped.
 
 - `/insights` (5-minute cache) — the panels below.
 - `/state/madras/1952` and the map at 1952 — states that could not be drawn
-  before D3 existed.
+  before D3 existed. The map's undrawable list and every existing state page
+  are tag-cached: press "Refresh cached pages" first (see above), then load
+  twice. A state the insert created has no cache entry and is fresh at once.
 - `/election/<id>` for a newly inserted election — per request, correct
   immediately.
 - `/compare` — the picker gains every inserted election.
