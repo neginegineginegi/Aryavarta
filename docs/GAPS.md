@@ -337,7 +337,7 @@ on the raw files being back so stage 0 can verify the whole manifest.
   for"). Two parties governing the same state in nearby years can be
   indistinguishable on the map. Choosing a colour is curatorial, not a code
   fix: one row per party, `party_name` spelled exactly as the inbox sheets
-  spell it. The three name mismatches that kept YSRCP and INC(O) on auto
+  spell it. The two name mismatches that kept YSRCP and INC(O) on auto
   colours, and the missing TRS row, were fixed 2026-11-05.
 - **The Rajya Sabha spine has a first surface** (built 2026-09-04):
   `/rajya-sabha` (counts, seats, coverage boundary, what is not held),

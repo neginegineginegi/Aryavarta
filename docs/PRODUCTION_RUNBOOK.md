@@ -30,7 +30,8 @@ the counts before; asks you to type the database host back after you have
 compared the fingerprint with the live site and confirmed the main
 deployment is green (the one decision it does not make — nothing in a
 database can say whether readers reach it); runs the restore drill and
-checks the marker it wrote; runs each front's dry run and then its insert;
+checks the marker it wrote; runs each front's dry run and then its insert,
+stopping before the bonds insert if its dry-run report flags `DRIFT`;
 prints before-and-after counts for orgs, funding transactions, graph nodes
 and edges, rs_members and rs_terms, and the pages to open to see each
 change.
@@ -449,10 +450,13 @@ crore), 17 Goa Forward Party rows, 130 expired purchases.
   18,724. Per request, so it is correct immediately.
 - `/network/org/<slug>` for a large purchaser — its transactions should
   name the recipient party.
-- `/network/org/<slug>` for a recipient party's org row — the transactions
-  there should carry `recipient_label` as the publisher wrote it. (The
-  `/party/[id]` page carries no funding content, so there is nothing
-  bonds-related to check on it.)
+- On the large purchaser's `/network/org/<slug>`, each transaction's
+  counterparty should be the linked party's name. Recipients are stored as
+  party references, not org rows, so there is no recipient org page, and no
+  page renders `recipient_label`; the verbatim label is checkable only in
+  the database:
+  `SELECT recipient_label, recipient_id FROM funding_transactions WHERE recipient_type = 'party' LIMIT 5`.
+  (The `/party/[id]` page carries no funding content either.)
 - `/accountability` (1-hour cache) if it surfaces funding totals.
 
 **Insight panels: expect no movement.** Bonds feed the funding graph, not

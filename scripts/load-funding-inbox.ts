@@ -133,6 +133,25 @@ async function main() {
   };
   const KINDS = new Set(schema.sourceKindEnum.enumValues as readonly string[]);
   const srcById = new Map<string, Src>();
+  // Same refusal as load-inbox.ts's sources.csv check, and for the same
+  // reason, only sharper here: these rows insert directly, so a reused id
+  // (last definition wins in a Map) would PUBLISH every citing row against
+  // the wrong document. Fatal, and before any write.
+  {
+    const seen = new Map<string, string>();
+    const dupes: string[] = [];
+    for (const r of readSheet("funding_sources.csv")) {
+      const id = (r.id ?? "").trim();
+      if (!id) continue;
+      const first = seen.get(id);
+      if (first !== undefined) dupes.push(`${id} ("${first}" and "${r.title}")`);
+      else seen.set(id, r.title ?? "");
+    }
+    if (dupes.length > 0)
+      throw new Error(
+        `funding_sources.csv defines an id more than once; renumber one of each pair and update the rows that cite it. Duplicates: ${dupes.join("; ")}`,
+      );
+  }
   for (const r of readSheet("funding_sources.csv")) {
     const label = `source ${r.id}`;
     if (!r.id || !r.title || !r.url) {

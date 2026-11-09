@@ -38,9 +38,11 @@ In code, not only here, because a note in a document rots:
   held indicator ids.
 - `SERIES_BREAKS` in the same file is the series-break record itself: a map
   from indicator id to the years its definition changed, read through
-  `seriesBreaksFor`. It exists and is empty; the deferral list and this map
-  are checked against each other in `src/lib/series.test.ts`, so an id cannot
-  leave the first without appearing in the second.
+  `seriesBreaksFor`. It exists and is empty. `src/lib/series.test.ts` checks
+  one direction only: an id with recorded breaks may not stay deferred. The
+  other direction — lifting a deferral without recording any break — is not
+  detected by that test; what makes it visible is `provenance.test.ts`
+  asserting the deferred set's exact contents.
 - `scripts/load-inbox.ts` refuses a new indicator definition on that list and
   prints why, naming this gate.
 - `src/lib/ingest/provenance.test.ts` asserts the set's contents, so lifting
@@ -56,7 +58,9 @@ Per indicator: establish the break years from the publisher's methodology
 notes, record them in `SERIES_BREAKS` (with the citation that establishes
 them), then remove the id from `DEFERRED_UNTIL_SERIES_BREAKS` and its test.
 There is no separate table to build; the map in `provenance.ts` is the
-record, and `series.test.ts` is what refuses a half-done lift.
+record. `series.test.ts` refuses breaks recorded while the id is still
+deferred; a lift with no breaks recorded passes it, so the edit to
+`provenance.test.ts` is where a reviewer must ask for the breaks.
 
 Design prior for whoever does it, recorded so the deferral does not lose its
 reasoning:

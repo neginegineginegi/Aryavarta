@@ -52,10 +52,11 @@ from GEM and verify the checksum, not that the archive redistributes 241 MB.
 Python transform in §3d, `scripts/one-off/extract-gem-power-2026.py`, with
 the industry and GIST extractors beside it; no `gem-transform.mjs` exists.)*
 
-The transform streams the file row by
-row (stdlib only, so it runs anywhere) and first PROVES the
-schema: the header must match the sample-derived column list exactly, else it
-stops. Then, per row, it checks and counts rather than fixes:
+The transform streams the workbook row by
+row (Python with openpyxl, in read-only mode) and first PROVES the header:
+it carries every column the transform reads, else it stops on the missing or
+renamed one. Columns are read by name, so extra or reordered columns are
+tolerated. Then, per row, it checks and counts rather than fixes:
 
 - geography fields present and mappable (country filter, state names against
   the archive's own normalizer);

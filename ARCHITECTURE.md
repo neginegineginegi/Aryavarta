@@ -26,9 +26,12 @@ are pinned to `sin1` beside the database (`vercel.json`).
    the top of `scripts/load-inbox.ts` (sources, party colours, documents,
    indicators and their values), plus the funding sheets
    (`docs/FUNDING_INFLUENCE_ARCHITECTURE.md` §14a) and the stage-2 dataset
-   loaders. What replaces review there is provenance: every such row carries
-   its sources inline and names the dataset, version and curator it came from
-   (`docs/DATA_FORMAT.md`, "Bulk ingest and provenance"). Moving a sheet
+   loaders. Where a bulk row makes a claim, provenance replaces review:
+   indicator values carry their source inline, and documents, indicator
+   definitions and values may name a declared dataset and its upstream id
+   (both or neither; `docs/DATA_FORMAT.md`, "Bulk ingest and provenance").
+   `sources.csv` is the citation vocabulary itself and `party_colors.csv` is
+   presentation config; neither carries provenance. Moving a sheet
    between the two paths is a decision about the archive, not a refactor.
 3. **Imports are never the source of truth.** Wikidata/bulk-CSV data becomes
    *pending* revisions from the Import Bot (`origin='import'`); a moderator

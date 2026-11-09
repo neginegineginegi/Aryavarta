@@ -121,7 +121,7 @@ export function pagesToOpen(siteUrl: string | null, facts: PageFacts): Array<{ u
   if (facts.seatSlug) out.push({ url: at(`/rajya-sabha/${facts.seatSlug}`), why: "one seat's members as the publisher labelled them; rendered per request" });
   if (facts.memberId) out.push({ url: at(`/person/rs/${facts.memberId}`), why: "one member's terms, Type carrying its 2022-07-20 snapshot date; rendered per request" });
   out.push({ url: at("/network"), why: "the funding graph: nodes and edges should have risen by the counts above; rendered per request" });
-  if (facts.purchaserSlug) out.push({ url: at(`/network/org/${facts.purchaserSlug}`), why: "the largest purchaser: its transactions should name the recipient party verbatim (recipient_label)" });
+  if (facts.purchaserSlug) out.push({ url: at(`/network/org/${facts.purchaserSlug}`), why: "the largest purchaser: each transaction's counterparty should be the linked party's name (the verbatim recipient_label is stored but rendered on no page)" });
   out.push({ url: at("/browse"), why: "the Rajya Sabha link appears once rs_members has rows; 5-minute cache" });
   return out;
 }

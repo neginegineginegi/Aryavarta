@@ -268,6 +268,13 @@ async function main(): Promise<void> {
     step(4 + i, `insert ${i + 1} — ${f.name} (${f.slug})`);
     note(`${f.name}: dry run first (read-only; its report lands in ${f.reports}/dry-run-report.md)`);
     run("pnpm", ["tsx", f.script, "--stage=dry-run"], childEnv, `${f.name} stage 1 (dry run)`);
+    // The bonds dry run compares encashed.csv's data rows with the matched
+    // rows and writes "DRIFT, stop" into its report on a mismatch, but exits
+    // 0: by hand, the operator reading the report is the gate. This command
+    // reads no report for you unless it checks it, so it checks it.
+    const reportPath = join(process.cwd(), f.reports, "dry-run-report.md");
+    if (existsSync(reportPath) && /DRIFT, stop/.test(readFileSync(reportPath, "utf8")))
+      fail(`${f.name}: the dry-run report (${f.reports}/dry-run-report.md) flags DRIFT. Its cross-check line says what differs; the spec says drift stops the gate, so the insert does not run.`);
     const insertCmd = ["tsx", f.script, "--stage=insert", "--confirm"];
     if (DRY) {
       note(`would run next: pnpm ${insertCmd.join(" ")}`);
