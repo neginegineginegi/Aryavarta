@@ -285,6 +285,15 @@ on the raw files being back so stage 0 can verify the whole manifest.
   run by the user where production credentials already live. Since
   2026-11-09 the Rajya Sabha and electoral-bonds sequence is one command,
   `pnpm tsx scripts/go.ts` (with `--dry-run` first); TCPD is still by hand.
+  Rehearsed end to end on 2026-11-12 against a sandbox database with the
+  sha256-verified payloads: drill VERIFIED, both inserts ran, and the counts
+  moved exactly as the runbook predicts (orgs +1,294, transactions +18,724,
+  rs_terms 3,531, rs_members 2,407 of 2,412 — the five held only "Others"
+  terms). The rehearsal caught one refusal production would also have hit:
+  PARTY_RESOLUTIONS.csv said create for TRS and YSRCP, but the archive now
+  holds both parties with those abbreviations, so the matcher matched and the
+  loader refused. Both now resolve to the existing rows, with the reason
+  stated.
   Two months after the runbook was written, neither front had been
   inserted: the live network still showed only the hand-curated batches.
 - **Raw TCPD files re-uploaded** (D1/D2 were chat uploads destroyed by the

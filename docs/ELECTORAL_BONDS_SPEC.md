@@ -77,15 +77,11 @@ FINDINGS.md counts 130 unparseable encashment dates. Measured: all 130 are
 EMPTY, and they are exactly the 130 rows with an empty party name, all with
 `status = Expired`, all with a purchaser, none with an amount — and
 20,551 − 130 = 20,421 = the matched-row count the approved stage-1 run
-measured, which the loader asserts. (MANIFEST.csv records `encashed.csv` as
-"20420 rows", one fewer; the manifest note does not say whether it counted
-the header. The loader's stage-1 dry run counts data rows, header excluded,
-and writes the comparison into its report — "= matched rows exactly" or
-"≠ matched rows — DRIFT, stop"; the loader itself does not exit on it, and
-the stage-2 insert asserts only the matched-row total. `scripts/go.ts` reads
-that report line and stops on DRIFT before the insert; run by hand, the
-reader must. The next run against the file settles which record is right.
-Until then both figures stand as written.) These are bonds
+measured, which the loader asserts, and equal to `encashed.csv`'s 20,421 data
+rows (header excluded; measured 2026-11-12 against the sha256-verified file;
+the "20420" first written in MANIFEST.csv was wrong and is corrected). The
+stage-1 dry run prints the comparison in its report, and `scripts/go.ts` stops
+before the insert if that line ever reads DRIFT. These are bonds
 purchased but never encashed. They are **not funding transactions** (no
 recipient exists) and never load as such; they are counted, reported, and
 covered by the dataset notes.

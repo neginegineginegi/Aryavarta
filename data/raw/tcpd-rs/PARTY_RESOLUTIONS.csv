@@ -88,7 +88,7 @@ Socialist,,,create,,
 Swatantra,,,create,,
 TDP,,,resolve,telugu-desam-party,
 TMC(M),,,create,,
-TRS,,,create,,
+TRS,,,resolve,telangana-rashtra-samithi,"The archive's Telangana Rashtra Samithi (abbreviation TRS, party_colors.csv). Every TRS term in this file starts 2014-2022, before the October 2022 rename to Bharat Rashtra Samithi, so no window is needed. Was create until the archive held the party (2026-11-12 rehearsal)."
 UDF(N),,,create,,
 UPP(L),,,create,,
-YSRCP,,,create,,
+YSRCP,,,resolve,ysr-congress-party,"The archive's YSR Congress Party (abbreviation YSRCP, party_colors.csv). Was create until the archive held the party; creating would have made a second row for the same party (2026-11-12 rehearsal)."
